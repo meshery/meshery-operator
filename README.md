@@ -9,8 +9,8 @@
 ![Twitter Follow](https://img.shields.io/twitter/follow/layer5.svg?label=Follow&style=social)
 
 
-# Mesherator
-Mesherator is the multi-service mesh operator and implementation of MeshSync.
+# Meshery Operator
+Meshery Operator is the multi-service mesh operator and implementation of MeshSync.
 
 ## Join the service mesh community!
 
