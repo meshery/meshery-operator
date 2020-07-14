@@ -1,7 +1,7 @@
 package istio
 
 import (
-	"meshery-controller/pkg/kube"
+	"meshery-operator/pkg/kube"
 	"sync"
 
 	"github.com/prometheus/common/log"

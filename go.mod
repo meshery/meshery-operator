@@ -1,4 +1,4 @@
-module meshery-controller
+module meshery-operator
 
 go 1.14
 

@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"meshery-controller/pkg/meshsync"
+	"meshery-operator/pkg/meshsync"
 	"sync"
 )
 

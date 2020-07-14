@@ -1,9 +1,9 @@
 package main
 
 import (
-	"meshery-controller/internal/controller"
-	"meshery-controller/pkg/kube"
-	"meshery-controller/pkg/meshsync/istio"
+	"meshery-operator/internal/controller"
+	"meshery-operator/pkg/kube"
+	"meshery-operator/pkg/meshsync/istio"
 	"os"
 	"os/signal"
 	"syscall"
