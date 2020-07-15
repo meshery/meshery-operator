@@ -1,9 +1,9 @@
 build: clean
-	go build -tags latest -a -o bin/meshery-controller cmd/manager/main.go
+	go build -tags latest -a -o bin/meshsync cmd/meshsync/main.go
 
 clean:
 	rm -rf bin
 	go mod tidy
 
 run: build
-	./bin/meshery-controller
+	./bin/meshsync
