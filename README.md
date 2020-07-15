@@ -8,9 +8,15 @@
 [![Slack](http://slack.layer5.io/badge.svg)](http://slack.layer5.io)
 ![Twitter Follow](https://img.shields.io/twitter/follow/layer5.svg?label=Follow&style=social)
 
-
+<a href="https://meshery.io/community"><img alt="Layer5 Service Mesh Community" src="img/readme/meshery-operator.svg" style="margin:10px;" width="110px" align="left" /></a>
 # Meshery Operator
 Meshery Operator is the multi-service mesh operator and implementation of MeshSync.
+
+<br />
+<br />
+<br />
+<br />
+<br />
 
 ## Join the service mesh community!
 
