@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"meshery-operator/pkg/meshsync"
 	"sync"
 )
@@ -16,10 +17,11 @@ func New(s ...meshsync.Synchronizer) (*controller, error) {
 }
 
 func (ctrl *controller) Run(quit <-chan struct{}) error {
+	ctx := context.Background()
 	wg := &sync.WaitGroup{}
 	for _, sync := range ctrl.syncs {
 		wg.Add(1)
-		go sync.Synchronize(wg, quit)
+		go sync.Synchronize(ctx, wg, quit)
 	}
 
 	wg.Wait()

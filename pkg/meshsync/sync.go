@@ -1,8 +1,11 @@
 package meshsync
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 type Synchronizer interface {
-	Synchronize(*sync.WaitGroup, <-chan struct{}) error
+	Synchronize(context.Context, *sync.WaitGroup, <-chan struct{}) error
 	IsDeployed() bool
 }
