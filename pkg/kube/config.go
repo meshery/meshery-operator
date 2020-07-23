@@ -7,8 +7,9 @@ import (
 )
 
 type Client struct {
-	cs  *kubernetes.Clientset
-	cfg *rest.Config
+	kubeconfig *string
+	cs         *kubernetes.Clientset
+	cfg        *rest.Config
 }
 
 func NewClient(kubeconfig *string) (*Client, error) {
@@ -23,8 +24,9 @@ func NewClient(kubeconfig *string) (*Client, error) {
 	}
 
 	return &Client{
-		cs:  cs,
-		cfg: cfg,
+		kubeconfig: kubeconfig,
+		cs:         cs,
+		cfg:        cfg,
 	}, nil
 }
 
@@ -34,6 +36,10 @@ func (kcli *Client) Clientset() *kubernetes.Clientset {
 
 func (kcli *Client) RESTConfig() *rest.Config {
 	return kcli.cfg
+}
+
+func (kcli *Client) Kubeconfig() string {
+	return *kcli.kubeconfig
 }
 
 // Clientset is a helper to return a kubernetes Clientset pointer

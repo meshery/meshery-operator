@@ -25,7 +25,7 @@ func main() {
 	// Instantiate each of the relevant/supported mesh synchronizers here
 
 	// Instantiate Istio synchronizer
-	istioSync, err := istio.New(kcli)
+	istioSync, err := istio.New(kcli, "istio-system")
 	kingpin.FatalIfError(err, "failed to instantiate new Istio synchronizer")
 
 	// Create a new meshsync controller that takes a list of synchronizers
