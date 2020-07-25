@@ -16,6 +16,6 @@ const (
 type Event interface {
 	// Stringer returns a long form description/details of the mesh
 	fmt.Stringer
-	Details() MeshInfo
+	Details() *MeshInfo
 	Type() EventType
 }
