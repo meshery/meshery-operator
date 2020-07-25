@@ -2,7 +2,7 @@ package controller
 
 import (
 	"context"
-	"meshery-operator/pkg/meshsync"
+	"github.com/layer5io/meshery-operator/pkg/meshsync"
 	"sync"
 )
 

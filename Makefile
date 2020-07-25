@@ -3,7 +3,6 @@ build: clean
 
 clean:
 	rm -rf bin
-	go mod tidy
 
 run: build
 	./bin/meshsync

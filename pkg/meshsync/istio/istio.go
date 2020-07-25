@@ -2,8 +2,8 @@ package istio
 
 import (
 	"context"
-	"meshery-operator/pkg/kube"
-	"meshery-operator/pkg/meshsync/models"
+	"github.com/layer5io/meshery-operator/pkg/kube"
+	"github.com/layer5io/meshery-operator/pkg/meshsync/models"
 	"sync"
 	"time"
 
@@ -84,7 +84,7 @@ func (i *Istio) startDiscovery(ctx context.Context, syncPeriod time.Duration) {
 					}
 					// Process the discovery event and feed it to the
 					// fingerprinting pipeline
-					i.Process(ctx, ev)
+					i.Fingetprint(ctx, ev)
 				}
 			}
 		}
@@ -92,8 +92,8 @@ func (i *Istio) startDiscovery(ctx context.Context, syncPeriod time.Duration) {
 	}()
 }
 
-// Process the event based on its type
-func (i *Istio) Process(ctx context.Context, event models.Event) {
+// Fingetprint the event based on its type
+func (i *Istio) Fingetprint(ctx context.Context, event models.Event) {
 	switch event.Type() {
 	case models.Discovery:
 		// Feed it to the processing pipeline

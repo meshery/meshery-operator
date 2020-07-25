@@ -2,7 +2,7 @@ package istio
 
 import (
 	"fmt"
-	"meshery-operator/pkg/meshsync/models"
+	"github.com/layer5io/meshery-operator/pkg/meshsync/models"
 
 	"istio.io/pkg/version"
 )
@@ -14,11 +14,11 @@ type event struct {
 }
 
 // Details implements the `Details()` method of the Event interface
-func (ev *event) Details() models.MeshInfo {
+func (ev *event) Details() *models.MeshInfo {
 	v := ev.String()
-	info := models.MeshInfo{
-		Version: &v,
-	}
+	info := models.NewMeshInfo()
+
+	info.SetVersion(&v)
 
 	return info
 }
