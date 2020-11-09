@@ -1,0 +1,24 @@
+# permissions for end users to edit meshsyncs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: meshsync-editor-role
+rules:
+- apiGroups:
+  - meshery.layer5.io
+  resources:
+  - meshsyncs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - meshery.layer5.io
+  resources:
+  - meshsyncs/status
+  verbs:
+  - get
