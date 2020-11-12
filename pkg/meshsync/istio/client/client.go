@@ -47,3 +47,14 @@ func (c *IstioClient) ListSidecar(namespace string) ([]v1beta1.Sidecar, error) {
 
 	return SidecarList.Items, err
 }
+
+// ListWorkloadEntry will list sidecar for given namespaces
+func (c *IstioClient) ListWorkloadEntry(namespace string) ([]v1beta1.WorkloadEntry, error) {
+	// get client
+	WorkloadEntryList, err := c.clientSet.
+		NetworkingV1beta1().
+		WorkloadEntries(namespace).
+		List(context.TODO(), metav1.ListOptions{})
+
+	return WorkloadEntryList.Items, err
+}
