@@ -8,8 +8,8 @@ import (
 	"github.com/myntra/pipeline"
 )
 
-// VirtualService will implement step interface for VirtualService
-type VirtualService struct {
+// Sidecar will implement step interface for Sidecar
+type Sidecar struct {
 	pipeline.StepContext
 	// clients
 	client     *client.IstioClient
@@ -17,12 +17,12 @@ type VirtualService struct {
 }
 
 // Exec - step interface
-func (vs *VirtualService) Exec(request *pipeline.Request) *pipeline.Result {
+func (s *Sidecar) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
-	log.Println("Virtual Service Discovery Started")
+	log.Println("Sidecar Discovery Started")
 
 	// get all namespaces
-	namespaces, err := vs.kubeclient.ListNamespace()
+	namespaces, err := s.kubeclient.ListNamespace()
 	if err != nil {
 		return &pipeline.Result{
 			Error: err,
@@ -31,16 +31,16 @@ func (vs *VirtualService) Exec(request *pipeline.Request) *pipeline.Result {
 
 	// virtual service for all namespace
 	for _, namespace := range namespaces {
-		virtualServices, err := vs.client.ListVirtualService(namespace.Name)
+		Sidecars, err := s.client.ListSidecar(namespace.Name)
 		if err != nil {
 			return &pipeline.Result{
 				Error: err,
 			}
 		}
 
-		// process virtualServices
-		for _, virtualService := range virtualServices {
-			log.Printf("Discovered virtual service named %s in namespace %s", virtualService.Name, namespace.Name)
+		// process Sidecars
+		for _, Sidecar := range Sidecars {
+			log.Printf("Discovered sidecar named %s in namespace %s", Sidecar.Name, namespace.Name)
 		}
 	}
 
@@ -51,7 +51,7 @@ func (vs *VirtualService) Exec(request *pipeline.Request) *pipeline.Result {
 }
 
 // Cancel - step interface
-func (vs *VirtualService) Cancel() error {
-	vs.Status("cancel step")
+func (s *Sidecar) Cancel() error {
+	s.Status("cancel step")
 	return nil
 }

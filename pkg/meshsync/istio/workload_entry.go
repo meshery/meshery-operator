@@ -8,8 +8,8 @@ import (
 	"github.com/myntra/pipeline"
 )
 
-// VirtualService will implement step interface for VirtualService
-type VirtualService struct {
+// WorkloadEntry will implement step interface for WorkloadEntry
+type WorkloadEntry struct {
 	pipeline.StepContext
 	// clients
 	client     *client.IstioClient
@@ -17,30 +17,30 @@ type VirtualService struct {
 }
 
 // Exec - step interface
-func (vs *VirtualService) Exec(request *pipeline.Request) *pipeline.Result {
+func (we *WorkloadEntry) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
-	log.Println("Virtual Service Discovery Started")
+	log.Println("Workload  Entry Discovery Started")
 
 	// get all namespaces
-	namespaces, err := vs.kubeclient.ListNamespace()
+	namespaces, err := we.kubeclient.ListNamespace()
 	if err != nil {
 		return &pipeline.Result{
 			Error: err,
 		}
 	}
 
-	// virtual service for all namespace
+	// Workload  Entry for all namespace
 	for _, namespace := range namespaces {
-		virtualServices, err := vs.client.ListVirtualService(namespace.Name)
+		WorkloadEntries, err := we.client.ListWorkloadEntry(namespace.Name)
 		if err != nil {
 			return &pipeline.Result{
 				Error: err,
 			}
 		}
 
-		// process virtualServices
-		for _, virtualService := range virtualServices {
-			log.Printf("Discovered virtual service named %s in namespace %s", virtualService.Name, namespace.Name)
+		// process WorkloadEntries
+		for _, WorkloadEntry := range WorkloadEntries {
+			log.Printf("Discovered Workload  Entry named %s in namespace %s", WorkloadEntry.Name, namespace.Name)
 		}
 	}
 
@@ -51,7 +51,7 @@ func (vs *VirtualService) Exec(request *pipeline.Request) *pipeline.Result {
 }
 
 // Cancel - step interface
-func (vs *VirtualService) Cancel() error {
-	vs.Status("cancel step")
+func (we *WorkloadEntry) Cancel() error {
+	we.Status("cancel step")
 	return nil
 }
