@@ -26,7 +26,7 @@ func NewIstioClientForConfig(config *rest.Config) (*IstioClient, error) {
 	}, nil
 }
 
-// ListVirtualService will list virtual service for namespaces
+// ListVirtualService will list virtual service for given namespaces
 func (c *IstioClient) ListVirtualService(namespace string) ([]v1beta1.VirtualService, error) {
 	// get client
 	virtualServiceList, err := c.clientSet.
@@ -35,4 +35,15 @@ func (c *IstioClient) ListVirtualService(namespace string) ([]v1beta1.VirtualSer
 		List(context.TODO(), metav1.ListOptions{})
 
 	return virtualServiceList.Items, err
+}
+
+// ListSidecar will list sidecar for given namespaces
+func (c *IstioClient) ListSidecar(namespace string) ([]v1beta1.Sidecar, error) {
+	// get client
+	SidecarList, err := c.clientSet.
+		NetworkingV1beta1().
+		Sidecars(namespace).
+		List(context.TODO(), metav1.ListOptions{})
+
+	return SidecarList.Items, err
 }
