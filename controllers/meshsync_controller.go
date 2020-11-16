@@ -46,15 +46,18 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	// Check if resource exists
 	baseResource := &mesheryv1alpha1.MeshSync{}
-	if err := r.Get(ctx, req.NamespacedName, baseResource); err != nil {
-		log.Error(ErrGetMeshsync(err), " ")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+	err := r.Get(ctx, req.NamespacedName, baseResource)
+	if err != nil && kubeerror.IsNotFound(err) {
+		return ctrl.Result{}, nil
+	} else if err != nil {
+		log.Error(err, "Meshsync resource not found")
+		return ctrl.Result{}, err
 	}
 
 	// Check if controllers running
 	// Meshsync
 	controller := meshsync.GetResource()
-	err := r.Get(ctx, req.NamespacedName, controller)
+	err = r.Get(ctx, req.NamespacedName, controller)
 	if err != nil && kubeerror.IsNotFound(err) {
 		er := meshsync.CreateSyncController(baseResource, r.Scheme)
 		if er != nil {

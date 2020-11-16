@@ -10,7 +10,7 @@ const (
 )
 
 func ErrGetMeshsync(err error) error {
-	return errors.NewDefault(ErrGetMeshsyncCode, "Meshsync controller not found: ", err.Error())
+	return errors.NewDefault(ErrGetMeshsyncCode, "Meshsync resource not found: ", err.Error())
 }
 
 func ErrCreateMeshsync(err error) error {
