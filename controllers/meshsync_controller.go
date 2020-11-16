@@ -25,10 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	// pkgmeshsync "github.com/layer5io/meshery-operator/pkg/meshsync"
-	appsv1 "k8s.io/api/apps/v1"
-	errors "k8s.io/apimachinery/pkg/api/errors"
-	types "k8s.io/apimachinery/pkg/types"
+	meshsync "github.com/layer5io/meshery-operator/pkg/meshsync"
+	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // MeshSyncReconciler reconciles a MeshSync object
@@ -46,31 +44,25 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("meshsync", req.NamespacedName)
 	log.Info("Reconcillation")
 
-	meshsync := &mesheryv1alpha1.MeshSync{}
-	if err := r.Get(ctx, req.NamespacedName, meshsync); err != nil {
-		log.Error(err, "unable to fetch MeshSync")
-		// we'll ignore not-found errors, since they can't be fixed by an immediate
-		// requeue (we'll need to wait for a new notification), and we can get them
-		// on deleted requests.
+	// Check if resource exists
+	baseResource := &mesheryv1alpha1.MeshSync{}
+	if err := r.Get(ctx, req.NamespacedName, baseResource); err != nil {
+		log.Error(ErrGetMeshsync(err), " ")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	found := &appsv1.Deployment{}
-	err := r.Get(ctx, types.NamespacedName{Name: meshsync.Name, Namespace: meshsync.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		// Define a new deployment
-		_ = createDeployment(meshsync, r.Scheme)
-		// log.Info("Creating a new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		// err = r.Create(ctx, dep)
-		// if err != nil {
-		// 	log.Error(err, "Failed to create new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		// 	return ctrl.Result{}, err
-		// }
-		// Deployment created successfully - return and requeue
+	// Check if controllers running
+	// Meshsync
+	controller := meshsync.GetResource()
+	err := r.Get(ctx, req.NamespacedName, controller)
+	if err != nil && kubeerror.IsNotFound(err) {
+		er := meshsync.CreateSyncController(baseResource, r.Scheme)
+		if er != nil {
+			return ctrl.Result{}, ErrCreateMeshsync(err)
+		}
 		return ctrl.Result{Requeue: true}, nil
 	} else if err != nil {
-		log.Error(err, "Failed to get Deployment")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, ErrGetMeshsync(err)
 	}
 
 	return ctrl.Result{}, nil
@@ -79,6 +71,5 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.MeshSync{}).
-		Owns(&appsv1.Deployment{}).
 		Complete(r)
 }
