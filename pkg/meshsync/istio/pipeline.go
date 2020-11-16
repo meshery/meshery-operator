@@ -27,7 +27,7 @@ func (istio *Istio) InitializePipeline() (*pipeline.Pipeline, error) {
 
 	// Mesh Discovery Stage
 	mdstage := MeshDiscoveryStage
-	rdstage.AddStep(istio)
+	mdstage.AddStep(istio)
 
 	// Resource Discovery Stage
 	rdstage := ResourcesDiscoveryStage

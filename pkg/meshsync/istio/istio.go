@@ -3,15 +3,17 @@ package istio
 import (
 	"log"
 
+	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
 
 type Istio struct {
-	Client     *client.IstioClient
-	KubeClient *common.KubeClient
+	pipeline.StepContext
+	Client     *discovery.Istio
+	KubeClient *discovery.Kubernetes
 }
 
-func New(client *client.IstioClient, kubeclient *common.KubeClient) (*Istio, error) {
+func New(client *discovery.Istio, kubeclient *discovery.Kubernetes) *Istio {
 	return &Istio{
 		Client:     client,
 		KubeClient: kubeclient,
