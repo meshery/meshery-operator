@@ -9,6 +9,20 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+var (
+	MeshDiscoveryStage = &pipeline.Stage{
+		Name:       "Mesh-Discovery",
+		Concurrent: false,
+		Steps:      []pipeline.Step{},
+	}
+
+	ResourcesDiscoveryStage = &pipeline.Stage{
+		Name:       "Resource-Discovery",
+		Concurrent: true,
+		Steps:      []pipeline.Step{},
+	}
+)
+
 func GetResource() runtime.Object {
 	fmt.Println("Getting meshsync resource")
 	return &appsv1.Deployment{}

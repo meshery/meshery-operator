@@ -13,6 +13,7 @@ require (
 	github.com/myntra/pipeline v0.0.0-20180618182531-2babf4864ce8
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
+	istio.io/client-go v1.8.0-alpha.2
 	k8s.io/api v0.18.12
 	k8s.io/apimachinery v0.18.12
 	k8s.io/client-go v0.18.12

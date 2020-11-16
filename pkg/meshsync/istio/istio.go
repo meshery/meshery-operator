@@ -1,37 +1,34 @@
 package istio
 
 import (
-	commonpipeline "github.com/layer5io/meshery-operator/pkg/common/pipeline"
+	"log"
+
 	"github.com/myntra/pipeline"
 )
 
-var (
-	IstioPipeline = &pipeline.Pipeline{
-		Name: "Istio-Pipeline",
-		Stages: []*pipeline.Stage{
-			MeshDiscoveryStage,
-			ResourcesDiscoveryStage,
-		},
-	}
+type Istio struct {
+	Client     *client.IstioClient
+	KubeClient *common.KubeClient
+}
 
-	MeshDiscoveryStage = &pipeline.Stage{
-		Name:       "Mesh-Discovery",
-		Concurrent: false,
-		Steps:      []pipeline.Step{},
+func New(client *client.IstioClient, kubeclient *common.KubeClient) (*Istio, error) {
+	return &Istio{
+		Client:     client,
+		KubeClient: kubeclient,
 	}
+}
 
-	ResourcesDiscoveryStage = &pipeline.Stage{
-		Name:       "Resource-Discovery",
-		Concurrent: true,
-		Steps: []pipeline.Step{
-			&VirtualService{},
-		},
+// Exec - step interface
+func (i *Istio) Exec(request *pipeline.Request) *pipeline.Result {
+	log.Println("Istio Discovery Started")
+
+	return &pipeline.Result{
+		Error: nil,
 	}
-)
+}
 
-func NewIstioPipeline() (*pipeline.Pipeline, error) {
-	return commonpipeline.New(commonpipeline.Options{
-		Pipeline: IstioPipeline,
-		SkipFail: true,
-	})
+// Cancel - step interface
+func (i *Istio) Cancel() error {
+	i.Status("cancel step")
+	return nil
 }
