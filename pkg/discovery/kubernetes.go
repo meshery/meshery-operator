@@ -27,7 +27,7 @@ func NewKubernetesClient(config *rest.Config) (*Kubernetes, error) {
 }
 
 // ListNamespace will list namespace items
-func (c *Kubernetes) Namespaces() ([]v1.Namespace, error) {
+func (c *Kubernetes) ListNamespaces() ([]v1.Namespace, error) {
 	namespaceList, err := c.clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	return namespaceList.Items, err
 }

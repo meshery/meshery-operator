@@ -27,7 +27,7 @@ func NewIstioClient(config *rest.Config) (*Istio, error) {
 }
 
 // VirtualServices will list virtual service for given namespaces
-func (c *Istio) VirtualServices(namespace string) ([]v1beta1.VirtualService, error) {
+func (c *Istio) ListVirtualServices(namespace string) ([]v1beta1.VirtualService, error) {
 	// get client
 	virtualServiceList, err := c.clientSet.
 		NetworkingV1beta1().
@@ -38,7 +38,7 @@ func (c *Istio) VirtualServices(namespace string) ([]v1beta1.VirtualService, err
 }
 
 // Sidecars will list sidecar for given namespaces
-func (c *Istio) Sidecars(namespace string) ([]v1beta1.Sidecar, error) {
+func (c *Istio) ListSidecars(namespace string) ([]v1beta1.Sidecar, error) {
 	// get client
 	SidecarList, err := c.clientSet.
 		NetworkingV1beta1().
@@ -49,7 +49,7 @@ func (c *Istio) Sidecars(namespace string) ([]v1beta1.Sidecar, error) {
 }
 
 // WorkloadEntrys will list sidecar for given namespaces
-func (c *Istio) WorkloadEntrys(namespace string) ([]v1beta1.WorkloadEntry, error) {
+func (c *Istio) ListWorkloadEntrys(namespace string) ([]v1beta1.WorkloadEntry, error) {
 	// get client
 	WorkloadEntryList, err := c.clientSet.
 		NetworkingV1beta1().
