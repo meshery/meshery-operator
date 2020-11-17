@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"github.com/myntra/pipeline"
@@ -31,9 +31,9 @@ func (istio *Istio) InitializePipeline() (*pipeline.Pipeline, error) {
 
 	// Resource Discovery Stage
 	rdstage := ResourcesDiscoveryStage
-	rdstage.AddStep(NewVirtualService(istio.Client, istio.KubeClient))
-	rdstage.AddStep(NewWorkloadEntry(istio.Client, istio.KubeClient))
-	rdstage.AddStep(NewSidecar(istio.Client, istio.KubeClient))
+	rdstage.AddStep(NewVirtualService(istio.client))
+	rdstage.AddStep(NewWorkloadEntry(istio.client))
+	rdstage.AddStep(NewSidecar(istio.client))
 
 	// Create Pipeline
 	istioPipeline := IstioPipeline

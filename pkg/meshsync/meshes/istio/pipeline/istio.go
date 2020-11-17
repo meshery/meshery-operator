@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"log"
@@ -9,14 +9,12 @@ import (
 
 type Istio struct {
 	pipeline.StepContext
-	Client     *discovery.Istio
-	KubeClient *discovery.Kubernetes
+	client *discovery.Client
 }
 
-func New(client *discovery.Istio, kubeclient *discovery.Kubernetes) *Istio {
+func New(client *discovery.Client) *Istio {
 	return &Istio{
-		Client:     client,
-		KubeClient: kubeclient,
+		client: client,
 	}
 }
 

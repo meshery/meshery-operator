@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"log"
@@ -14,15 +14,12 @@ const (
 // VirtualService will implement step interface for VirtualService
 type VirtualService struct {
 	pipeline.StepContext
-	// clients
-	client     *discovery.Istio
-	kubeclient *discovery.Kubernetes
+	client *discovery.Client
 }
 
-func NewVirtualService(istioClient *discovery.Istio, kubeClient *discovery.Kubernetes) *VirtualService {
+func NewVirtualService(client *discovery.Client) *VirtualService {
 	return &VirtualService{
-		client:     istioClient,
-		kubeclient: kubeClient,
+		client: client,
 	}
 }
 

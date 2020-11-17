@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"log"
@@ -11,14 +11,12 @@ import (
 type Sidecar struct {
 	pipeline.StepContext
 	// clients
-	client     *discovery.Istio
-	kubeclient *discovery.Kubernetes
+	client *discovery.Client
 }
 
-func NewSidecar(istioClient *discovery.Istio, kubeClient *discovery.Kubernetes) *Sidecar {
+func NewSidecar(client *discovery.Client) *Sidecar {
 	return &Sidecar{
-		client:     istioClient,
-		kubeclient: kubeClient,
+		client: client,
 	}
 }
 
