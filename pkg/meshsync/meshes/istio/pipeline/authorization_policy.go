@@ -35,7 +35,7 @@ func (ap *AuthorizationPolicy) Exec(request *pipeline.Request) *pipeline.Result 
 
 		// processing
 		for _, authorizationPolicy := range authorizationPolicies {
-			log.Println("Discovered authorization policy named %s in namespace %s", authorizationPolicy.Name, namespace)
+			log.Printf("Discovered authorization policy named %s in namespace %s", authorizationPolicy.Name, namespace)
 		}
 	}
 
