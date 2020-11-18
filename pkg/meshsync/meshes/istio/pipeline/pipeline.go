@@ -26,7 +26,7 @@ var (
 	Namespaces = []string{"default", "istio-system"}
 )
 
-func (istio *Istio) InitializePipeline() (*pipeline.Pipeline, error) {
+func (istio *Istio) InitializePipeline() *pipeline.Pipeline {
 
 	// Mesh Discovery Stage
 	mdstage := MeshDiscoveryStage
@@ -43,5 +43,5 @@ func (istio *Istio) InitializePipeline() (*pipeline.Pipeline, error) {
 	istioPipeline.AddStage(mdstage)
 	istioPipeline.AddStage(rdstage)
 
-	return istioPipeline, nil
+	return istioPipeline
 }

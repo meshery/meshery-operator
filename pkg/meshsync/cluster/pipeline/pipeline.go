@@ -23,7 +23,7 @@ var (
 	}
 )
 
-func (cluster *Cluster) InitializePipeline() (*pipeline.Pipeline, error) {
+func (cluster *Cluster) InitializePipeline() *pipeline.Pipeline {
 
 	// Global discovery
 	gdstage := GlobalDiscoveryStage
@@ -41,5 +41,5 @@ func (cluster *Cluster) InitializePipeline() (*pipeline.Pipeline, error) {
 	clusterPipeline.AddStage(gdstage)
 	clusterPipeline.AddStage(ldstage)
 
-	return clusterPipeline, nil
+	return clusterPipeline
 }
