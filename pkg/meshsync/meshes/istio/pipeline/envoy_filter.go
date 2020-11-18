@@ -36,7 +36,7 @@ func (ef *EnvoyFilter) Exec(request *pipeline.Request) *pipeline.Result {
 
 		// processing
 		for _, envoyFilter := range envoyFilters {
-			log.Println("Discovered envoy filter named %s in namespace %s", envoyFilter.Name, namespace)
+			log.Printf("Discovered envoy filter named %s in namespace %s", envoyFilter.Name, namespace)
 		}
 	}
 

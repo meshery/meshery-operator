@@ -35,7 +35,7 @@ func (dr *DestinationRule) Exec(request *pipeline.Request) *pipeline.Result {
 
 		// processing
 		for _, destinationRule := range destinationRules {
-			log.Println("Discovered destination rule named %s in namespace %s", destinationRule.Name, namespace)
+			log.Printf("Discovered destination rule named %s in namespace %s", destinationRule.Name, namespace)
 		}
 	}
 
