@@ -39,6 +39,7 @@ func (cluster *Cluster) InitializePipeline() (*pipeline.Pipeline, error) {
 	// Create Pipeline
 	clusterPipeline := ClusterPipeline
 	clusterPipeline.AddStage(gdstage)
+	clusterPipeline.AddStage(ldstage)
 
 	return clusterPipeline, nil
 }
