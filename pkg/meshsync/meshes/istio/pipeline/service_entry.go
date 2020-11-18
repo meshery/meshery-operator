@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"log"
@@ -11,15 +11,13 @@ import (
 type ServiceEntry struct {
 	pipeline.StepContext
 	// clients
-	client     *discovery.Istio
-	kubeclient *discovery.Kubernetes
+	client *discovery.Client
 }
 
 // NewServiceEntry - constructor
-func NewServiceEntry(istioClient *discovery.Istio, kubeClient *discovery.Kubernetes) *ServiceEntry {
+func NewServiceEntry(client *discovery.Client) *ServiceEntry {
 	return &ServiceEntry{
-		client:     istioClient,
-		kubeclient: kubeClient,
+		client: client,
 	}
 }
 
@@ -27,6 +25,21 @@ func NewServiceEntry(istioClient *discovery.Istio, kubeClient *discovery.Kuberne
 func (se *ServiceEntry) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
 	log.Println("ServiceEntry Discovery Started")
+
+	for _, namespace := range Namespaces {
+		serviceEntries, err := se.client.ListServiceEntries(namespace)
+		if err != nil {
+			return &pipeline.Result{
+				Error: err,
+			}
+		}
+
+		// process serviceEntries
+		for _, serviceEntry := range serviceEntries {
+			log.Printf("Discovered ServiceEntry named %s in namespace %s", serviceEntry.Name, namespace)
+		}
+	}
+
 	// no data is feeded to future steps or stages
 	return &pipeline.Result{
 		Error: nil,

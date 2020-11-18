@@ -13,6 +13,7 @@ type WorkloadEntry struct {
 	client *discovery.Client
 }
 
+// NewWOrkloadEntry - constructor
 func NewWorkloadEntry(client *discovery.Client) *WorkloadEntry {
 	return &WorkloadEntry{
 		client: client,
@@ -24,28 +25,20 @@ func (we *WorkloadEntry) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
 	log.Println("Workload  Entry Discovery Started")
 
-	// // get all namespaces
-	// namespaces, err := we.kubeclient.ListNamespace()
-	// if err != nil {
-	// 	return &pipeline.Result{
-	// 		Error: err,
-	// 	}
-	// }
+	// Workload  Entry for all namespace
+	for _, namespace := range Namespaces {
+		workloadEntries, err := we.client.ListWorkloadEntries(namespace)
+		if err != nil {
+			return &pipeline.Result{
+				Error: err,
+			}
+		}
 
-	// // Workload  Entry for all namespace
-	// for _, namespace := range namespaces {
-	// 	WorkloadEntries, err := we.client.ListWorkloadEntry(namespace.Name)
-	// 	if err != nil {
-	// 		return &pipeline.Result{
-	// 			Error: err,
-	// 		}
-	// 	}
-
-	// 	// process WorkloadEntries
-	// 	for _, WorkloadEntry := range WorkloadEntries {
-	// 		log.Printf("Discovered Workload  Entry named %s in namespace %s", WorkloadEntry.Name, namespace.Name)
-	// 	}
-	// }
+		// process WorkloadEntries
+		for _, workloadEntry := range workloadEntries {
+			log.Printf("Discovered Workload  Entry named %s in namespace %s", workloadEntry.Name, namespace)
+		}
+	}
 
 	// no data is feeded to future steps or stages
 	return &pipeline.Result{

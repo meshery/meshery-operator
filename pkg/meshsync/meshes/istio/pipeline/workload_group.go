@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"log"
@@ -11,15 +11,13 @@ import (
 type WorkloadGroup struct {
 	pipeline.StepContext
 	// clients
-	client     *discovery.Istio
-	kubeclient *discovery.Kubernetes
+	client *discovery.Client
 }
 
 // NewWorkloadGroup - constructor
-func NewWorkloadGroup(istioClient *discovery.Istio, kubeClient *discovery.Kubernetes) *WorkloadGroup {
+func NewWorkloadGroup(client *discovery.Client) *WorkloadGroup {
 	return &WorkloadGroup{
-		client:     istioClient,
-		kubeclient: kubeClient,
+		client: client,
 	}
 }
 
@@ -27,6 +25,21 @@ func NewWorkloadGroup(istioClient *discovery.Istio, kubeClient *discovery.Kubern
 func (wg *WorkloadGroup) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
 	log.Println("WorkloadGroup Discovery Started")
+
+	for _, namespace := range Namespaces {
+		workloadGroups, err := wg.client.ListWorkloadGroups(namespace)
+		if err != nil {
+			return &pipeline.Result{
+				Error: err,
+			}
+		}
+
+		// process WorkloadGroups
+		for _, workloadGroup := range workloadGroups {
+			log.Printf("Discovered Workload  Group named %s in namespace %s", workloadGroup.Name, namespace)
+		}
+	}
+
 	// no data is feeded to future steps or stages
 	return &pipeline.Result{
 		Error: nil,

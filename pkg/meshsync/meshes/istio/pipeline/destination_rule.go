@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"log"
@@ -10,16 +10,13 @@ import (
 // DestinationRule will implement step interface for DestinationRules
 type DestinationRule struct {
 	pipeline.StepContext
-	// clients
-	client     *discovery.Istio
-	kubeclient *discovery.Kubernetes
+	client *discovery.Client
 }
 
 // NewDestinationRule - constructor
-func NewDestinationRule(istioClient *discovery.Istio, kubeClient *discovery.Kubernetes) *DestinationRule {
+func NewDestinationRule(client *discovery.Client) *DestinationRule {
 	return &DestinationRule{
-		client:     istioClient,
-		kubeclient: kubeClient,
+		client: client,
 	}
 }
 
@@ -27,6 +24,21 @@ func NewDestinationRule(istioClient *discovery.Istio, kubeClient *discovery.Kube
 func (dr *DestinationRule) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
 	log.Println("DestinationRule Discovery Started")
+
+	for _, namespace := range Namespaces {
+		destinationRules, err := dr.client.ListDestinationRules(namespace)
+		if err != nil {
+			return &pipeline.Result{
+				Error: err,
+			}
+		}
+
+		// processing
+		for _, destinationRule := range destinationRules {
+			log.Println("Discovered destination rule named %s in namespace %s", destinationRule.Name, namespace)
+		}
+	}
+
 	// no data is feeded to future steps or stages
 	return &pipeline.Result{
 		Error: nil,

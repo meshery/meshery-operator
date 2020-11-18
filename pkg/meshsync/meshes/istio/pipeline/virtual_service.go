@@ -17,6 +17,7 @@ type VirtualService struct {
 	client *discovery.Client
 }
 
+// NewVirtualService constructor
 func NewVirtualService(client *discovery.Client) *VirtualService {
 	return &VirtualService{
 		client: client,
@@ -28,28 +29,20 @@ func (vs *VirtualService) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
 	log.Println("Virtual Service Discovery Started")
 
-	// // get all namespaces
-	// namespaces, err := vs.kubeclient.ListNamespace()
-	// if err != nil {
-	// 	return &pipeline.Result{
-	// 		Error: err,
-	// 	}
-	// }
+	// virtual service for all namespace
+	for _, namespace := range Namespaces {
+		virtualServices, err := vs.client.ListVirtualServices(namespace)
+		if err != nil {
+			return &pipeline.Result{
+				Error: err,
+			}
+		}
 
-	// // virtual service for all namespace
-	// for _, namespace := range namespaces {
-	// 	virtualServices, err := vs.client.ListVirtualService(namespace.Name)
-	// 	if err != nil {
-	// 		return &pipeline.Result{
-	// 			Error: err,
-	// 		}
-	// 	}
-
-	// 	// process virtualServices
-	// 	for _, virtualService := range virtualServices {
-	// 		log.Printf("Discovered virtual service named %s in namespace %s", virtualService.Name, namespace.Name)
-	// 	}
-	// }
+		// process virtualServices
+		for _, virtualService := range virtualServices {
+			log.Printf("Discovered virtual service named %s in namespace %s", virtualService.Name, namespace)
+		}
+	}
 
 	// no data is feeded to future steps or stages
 	return &pipeline.Result{

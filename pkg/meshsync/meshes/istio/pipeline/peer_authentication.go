@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"log"
@@ -11,15 +11,13 @@ import (
 type PeerAuthentication struct {
 	pipeline.StepContext
 	// clients
-	client     *discovery.Istio
-	kubeclient *discovery.Kubernetes
+	client *discovery.Client
 }
 
 // NewPeerAuthentication - constructor
-func NewPeerAuthentication(istioClient *discovery.Istio, kubeClient *discovery.Kubernetes) *PeerAuthentication {
+func NewPeerAuthentication(client *discovery.Client) *PeerAuthentication {
 	return &PeerAuthentication{
-		client:     istioClient,
-		kubeclient: kubeClient,
+		client: client,
 	}
 }
 
@@ -27,6 +25,21 @@ func NewPeerAuthentication(istioClient *discovery.Istio, kubeClient *discovery.K
 func (pa *PeerAuthentication) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
 	log.Println("PeerAuthentication Discovery Started")
+
+	for _, namespace := range Namespaces {
+		peerAuthentications, err := pa.client.ListPeerAuthentications(namespace)
+		if err != nil {
+			return &pipeline.Result{
+				Error: err,
+			}
+		}
+
+		// process PeerAuthentications
+		for _, peerAuthentication := range peerAuthentications {
+			log.Printf("Discovered PeerAuthentication named %s in namespace %s", peerAuthentication.Name, namespace)
+		}
+	}
+
 	// no data is feeded to future steps or stages
 	return &pipeline.Result{
 		Error: nil,

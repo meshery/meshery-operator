@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"log"
@@ -11,15 +11,13 @@ import (
 type RequestAuthenticaton struct {
 	pipeline.StepContext
 	// clients
-	client     *discovery.Istio
-	kubeclient *discovery.Kubernetes
+	client *discovery.Client
 }
 
 // NewRequestAuthenticaton - constructor
-func NewRequestAuthenticaton(istioClient *discovery.Istio, kubeClient *discovery.Kubernetes) *RequestAuthenticaton {
+func NewRequestAuthenticaton(client *discovery.Client) *RequestAuthenticaton {
 	return &RequestAuthenticaton{
-		client:     istioClient,
-		kubeclient: kubeClient,
+		client: client,
 	}
 }
 
@@ -27,6 +25,21 @@ func NewRequestAuthenticaton(istioClient *discovery.Istio, kubeClient *discovery
 func (ra *RequestAuthenticaton) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
 	log.Println("RequestAuthenticaton Discovery Started")
+
+	for _, namespace := range Namespaces {
+		requestAuthentications, err := ra.client.ListRequestAuthentications(namespace)
+		if err != nil {
+			return &pipeline.Result{
+				Error: err,
+			}
+		}
+
+		// process requestAuthentications
+		for _, requestAuthentication := range requestAuthentications {
+			log.Printf("Discovered RequestAuthentication named %s in namespace %s", requestAuthentication.Name, namespace)
+		}
+	}
+
 	// no data is feeded to future steps or stages
 	return &pipeline.Result{
 		Error: nil,

@@ -14,6 +14,7 @@ type Sidecar struct {
 	client *discovery.Client
 }
 
+// NewSidecar - constructor
 func NewSidecar(client *discovery.Client) *Sidecar {
 	return &Sidecar{
 		client: client,
@@ -25,28 +26,19 @@ func (s *Sidecar) Exec(request *pipeline.Request) *pipeline.Result {
 	// it will contain a pipeline to run
 	log.Println("Sidecar Discovery Started")
 
-	// // get all namespaces
-	// namespaces, err := s.kubeclient.ListNamespace()
-	// if err != nil {
-	// 	return &pipeline.Result{
-	// 		Error: err,
-	// 	}
-	// }
+	for _, namespace := range Namespaces {
+		sidecars, err := s.client.ListSidecars(namespace)
+		if err != nil {
+			return &pipeline.Result{
+				Error: err,
+			}
+		}
 
-	// // virtual service for all namespace
-	// for _, namespace := range namespaces {
-	// 	Sidecars, err := s.client.ListSidecar(namespace.Name)
-	// 	if err != nil {
-	// 		return &pipeline.Result{
-	// 			Error: err,
-	// 		}
-	// 	}
-
-	// 	// process Sidecars
-	// 	for _, Sidecar := range Sidecars {
-	// 		log.Printf("Discovered sidecar named %s in namespace %s", Sidecar.Name, namespace.Name)
-	// 	}
-	// }
+		// process Sidecars
+		for _, sidecar := range sidecars {
+			log.Printf("Discovered sidecar named %s in namespace %s", sidecar.Name, namespace)
+		}
+	}
 
 	// no data is feeded to future steps or stages
 	return &pipeline.Result{
