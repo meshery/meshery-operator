@@ -1,51 +1,56 @@
 package service
 
 import (
+	"fmt"
 	"log"
+	"os"
 
-	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
-	clusterPipelinePackage "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/pipeline"
-	istioPipelinePackage "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/pipeline"
+	"github.com/spf13/cobra"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-// StartDiscovery - run pipelines
-func StartDiscovery() error {
-	// get kube config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		log.Printf("Couldnot load config: %s", err)
-		return err
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+	Use:   "MeshSync",
+	Short: "Cluster and service mesh specific resource discovery",
+	Run: func(cmd *cobra.Command, args []string) {
+		kubeconfig, err := cmd.Flags().GetString("kubeconfig")
+		if err != nil {
+			fmt.Printf("Error : %s", err)
+			return
+		}
+		var config *rest.Config
+		if kubeconfig != "" {
+			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+			if err != nil {
+				log.Printf("Couldnot load config: %s", err)
+				return
+			}
+		} else {
+			config, err = rest.InClusterConfig()
+			if err != nil {
+				log.Printf("Couldnot load config: %s", err)
+				return
+			}
+		}
+
+		err = StartDiscovery(config)
+		if err != nil {
+			log.Printf("Error while discovery: %s", err)
+			return
+		}
+
+	},
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		log.Println(err)
+		os.Exit(1)
 	}
+}
 
-	// create discovery client
-	client, err := discovery.NewClient(config)
-	if err != nil {
-		log.Printf("Couldnot create client: %s", err)
-		return err
-	}
-
-	// get and run pipelines
-	// cluster pipeline
-	cluster := clusterPipelinePackage.New(client)
-	clusterPipeline := cluster.InitializePipeline()
-
-	// istio pipeline
-	istio := istioPipelinePackage.New(client)
-	istioPipeline := istio.InitializePipeline()
-
-	// run pipelines
-	result := clusterPipeline.Run()
-	if result.Error != nil {
-		log.Printf("Error executing cluster pipeline: %s", result.Error)
-		return err
-	}
-
-	result = istioPipeline.Run()
-	if result.Error != nil {
-		log.Printf("Error executing istio pipeline: %s", result.Error)
-		return err
-	}
-
-	return nil
+func init() {
+	rootCmd.Flags().StringP("kubeconfig", "k", "", "path to kube config file")
 }
