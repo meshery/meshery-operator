@@ -10,19 +10,19 @@ import (
 )
 
 // StartDiscovery - run pipelines
-func StartDiscovery() {
+func StartDiscovery() error {
 	// get kube config
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		log.Printf("Couldnot load config: %s", err)
-		return
+		return err
 	}
 
 	// create discovery client
 	client, err := discovery.NewClient(config)
 	if err != nil {
 		log.Printf("Couldnot create client: %s", err)
-		return
+		return err
 	}
 
 	// get and run pipelines
@@ -38,12 +38,14 @@ func StartDiscovery() {
 	result := clusterPipeline.Run()
 	if result.Error != nil {
 		log.Printf("Error executing cluster pipeline: %s", result.Error)
-		return
+		return err
 	}
 
 	result = istioPipeline.Run()
 	if result.Error != nil {
 		log.Printf("Error executing istio pipeline: %s", result.Error)
-		return
+		return err
 	}
+
+	return nil
 }
