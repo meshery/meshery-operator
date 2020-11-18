@@ -35,7 +35,7 @@ func (n *Node) Exec(request *pipeline.Request) *pipeline.Result {
 
 	// processing
 	for _, node := range nodes {
-		log.Println("Discovered node named %s", node.Name)
+		log.Printf("Discovered node named %s", node.Name)
 	}
 
 	// no data is feeded to future steps or stages

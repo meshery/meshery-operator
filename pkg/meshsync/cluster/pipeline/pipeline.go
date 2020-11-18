@@ -1,4 +1,4 @@
-package cluster
+package pipeline
 
 import (
 	"github.com/myntra/pipeline"
