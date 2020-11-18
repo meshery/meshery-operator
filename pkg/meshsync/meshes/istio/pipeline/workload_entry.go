@@ -1,4 +1,4 @@
-package istio
+package pipeline
 
 import (
 	"log"
@@ -10,15 +10,12 @@ import (
 // WorkloadEntry will implement step interface for WorkloadEntry
 type WorkloadEntry struct {
 	pipeline.StepContext
-	// clients
-	client     *discovery.Istio
-	kubeclient *discovery.Kubernetes
+	client *discovery.Client
 }
 
-func NewWorkloadEntry(istioClient *discovery.Istio, kubeClient *discovery.Kubernetes) *WorkloadEntry {
+func NewWorkloadEntry(client *discovery.Client) *WorkloadEntry {
 	return &WorkloadEntry{
-		client:     istioClient,
-		kubeclient: kubeClient,
+		client: client,
 	}
 }
 
