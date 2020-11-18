@@ -21,6 +21,9 @@ var (
 		Concurrent: true,
 		Steps:      []pipeline.Step{},
 	}
+
+	// TODO: need some solution for this
+	Namespaces = []string{"default", "istio-system"}
 )
 
 func (istio *Istio) InitializePipeline() (*pipeline.Pipeline, error) {
