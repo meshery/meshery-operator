@@ -13,7 +13,7 @@ var (
 
 	ResourcesDiscoveryStage = &pipeline.Stage{
 		Name:       "Resource-Discovery",
-		Concurrent: true,
+		Concurrent: false,
 		Steps:      []pipeline.Step{},
 	}
 

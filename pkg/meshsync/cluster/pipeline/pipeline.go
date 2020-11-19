@@ -7,13 +7,13 @@ import (
 var (
 	GlobalDiscoveryStage = &pipeline.Stage{
 		Name:       "Global-Resource-Discovery",
-		Concurrent: true,
+		Concurrent: false,
 		Steps:      []pipeline.Step{},
 	}
 
 	LocalDiscoveryStage = &pipeline.Stage{
 		Name:       "Local-Resource-Discovery",
-		Concurrent: true,
+		Concurrent: false,
 		Steps:      []pipeline.Step{},
 	}
 )
