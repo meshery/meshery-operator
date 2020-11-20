@@ -1,7 +1,10 @@
 package discovery
 
 import (
+	"time"
+
 	"istio.io/client-go/pkg/clientset/versioned"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -10,6 +13,9 @@ import (
 type Client struct {
 	kubeClientset  *kubernetes.Clientset
 	istioClientSet *versioned.Clientset
+
+	// informers
+	clusterInformerFactory informers.SharedInformerFactory
 }
 
 // NewKubeClientForConfig constructor
@@ -24,8 +30,11 @@ func NewClient(config *rest.Config) (*Client, error) {
 		return nil, err
 	}
 
+	clusterInformerFactory := informers.NewSharedInformerFactory(kclientset, 10*time.Second)
+
 	return &Client{
-		kubeClientset:  kclientset,
-		istioClientSet: iclientSet,
+		kubeClientset:          kclientset,
+		istioClientSet:         iclientSet,
+		clusterInformerFactory: clusterInformerFactory,
 	}, nil
 }
