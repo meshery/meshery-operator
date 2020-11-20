@@ -5,15 +5,16 @@ import (
 )
 
 var (
+	Name                 = "Cluster-Pipeline"
 	GlobalDiscoveryStage = &pipeline.Stage{
 		Name:       "Global-Resource-Discovery",
-		Concurrent: false,
+		Concurrent: true,
 		Steps:      []pipeline.Step{},
 	}
 
 	LocalDiscoveryStage = &pipeline.Stage{
 		Name:       "Local-Resource-Discovery",
-		Concurrent: false,
+		Concurrent: true,
 		Steps:      []pipeline.Step{},
 	}
 )
@@ -31,7 +32,7 @@ func (cluster *Cluster) InitializePipeline() *pipeline.Pipeline {
 	ldstage.AddStep(NewPod(cluster.client))
 
 	// Create Pipeline
-	clusterPipeline := pipeline.New("Cluster-Pipeline", 1000)
+	clusterPipeline := pipeline.New(Name, 1000)
 	clusterPipeline.AddStage(gdstage)
 	clusterPipeline.AddStage(ldstage)
 

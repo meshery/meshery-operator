@@ -5,6 +5,7 @@ import (
 )
 
 var (
+	Name               = "Istio-Pipeline"
 	MeshDiscoveryStage = &pipeline.Stage{
 		Name:       "Mesh-Discovery",
 		Concurrent: false,
@@ -34,7 +35,7 @@ func (istio *Istio) InitializePipeline() *pipeline.Pipeline {
 	rdstage.AddStep(NewSidecar(istio.client))
 
 	// Create Pipeline
-	istioPipeline := pipeline.New("Istio-Pipeline", 1000)
+	istioPipeline := pipeline.New(Name, 1000)
 	istioPipeline.AddStage(mdstage)
 	istioPipeline.AddStage(rdstage)
 
