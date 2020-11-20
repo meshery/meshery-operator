@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
 
@@ -22,17 +23,17 @@ var (
 	Namespaces = []string{"default", "istio-system"}
 )
 
-func (istio *Istio) InitializePipeline() *pipeline.Pipeline {
+func Initialize(client *discovery.Client) *pipeline.Pipeline {
 
 	// Mesh Discovery Stage
 	mdstage := MeshDiscoveryStage
-	mdstage.AddStep(istio)
+	mdstage.AddStep(NewIstio(client))
 
 	// Resource Discovery Stage
 	rdstage := ResourcesDiscoveryStage
-	rdstage.AddStep(NewVirtualService(istio.client))
-	rdstage.AddStep(NewWorkloadEntry(istio.client))
-	rdstage.AddStep(NewSidecar(istio.client))
+	rdstage.AddStep(NewVirtualService(client))
+	rdstage.AddStep(NewWorkloadEntry(client))
+	rdstage.AddStep(NewSidecar(client))
 
 	// Create Pipeline
 	istioPipeline := pipeline.New(Name, 1000)

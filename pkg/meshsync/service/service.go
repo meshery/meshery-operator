@@ -21,7 +21,6 @@ var rootCmd = &cobra.Command{
 			return
 		}
 		var config *rest.Config
-		kubeconfig = "/home/dev/.kube/config"
 		if kubeconfig != "" {
 			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 			if err != nil {

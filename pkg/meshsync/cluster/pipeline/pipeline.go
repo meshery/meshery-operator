@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
 
@@ -8,23 +9,23 @@ var (
 	Name                 = "Cluster-Pipeline"
 	GlobalDiscoveryStage = &pipeline.Stage{
 		Name:       "Global-Resource-Discovery",
-		Concurrent: true,
+		Concurrent: false,
 		Steps:      []pipeline.Step{},
 	}
 
 	LocalDiscoveryStage = &pipeline.Stage{
 		Name:       "Local-Resource-Discovery",
-		Concurrent: true,
+		Concurrent: false,
 		Steps:      []pipeline.Step{},
 	}
 )
 
-func (cluster *Cluster) InitializePipeline() *pipeline.Pipeline {
+func Initialize(client *discovery.Client) *pipeline.Pipeline {
 	// Global discovery
 	gdstage := GlobalDiscoveryStage
-	gdstage.AddStep(cluster)
-	gdstage.AddStep(NewNode(cluster.client))
-	gdstage.AddStep(NewNamespace(cluster.client))
+	gdstage.AddStep(NewCluster(client))
+	gdstage.AddStep(NewNode(client))
+	gdstage.AddStep(NewNamespace(client))
 
 	// Local discovery
 	ldstage := LocalDiscoveryStage

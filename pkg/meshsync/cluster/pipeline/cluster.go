@@ -12,7 +12,7 @@ type Cluster struct {
 	client *discovery.Client
 }
 
-func New(client *discovery.Client) *Cluster {
+func NewCluster(client *discovery.Client) *Cluster {
 	return &Cluster{
 		client: client,
 	}

@@ -4,8 +4,8 @@ import (
 	"log"
 
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
-	clusterPipelinePackage "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/pipeline"
-	istioPipelinePackage "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/pipeline"
+	clusterpipeline "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/pipeline"
+	istiopipeline "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/pipeline"
 	"k8s.io/client-go/rest"
 )
 
@@ -21,12 +21,10 @@ func StartDiscovery(config *rest.Config) error {
 
 	// get and run pipelines
 	// cluster pipeline
-	cluster := clusterPipelinePackage.New(client)
-	clusterPipeline := cluster.InitializePipeline()
+	clusterPipeline := clusterpipeline.Initialize(client)
 
 	// istio pipeline
-	istio := istioPipelinePackage.New(client)
-	istioPipeline := istio.InitializePipeline()
+	istioPipeline := istiopipeline.Initialize(client)
 
 	// run pipelines
 	result := clusterPipeline.Run()

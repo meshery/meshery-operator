@@ -12,7 +12,7 @@ type Istio struct {
 	client *discovery.Client
 }
 
-func New(client *discovery.Client) *Istio {
+func NewIstio(client *discovery.Client) *Istio {
 	return &Istio{
 		client: client,
 	}
