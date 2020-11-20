@@ -1,52 +1,39 @@
 package informers
 
 import (
-	"context"
 	"log"
-	"time"
 
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
-func GetNodeInformer(clientset *kubernetes.Clientset) cache.SharedInformer {
-	sharedInformer := cache.NewSharedInformer(
-		&cache.ListWatch{
-			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return clientset.CoreV1().Nodes().List(
-					context.Background(),
-					metav1.ListOptions{},
-				)
-			},
-			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return clientset.CoreV1().Nodes().Watch(
-					context.Background(),
-					metav1.ListOptions{},
-				)
-			},
-		},
-		&v1.Node{},
-		time.Second,
-	)
+func (c *Cluster) NodeInformer() cache.SharedIndexInformer {
+	// get informer
+	nodeInformer := c.client.GetNodeInformer().Informer()
 
-	// adding event handler
-	sharedInformer.AddEventHandler(
+	// register event handlers
+	nodeInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			DeleteFunc: nodeDeleted,
+			AddFunc:    addNode,
+			UpdateFunc: updateNode,
+			DeleteFunc: deleteNode,
 		},
 	)
 
-	// to get store run
-	// sharedInformer.GetStore()
-	// sharedInformer.Run(wait.NeverStop)
-	return sharedInformer
+	return nodeInformer
 }
 
-func nodeDeleted(obj interface{}) {
-	pod := obj.(*v1.Node)
-	log.Println(pod.Name)
+func deleteNode(obj interface{}) {
+	node := obj.(*v1.Node)
+	log.Printf("node Named: %s - deleted", node.Name)
+}
+
+func addNode(obj interface{}) {
+	node := obj.(*v1.Node)
+	log.Printf("node Named: %s - added", node.Name)
+}
+
+func updateNode(new interface{}, old interface{}) {
+	node := new.(*v1.Node)
+	log.Printf("node Named: %s - updated", node.Name)
 }
