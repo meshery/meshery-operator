@@ -1,14 +1,14 @@
 package informers
 
 import (
-	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
+	informers "github.com/layer5io/meshery-operator/pkg/informers"
 )
 
 type Istio struct {
-	client *discovery.Client
+	client *informers.Client
 }
 
-func New(client *discovery.Client) *Istio {
+func New(client *informers.Client) *Istio {
 	return &Istio{
 		client: client,
 	}

@@ -1,4 +1,4 @@
-package discovery
+package informers
 
 import (
 	appsV1 "k8s.io/client-go/informers/apps/v1"

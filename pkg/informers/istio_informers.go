@@ -1,4 +1,4 @@
-package discovery
+package informers
 
 import (
 	networkingV1alpha3 "istio.io/client-go/pkg/informers/externalversions/networking/v1alpha3"
