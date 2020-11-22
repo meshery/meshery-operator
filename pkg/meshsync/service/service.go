@@ -1,56 +1,61 @@
-package main
+package service
 
 import (
 	"fmt"
-	"log"
-	"os"
+	"net"
+	"time"
 
-	"github.com/spf13/cobra"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+	middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	proto "github.com/layer5io/meshery-operator/pkg/meshsync/proto"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "MeshSync",
-	Short: "Cluster and service mesh specific resource discovery",
-	Run: func(cmd *cobra.Command, args []string) {
-		kubeconfig, err := cmd.Flags().GetString("kubeconfig")
-		if err != nil {
-			fmt.Printf("Error : %s", err)
-			return
-		}
-		var config *rest.Config
-		if kubeconfig != "" {
-			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-			if err != nil {
-				log.Printf("Couldnot load config: %s", err)
-				return
-			}
-		} else {
-			config, err = rest.InClusterConfig()
-			if err != nil {
-				log.Printf("Couldnot load config: %s", err)
-				return
-			}
-		}
-
-		err = StartDiscovery(config)
-		if err != nil {
-			log.Printf("Error while discovery: %s", err)
-			return
-		}
-
-	},
+// Service object holds all the information about the server parameters.
+type Service struct {
+	Name      string    `json:"name"`
+	Port      string    `json:"port"`
+	Version   string    `json:"version"`
+	StartedAt time.Time `json:"startedat"`
 }
 
-func main() {
-	if err := rootCmd.Execute(); err != nil {
-		log.Println(err)
-		os.Exit(1)
+// panicHandler is the handler function to handle panic errors.
+func panicHandler(r interface{}) error {
+	fmt.Println("600 Error")
+	return ErrPanic(r)
+}
+
+// Start starts grpc server.
+func Start(s *Service) error {
+	address := fmt.Sprintf(":%s", s.Port)
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return ErrGrpcListener(err)
 	}
-}
 
-func init() {
-	rootCmd.Flags().StringP("kubeconfig", "k", "", "path to kube config file")
+	middlewares := middleware.ChainUnaryServer(
+		grpc_recovery.UnaryServerInterceptor(
+			grpc_recovery.WithRecoveryHandler(panicHandler),
+		),
+	)
+
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(middlewares),
+	)
+	// Reflection is enabled to simplify accessing the gRPC service using gRPCurl, e.g.
+	//    grpcurl --plaintext localhost:10002 meshes.MeshService.SupportedOperations
+	// If the use of reflection is not desirable, the parameters '-import-path ./meshes/ -proto meshops.proto' have
+	//    to be added to each grpcurl request, with the appropriate import path.
+	reflection.Register(server)
+
+	//Register Proto
+	proto.RegisterMeshsyncServer(server, s)
+
+	// Start serving requests
+	if err = server.Serve(listener); err != nil {
+		return ErrGrpcServer(err)
+	}
+	return nil
 }

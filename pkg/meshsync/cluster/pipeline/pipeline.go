@@ -29,8 +29,8 @@ func Initialize(client *discovery.Client) *pipeline.Pipeline {
 
 	// Local discovery
 	ldstage := LocalDiscoveryStage
-	ldstage.AddStep(NewDeployment(cluster.client))
-	ldstage.AddStep(NewPod(cluster.client))
+	ldstage.AddStep(NewDeployment(client))
+	ldstage.AddStep(NewPod(client))
 
 	// Create Pipeline
 	clusterPipeline := pipeline.New(Name, 1000)
