@@ -1,0 +1,11 @@
+domain: layer5.io
+layout: go.kubebuilder.io/v2
+projectName: meshery-operator
+repo: github.com/layer5io/meshery-operator
+resources:
+- group: meshery
+  kind: MeshSync
+  version: v1alpha1
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}

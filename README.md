@@ -2,6 +2,7 @@
 <p style="text-align:center;" align="center">
   <img align="center" src="https://raw.githubusercontent.com/layer5io/layer5/master/assets/images/layer5/layer5-tag-white-bg.png" width="45%" /></p>
 
+[![Docker Pulls](https://img.shields.io/docker/pulls/layer5/meshery-operator.svg)](https://hub.docker.com/r/layer5/meshery-operator)
 ![GitHub contributors](https://img.shields.io/github/contributors/layer5io/layer5.svg)
 ![GitHub](https://img.shields.io/github/license/layer5io/layer5.svg) 
 ![GitHub issues by-label](https://img.shields.io/github/issues/layer5io/layer5/help%20wanted.svg?color=%23DDDD00)

@@ -1,0 +1,20 @@
+# permissions for end users to view meshsyncs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: meshsync-viewer-role
+rules:
+- apiGroups:
+  - meshery.layer5.io
+  resources:
+  - meshsyncs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - meshery.layer5.io
+  resources:
+  - meshsyncs/status
+  verbs:
+  - get
