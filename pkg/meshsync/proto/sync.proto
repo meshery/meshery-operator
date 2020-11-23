@@ -12,7 +12,7 @@ option go_package = "proto;proto";
 message Request {}
 
 message Response {
-    oneof result {
+  oneof result {
     string message = 1;
     common.CommonError error = 2;
   }
