@@ -8,6 +8,8 @@ import (
 	securityV1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
 
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
+	inf "github.com/layer5io/meshery-operator/pkg/informers"
+	informers "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/informers"
 	pipeline "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/pipeline"
 )
 
@@ -35,4 +37,8 @@ func StartDiscovery(dclient *discovery.Client) error {
 		return result.Error
 	}
 	return nil
+}
+
+func StartInformer(iclient *inf.Client) {
+	informers.Initialize(iclient)
 }

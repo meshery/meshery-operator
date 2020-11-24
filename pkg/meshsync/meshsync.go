@@ -20,6 +20,8 @@ type Resources struct {
 	Istio   istio.Resources   `json:"istio,omitempty"`
 }
 
+var config *rest.Config
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "MeshSync",
@@ -30,7 +32,6 @@ var rootCmd = &cobra.Command{
 			fmt.Printf("Error : %s", err)
 			return
 		}
-		var config *rest.Config
 		if kubeconfig != "" {
 			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 			if err != nil {
@@ -44,13 +45,6 @@ var rootCmd = &cobra.Command{
 				return
 			}
 		}
-
-		err = StartDiscovery(config)
-		if err != nil {
-			log.Printf("Error while discovery: %s", err)
-			return
-		}
-
 	},
 }
 
@@ -61,13 +55,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = StartDiscovery(config)
+	if err != nil {
+		log.Printf("Error while discovery: %s", err)
+		return
+	}
+
+	// start informers
+	StartInformer(config)
+
+	log.Println("Starting Server at port: 11000")
 	err = service.Start(&service.Service{
 		Name:      "meshsync",
 		Port:      "11000",
 		Version:   "v0.0.1-alpha3",
 		StartedAt: time.Now(),
 	})
-	log.Println("Server listening at port: 11000")
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)

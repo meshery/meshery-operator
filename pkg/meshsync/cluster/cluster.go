@@ -4,6 +4,8 @@ import (
 	"log"
 
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
+	inf "github.com/layer5io/meshery-operator/pkg/informers"
+	informers "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/informers"
 	pipeline "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/pipeline"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,4 +36,8 @@ func StartDiscovery(dclient *discovery.Client) error {
 		return result.Error
 	}
 	return nil
+}
+
+func StartInformer(iclient *inf.Client) {
+	informers.Initialize(iclient)
 }
