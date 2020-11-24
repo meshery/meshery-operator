@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -12,12 +13,14 @@ type ServiceEntry struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewServiceEntry - constructor
-func NewServiceEntry(client *discovery.Client) *ServiceEntry {
+func NewServiceEntry(client *discovery.Client, broker broker.Broker) *ServiceEntry {
 	return &ServiceEntry{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -34,9 +37,18 @@ func (se *ServiceEntry) Exec(request *pipeline.Request) *pipeline.Result {
 			}
 		}
 
-		// process serviceEntries
+		// processing
 		for _, serviceEntry := range serviceEntries {
-			log.Printf("Discovered ServiceEntry named %s in namespace %s", serviceEntry.Name, namespace)
+			// publishing discovered serviceEntry
+			err := se.broker.Publish(Subject, broker.Message{
+				Type:   "ServiceEntry",
+				Object: serviceEntry,
+			})
+			if err != nil {
+				log.Printf("Error publishing service entry named %s", serviceEntry.Name)
+			} else {
+				log.Printf("Published service entry named %s", serviceEntry.Name)
+			}
 		}
 	}
 

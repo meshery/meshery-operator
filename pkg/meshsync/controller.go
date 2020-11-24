@@ -6,6 +6,7 @@ import (
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
+	inf "github.com/layer5io/meshery-operator/pkg/informers"
 	"github.com/layer5io/meshery-operator/pkg/meshsync/cluster"
 	"github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio"
 
@@ -46,6 +47,25 @@ func StartDiscovery(config *rest.Config) error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+// StartInformer - run informer
+func StartInformer(config *rest.Config) error {
+
+	// Configure discovery
+	client, err := inf.NewClient(config)
+	if err != nil {
+		log.Printf("Couldnot create informer client: %s", err)
+		return err
+	}
+
+	log.Println("start cluster informers")
+	cluster.StartInformer(client)
+
+	log.Println("start istio informers")
+	istio.StartInformer(client)
 
 	return nil
 }

@@ -3,7 +3,10 @@ package cluster
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
+	inf "github.com/layer5io/meshery-operator/pkg/informers"
+	informers "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/informers"
 	pipeline "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/pipeline"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -24,9 +27,9 @@ type LocalResources struct {
 	Pods        []corev1.Pod        `json:"pods,omitempty"`
 }
 
-func StartDiscovery(dclient *discovery.Client) error {
+func StartDiscovery(dclient *discovery.Client, broker broker.Broker) error {
 	// Get pipeline instance
-	pl := pipeline.Initialize(dclient)
+	pl := pipeline.Initialize(dclient, broker)
 	// run pipelines
 	result := pl.Run()
 	if result.Error != nil {
@@ -34,4 +37,8 @@ func StartDiscovery(dclient *discovery.Client) error {
 		return result.Error
 	}
 	return nil
+}
+
+func StartInformer(iclient *inf.Client) {
+	informers.Initialize(iclient)
 }

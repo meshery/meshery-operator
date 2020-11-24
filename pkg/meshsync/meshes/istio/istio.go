@@ -7,7 +7,10 @@ import (
 	networkingV1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	securityV1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
+	inf "github.com/layer5io/meshery-operator/pkg/informers"
+	informers "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/informers"
 	pipeline "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/pipeline"
 )
 
@@ -25,9 +28,9 @@ type Resources struct {
 	WorkloadGroups         []networkingV1alpha3.WorkloadGroup      `json:"workloadgroups,omitempty"`
 }
 
-func StartDiscovery(dclient *discovery.Client) error {
+func StartDiscovery(dclient *discovery.Client, broker broker.Broker) error {
 	// Get pipeline instance
-	pl := pipeline.Initialize(dclient)
+	pl := pipeline.Initialize(dclient, broker)
 	// run pipelines
 	result := pl.Run()
 	if result.Error != nil {
@@ -35,4 +38,8 @@ func StartDiscovery(dclient *discovery.Client) error {
 		return result.Error
 	}
 	return nil
+}
+
+func StartInformer(iclient *inf.Client) {
+	informers.Initialize(iclient)
 }

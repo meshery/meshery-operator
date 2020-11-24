@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -18,19 +19,20 @@ var (
 		Concurrent: false,
 		Steps:      []pipeline.Step{},
 	}
+	Subject = "Cluster-Discovery"
 )
 
-func Initialize(client *discovery.Client) *pipeline.Pipeline {
+func Initialize(client *discovery.Client, broker broker.Broker) *pipeline.Pipeline {
 	// Global discovery
 	gdstage := GlobalDiscoveryStage
-	gdstage.AddStep(NewCluster(client))
-	gdstage.AddStep(NewNode(client))
-	gdstage.AddStep(NewNamespace(client))
+	gdstage.AddStep(NewCluster(client, broker))
+	gdstage.AddStep(NewNode(client, broker))
+	gdstage.AddStep(NewNamespace(client, broker))
 
 	// Local discovery
 	ldstage := LocalDiscoveryStage
-	ldstage.AddStep(NewDeployment(client))
-	ldstage.AddStep(NewPod(client))
+	ldstage.AddStep(NewDeployment(client, broker))
+	ldstage.AddStep(NewPod(client, broker))
 
 	// Create Pipeline
 	clusterPipeline := pipeline.New(Name, 1000)

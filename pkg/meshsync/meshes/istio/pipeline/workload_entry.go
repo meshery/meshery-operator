@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -11,12 +12,14 @@ import (
 type WorkloadEntry struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewWOrkloadEntry - constructor
-func NewWorkloadEntry(client *discovery.Client) *WorkloadEntry {
+func NewWorkloadEntry(client *discovery.Client, broker broker.Broker) *WorkloadEntry {
 	return &WorkloadEntry{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -34,9 +37,18 @@ func (we *WorkloadEntry) Exec(request *pipeline.Request) *pipeline.Result {
 			}
 		}
 
-		// process WorkloadEntries
+		// processing
 		for _, workloadEntry := range workloadEntries {
-			log.Printf("Discovered Workload  Entry named %s in namespace %s", workloadEntry.Name, namespace)
+			// publishing discovered workloadEntry
+			err := we.broker.Publish(Subject, broker.Message{
+				Type:   "WorkloadEntry",
+				Object: workloadEntry,
+			})
+			if err != nil {
+				log.Printf("Error publishing workload entry named %s", workloadEntry.Name)
+			} else {
+				log.Printf("Published workload entry named %s", workloadEntry.Name)
+			}
 		}
 	}
 

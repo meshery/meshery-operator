@@ -2,18 +2,13 @@ package nats
 
 import nats "github.com/nats-io/nats.go"
 
-// it need three things
-// 1 subject
-// 2 message to send
-// 3 server URL
-
 // Nats will implement Nats subscribe and publish functionality
 type Nats struct {
 	ec *nats.EncodedConn
 }
 
-// NewNats - constructor
-func NewNats(serverURL string) (*Nats, error) {
+// New - constructor
+func New(serverURL string) (*Nats, error) {
 	nc, err := nats.Connect(serverURL)
 	if err != nil {
 		return nil, err
@@ -31,14 +26,32 @@ func (n *Nats) Publish(subject string, message interface{}) error {
 	return err
 }
 
+// PublishWithCallback - will implement the request-reply mechanisms
+// Arguments:
+// request - the subject to which publish a request
+// reply - this string will be used by the replier to publish replies
+// message - message send by the requestor to replier
+// TODO Ques: After this the requestor have to subscribe to the reply subject
+func (n *Nats) PublishWithCallback(request string, reply string, message interface{}) error {
+	err := n.ec.PublishRequest(request, reply, message)
+	return err
+}
+
 // Subscribe - for subscribing messages
-// arguments:
-// subject - a string to which it should subsribe
-// callback - a function that will be called everytime a message is recieved
-// return:
-// sub - if we want to unsubscribe in future
-// err - error if any
-func (n *Nats) Subscribe(subject string, callback func(interface{})) (*nats.Subscription, error) {
-	sub, err := n.ec.Subscribe(subject, callback)
-	return sub, err
+// TODO Ques: Do we want to unsubscribe
+// TODO will the method-user just subsribe, how will it handle the received messages?
+func (n *Nats) Subscribe(subject string, queue string) error {
+	// no handler
+	// TODO there should be a callback that handler received messges
+	_, err := n.ec.QueueSubscribe(subject, queue, func() {})
+	return err
+}
+
+// SubscribeWithHandler - for handling request-reply protocol
+// request is the subject to which the this thing is listening
+// when there will be a request
+func (n *Nats) SubscribeWithHandler(subject string, queue string) error {
+	// no handler
+	_, err := n.ec.QueueSubscribe(subject, queue, func() {})
+	return err
 }

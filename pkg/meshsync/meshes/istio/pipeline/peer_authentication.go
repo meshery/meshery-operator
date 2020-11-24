@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -12,12 +13,14 @@ type PeerAuthentication struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewPeerAuthentication - constructor
-func NewPeerAuthentication(client *discovery.Client) *PeerAuthentication {
+func NewPeerAuthentication(client *discovery.Client, broker broker.Broker) *PeerAuthentication {
 	return &PeerAuthentication{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -34,9 +37,18 @@ func (pa *PeerAuthentication) Exec(request *pipeline.Request) *pipeline.Result {
 			}
 		}
 
-		// process PeerAuthentications
+		// processing
 		for _, peerAuthentication := range peerAuthentications {
-			log.Printf("Discovered PeerAuthentication named %s in namespace %s", peerAuthentication.Name, namespace)
+			// publishing discovered peerAuthentication
+			err := pa.broker.Publish(Subject, broker.Message{
+				Type:   "PeerAuthentication",
+				Object: peerAuthentication,
+			})
+			if err != nil {
+				log.Printf("Error publishing peer authentication named %s", peerAuthentication.Name)
+			} else {
+				log.Printf("Published peer authentication named %s", peerAuthentication.Name)
+			}
 		}
 	}
 

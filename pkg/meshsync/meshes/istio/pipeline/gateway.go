@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -12,11 +13,13 @@ type Gateway struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
+	broker broker.Broker
 }
 
-func NewGateway(client *discovery.Client) *Gateway {
+func NewGateway(client *discovery.Client, broker broker.Broker) *Gateway {
 	return &Gateway{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -34,9 +37,18 @@ func (g *Gateway) Exec(request *pipeline.Request) *pipeline.Result {
 			}
 		}
 
-		// process Gateways
+		// processing
 		for _, gateway := range gateways {
-			log.Printf("Discovered gateway named %s in namespace %s", gateway.Name, namespace)
+			// publishing discovered gateway
+			err := g.broker.Publish(Subject, broker.Message{
+				Type:   "Gateway",
+				Object: gateway,
+			})
+			if err != nil {
+				log.Printf("Error publishing gateway named %s", gateway.Name)
+			} else {
+				log.Printf("Published gateway named %s", gateway.Name)
+			}
 		}
 	}
 

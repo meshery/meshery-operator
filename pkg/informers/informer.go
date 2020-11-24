@@ -27,8 +27,8 @@ func NewClient(config *rest.Config) (*Client, error) {
 		return nil, err
 	}
 
-	clusterInformerFactory := informers.NewSharedInformerFactory(kclientset, 10*time.Second)
-	istioInformerFactory := istioInformers.NewSharedInformerFactory(iclientSet, 10*time.Second)
+	clusterInformerFactory := informers.NewSharedInformerFactory(kclientset, 100*time.Second)
+	istioInformerFactory := istioInformers.NewSharedInformerFactory(iclientSet, 100*time.Second)
 	return &Client{
 		clusterInformerFactory: clusterInformerFactory,
 		istioInformerFactory:   istioInformerFactory,

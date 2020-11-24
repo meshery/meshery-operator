@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -11,12 +12,14 @@ import (
 type Node struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewNode - constructor
-func NewNode(client *discovery.Client) *Node {
+func NewNode(client *discovery.Client, broker broker.Broker) *Node {
 	return &Node{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -35,7 +38,16 @@ func (n *Node) Exec(request *pipeline.Request) *pipeline.Result {
 
 	// processing
 	for _, node := range nodes {
-		log.Printf("Discovered node named %s", node.Name)
+		// publishing discovered node
+		err := n.broker.Publish(Subject, broker.Message{
+			Type:   "Node",
+			Object: node,
+		})
+		if err != nil {
+			log.Printf("Error publishing node named %s", node.Name)
+		} else {
+			log.Printf("Published node named %s", node.Name)
+		}
 	}
 
 	// no data is feeded to future steps or stages

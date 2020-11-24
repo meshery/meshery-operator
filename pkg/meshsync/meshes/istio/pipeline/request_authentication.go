@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -12,12 +13,14 @@ type RequestAuthenticaton struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewRequestAuthenticaton - constructor
-func NewRequestAuthenticaton(client *discovery.Client) *RequestAuthenticaton {
+func NewRequestAuthenticaton(client *discovery.Client, broker broker.Broker) *RequestAuthenticaton {
 	return &RequestAuthenticaton{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -34,9 +37,18 @@ func (ra *RequestAuthenticaton) Exec(request *pipeline.Request) *pipeline.Result
 			}
 		}
 
-		// process requestAuthentications
+		// processing
 		for _, requestAuthentication := range requestAuthentications {
-			log.Printf("Discovered RequestAuthentication named %s in namespace %s", requestAuthentication.Name, namespace)
+			// publishing discovered requestAuthentication
+			err := ra.broker.Publish(Subject, broker.Message{
+				Type:   "RequestAuthentication",
+				Object: requestAuthentication,
+			})
+			if err != nil {
+				log.Printf("Error publishing request authentication named %s", requestAuthentication.Name)
+			} else {
+				log.Printf("Published request authentication named %s", requestAuthentication.Name)
+			}
 		}
 	}
 

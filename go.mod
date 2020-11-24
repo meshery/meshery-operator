@@ -12,7 +12,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/layer5io/meshery-adapter-library v0.1.6
-	github.com/layer5io/meshkit v0.1.26
+	github.com/layer5io/meshkit v0.1.27
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/myntra/pipeline v0.0.0-20180618182531-2babf4864ce8
 	github.com/nats-io/nats.go v1.9.1
