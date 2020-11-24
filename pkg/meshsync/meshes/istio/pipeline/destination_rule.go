@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -11,12 +12,14 @@ import (
 type DestinationRule struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewDestinationRule - constructor
-func NewDestinationRule(client *discovery.Client) *DestinationRule {
+func NewDestinationRule(client *discovery.Client, broker broker.Broker) *DestinationRule {
 	return &DestinationRule{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -35,7 +38,16 @@ func (dr *DestinationRule) Exec(request *pipeline.Request) *pipeline.Result {
 
 		// processing
 		for _, destinationRule := range destinationRules {
-			log.Printf("Discovered destination rule named %s in namespace %s", destinationRule.Name, namespace)
+			// publishing discovered destinationRule
+			err := dr.broker.Publish(Subject, broker.Message{
+				Type:   "DestinationRule",
+				Object: destinationRule,
+			})
+			if err != nil {
+				log.Printf("Error publishing destination rule named %s", destinationRule.Name)
+			} else {
+				log.Printf("Published destination rule named %s", destinationRule.Name)
+			}
 		}
 	}
 

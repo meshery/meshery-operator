@@ -20,5 +20,5 @@ func Initialize(client *inf.Client) {
 	go c.PeerAuthenticationInformer().Run(wait.NeverStop)
 	go c.RequestAuthenticationInformer().Run(wait.NeverStop)
 	go c.ServiceEntryInformer().Run(wait.NeverStop)
-	go c.WorkloadGroupInformer().Run(wait.NeverStop)
+	// go c.WorkloadGroupInformer().Run(wait.NeverStop)
 }

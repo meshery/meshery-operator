@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -11,12 +12,14 @@ import (
 type Deployment struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewDeployment - constructor
-func NewDeployment(client *discovery.Client) *Deployment {
+func NewDeployment(client *discovery.Client, broker broker.Broker) *Deployment {
 	return &Deployment{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -26,7 +29,7 @@ func (d *Deployment) Exec(request *pipeline.Request) *pipeline.Result {
 	log.Println("Deployment Discovery Started")
 
 	// get all namespaces
-	namespaces := []string{"default"}
+	namespaces := NamespaceName
 
 	for _, namespace := range namespaces {
 		// get Deployments
@@ -39,7 +42,16 @@ func (d *Deployment) Exec(request *pipeline.Request) *pipeline.Result {
 
 		// processing
 		for _, deployment := range deployments {
-			log.Printf("Discovered Deployment named %s in namespace %s", deployment.Name, namespace)
+			// publishing discovered deployment
+			err := d.broker.Publish(Subject, broker.Message{
+				Type:   "Deployment",
+				Object: deployment,
+			})
+			if err != nil {
+				log.Printf("Error publishing deployment named %s", deployment.Name)
+			} else {
+				log.Printf("Published deployment named %s", deployment.Name)
+			}
 		}
 	}
 

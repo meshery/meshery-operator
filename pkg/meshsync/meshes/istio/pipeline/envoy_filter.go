@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -12,12 +13,14 @@ type EnvoyFilter struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewEnvoyFilter - constructor
-func NewEnvoyFilter(client *discovery.Client) *EnvoyFilter {
+func NewEnvoyFilter(client *discovery.Client, broker broker.Broker) *EnvoyFilter {
 	return &EnvoyFilter{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -36,7 +39,16 @@ func (ef *EnvoyFilter) Exec(request *pipeline.Request) *pipeline.Result {
 
 		// processing
 		for _, envoyFilter := range envoyFilters {
-			log.Printf("Discovered envoy filter named %s in namespace %s", envoyFilter.Name, namespace)
+			// publishing discovered envoyFilter
+			err := ef.broker.Publish(Subject, broker.Message{
+				Type:   "EnvoyFilter",
+				Object: envoyFilter,
+			})
+			if err != nil {
+				log.Printf("Error publishing envoy filter named %s", envoyFilter.Name)
+			} else {
+				log.Printf("Published envoy filter named %s", envoyFilter.Name)
+			}
 		}
 	}
 

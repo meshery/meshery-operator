@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -10,11 +11,13 @@ import (
 type Istio struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
-func NewIstio(client *discovery.Client) *Istio {
+func NewIstio(client *discovery.Client, broker broker.Broker) *Istio {
 	return &Istio{
 		client: client,
+		broker: broker,
 	}
 }
 
