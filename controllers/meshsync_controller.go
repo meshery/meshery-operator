@@ -27,6 +27,7 @@ import (
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	meshsync "github.com/layer5io/meshery-operator/pkg/meshsync"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
+	types "k8s.io/apimachinery/pkg/types"
 )
 
 // MeshSyncReconciler reconciles a MeshSync object
@@ -47,21 +48,25 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	// Check if resource exists
 	baseResource := &mesheryv1alpha1.MeshSync{}
 	err := r.Get(ctx, req.NamespacedName, baseResource)
-	if err != nil && kubeerror.IsNotFound(err) {
-		return ctrl.Result{}, nil
-	} else if err != nil {
+	if err != nil {
+		if kubeerror.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
 		log.Error(err, "Meshsync resource not found")
 		return ctrl.Result{}, err
 	}
 
 	// Check if controllers running
 	// Meshsync
-	controller := meshsync.GetResource()
-	err = r.Get(ctx, req.NamespacedName, controller)
+	controller := meshsync.GetResource(baseResource)
+	err = r.Get(ctx, types.NamespacedName{Name: baseResource.Name, Namespace: baseResource.Namespace}, controller)
 	if err != nil && kubeerror.IsNotFound(err) {
-		er := meshsync.CreateSyncController(baseResource, r.Scheme)
-		if er != nil {
-			return ctrl.Result{}, ErrCreateMeshsync(err)
+		dep := meshsync.CreateResource(baseResource, r.Scheme)
+		log.Error(err, "Failed to get Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		err = r.Create(ctx, dep)
+		if err != nil {
+			log.Error(err, "Failed to create new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			return ctrl.Result{}, err
 		}
 		return ctrl.Result{Requeue: true}, nil
 	} else if err != nil {

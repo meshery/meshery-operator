@@ -1,54 +1,61 @@
-package main
+package meshsync
 
 import (
-	"fmt"
-	"log"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
-	inf "github.com/layer5io/meshery-operator/pkg/informers"
-	"github.com/layer5io/meshery-operator/pkg/meshsync/cluster"
-	"github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio"
-
-	appsv1 "k8s.io/api/apps/v1"
-	runtime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func GetResource() runtime.Object {
-	fmt.Println("Getting meshsync resource")
-	return &appsv1.Deployment{}
+func GetResource(m *mesheryv1alpha1.MeshSync) runtime.Object {
+	return resource(m.ObjectMeta.Name, m.ObjectMeta.Namespace, m.Spec.Size)
 }
 
-func CreateSyncController(m *mesheryv1alpha1.MeshSync, scheme *runtime.Scheme) error {
-	fmt.Println("Creating meshsync resource")
+// CreateDeployment returns a meshsync Deployment object
+func CreateResource(m *mesheryv1alpha1.MeshSync, scheme *runtime.Scheme) *appsv1.Deployment {
+	dep := resource(m.ObjectMeta.Name, m.ObjectMeta.Namespace, m.Spec.Size)
 	// Set Meshsync instance as the owner and controller
-	ctrl.SetControllerReference(m, &appsv1.Deployment{}, scheme)
-	return nil
+	ctrl.SetControllerReference(m, dep, scheme)
+	return dep
 }
 
-// StartDiscovery - run pipelines
-func StartDiscovery(config *rest.Config) error {
-
-	// Configure discovery
-	client, err := discovery.NewClient(config)
-	if err != nil {
-		log.Printf("Couldnot create client: %s", err)
-		return err
+func resource(name string, namespace string, replicas int32) *appsv1.Deployment {
+	labels := map[string]string{
+		"app": name,
 	}
+	image := "layer5io/meshery-meshsync:stable-latest"
 
-	err = cluster.StartDiscovery(client)
-	if err != nil {
-		return err
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Image: image,
+						Name:  name,
+						Ports: []corev1.ContainerPort{{
+							ContainerPort: 11000,
+							Name:          name,
+						}},
+					}},
+				},
+			},
+		},
 	}
-
-	err = istio.StartDiscovery(client)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return deployment
 }
 
 // StartInformer - run informer

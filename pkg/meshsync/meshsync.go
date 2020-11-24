@@ -1,70 +1,27 @@
-package main
+package meshsync
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/layer5io/meshery-operator/pkg/meshsync/cluster"
-	"github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio"
 	"github.com/layer5io/meshery-operator/pkg/meshsync/service"
-	"github.com/spf13/cobra"
-
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
+	utils "github.com/layer5io/meshkit/utils/kubernetes"
 )
 
-type Resources struct {
-	Cluster cluster.Resources `json:"cluster,omitempty"`
-	Istio   istio.Resources   `json:"istio,omitempty"`
-}
-
-var config *rest.Config
-
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "MeshSync",
-	Short: "Cluster and service mesh specific resource discovery",
-	Run: func(cmd *cobra.Command, args []string) {
-		kubeconfig, err := cmd.Flags().GetString("kubeconfig")
-		if err != nil {
-			fmt.Printf("Error : %s", err)
-			return
-		}
-		if kubeconfig != "" {
-			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-			if err != nil {
-				log.Printf("Couldnot load config: %s", err)
-				return
-			}
-		} else {
-			config, err = rest.InClusterConfig()
-			if err != nil {
-				log.Printf("Couldnot load config: %s", err)
-				return
-			}
-		}
-	},
-}
-
 func main() {
-	err := rootCmd.Execute()
+	kubeconfig, err := utils.DetectKubeConfig()
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
 
-	err = StartDiscovery(config)
+	err = service.Discover(kubeconfig)
 	if err != nil {
 		log.Printf("Error while discovery: %s", err)
-		return
+		os.Exit(1)
 	}
 
-	// start informers
-	StartInformer(config)
-
-	log.Println("Starting Server at port: 11000")
 	err = service.Start(&service.Service{
 		Name:      "meshsync",
 		Port:      "11000",
@@ -75,8 +32,4 @@ func main() {
 		log.Println(err)
 		os.Exit(1)
 	}
-}
-
-func init() {
-	rootCmd.Flags().StringP("kubeconfig", "k", "", "path to kube config file")
 }

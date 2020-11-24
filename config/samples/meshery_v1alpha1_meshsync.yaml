@@ -1,7 +1,8 @@
 apiVersion: meshery.layer5.io/v1alpha1
 kind: MeshSync
 metadata:
-  name: meshsync-sample
+  name: meshsync-test
 spec:
-  # Add fields here
-  foo: bar
+  cluster: "test"
+  namespace: "default"
+  size: 1

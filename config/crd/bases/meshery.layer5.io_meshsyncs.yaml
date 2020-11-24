@@ -38,6 +38,11 @@ spec:
           properties:
             cluster:
               type: string
+            namespace:
+              type: string
+            size:
+              format: int32
+              type: integer
           type: object
         status:
           description: MeshSyncStatus defines the observed state of MeshSync
