@@ -18,7 +18,7 @@ require (
 	github.com/nats-io/nats.go v1.9.1
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
-	github.com/spf13/cobra v1.0.0
+	github.com/spf13/cobra v1.1.1
 	google.golang.org/grpc v1.31.0
 	google.golang.org/protobuf v1.25.0
 	istio.io/client-go v1.8.0-alpha.2
