@@ -1,5 +1,5 @@
 /*
-Copyright 2020 Layer5, Inc.
+
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,36 +20,40 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// MeshSyncSpec defines the desired state of MeshSync
-type MeshSyncSpec struct {
+// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
+// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+// BrokerSpec defines the desired state of Broker
+type BrokerSpec struct {
 	Cluster string `json:"cluster,omitempty"`
 	Size    int32  `json:"size,omitempty"`
 }
 
-// MeshSyncStatus defines the observed state of MeshSync
-type MeshSyncStatus struct {
+// BrokerStatus defines the observed state of Broker
+type BrokerStatus struct {
 	Conditions []Condition `json:"conditions,omitempty"`
 }
 
-// MeshSync is the Schema for the meshsyncs API
-// +kubebuilder:object:root=true
+// Broker is the Schema for the brokers API
 // +kubebuilder:subresource:status
-type MeshSync struct {
+// +kubebuilder:object:root=true
+type Broker struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   MeshSyncSpec   `json:"spec,omitempty"`
-	Status MeshSyncStatus `json:"status,omitempty"`
+	Spec   BrokerSpec   `json:"spec,omitempty"`
+	Status BrokerStatus `json:"status,omitempty"`
 }
 
-// MeshSyncList contains a list of MeshSync
 // +kubebuilder:object:root=true
-type MeshSyncList struct {
+
+// BrokerList contains a list of Broker
+type BrokerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MeshSync `json:"items"`
+	Items           []Broker `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&MeshSync{}, &MeshSyncList{})
+	SchemeBuilder.Register(&Broker{}, &BrokerList{})
 }

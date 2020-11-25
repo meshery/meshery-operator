@@ -1,4 +1,4 @@
-package meshsync
+package nats
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
@@ -10,12 +10,12 @@ import (
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 )
 
-func GetResource(m *mesheryv1alpha1.MeshSync) runtime.Object {
+func GetResource(m *mesheryv1alpha1.Broker) runtime.Object {
 	return resource(m.ObjectMeta.Name, m.ObjectMeta.Namespace, m.Spec.Size)
 }
 
 // CreateDeployment returns a meshsync Deployment object
-func CreateResource(m *mesheryv1alpha1.MeshSync, scheme *runtime.Scheme) *appsv1.Deployment {
+func CreateResource(m *mesheryv1alpha1.Broker, scheme *runtime.Scheme) *appsv1.Deployment {
 	dep := resource(m.ObjectMeta.Name, m.ObjectMeta.Namespace, m.Spec.Size)
 	// Set Meshsync instance as the owner and controller
 	ctrl.SetControllerReference(m, dep, scheme)
@@ -26,7 +26,7 @@ func resource(name string, namespace string, replicas int32) *appsv1.Deployment 
 	labels := map[string]string{
 		"app": name,
 	}
-	image := "layer5io/meshery-meshsync:stable-latest"
+	image := "nats:2.1-alpine"
 
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -48,8 +48,16 @@ func resource(name string, namespace string, replicas int32) *appsv1.Deployment 
 						Name:  name,
 						Ports: []corev1.ContainerPort{
 							{
-								ContainerPort: 11000,
-								Name:          name,
+								ContainerPort: 4222,
+								Name:          "client",
+							},
+							{
+								ContainerPort: 8222,
+								Name:          "http",
+							},
+							{
+								ContainerPort: 6222,
+								Name:          "routing",
 							},
 						},
 					}},

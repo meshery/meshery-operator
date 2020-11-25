@@ -6,20 +6,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: meshsyncs.meshery.layer5.io
+  name: brokers.meshery.layer5.io
 spec:
   group: meshery.layer5.io
   names:
-    kind: MeshSync
-    listKind: MeshSyncList
-    plural: meshsyncs
-    singular: meshsync
+    kind: Broker
+    listKind: BrokerList
+    plural: brokers
+    singular: broker
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: MeshSync is the Schema for the meshsyncs API
+      description: Broker is the Schema for the brokers API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -34,7 +34,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: MeshSyncSpec defines the desired state of MeshSync
+          description: BrokerSpec defines the desired state of Broker
           properties:
             cluster:
               type: string
@@ -43,7 +43,7 @@ spec:
               type: integer
           type: object
         status:
-          description: MeshSyncStatus defines the observed state of MeshSync
+          description: BrokerStatus defines the observed state of Broker
           properties:
             conditions:
               items:
