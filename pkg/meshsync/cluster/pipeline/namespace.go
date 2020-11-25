@@ -3,20 +3,25 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
+
+var NamespaceName []string
 
 // Namespace will implement step interface for Namespaces
 type Namespace struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewNamespace - constructor
-func NewNamespace(client *discovery.Client) *Namespace {
+func NewNamespace(client *discovery.Client, broker broker.Broker) *Namespace {
 	return &Namespace{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -35,7 +40,18 @@ func (n *Namespace) Exec(request *pipeline.Request) *pipeline.Result {
 
 	// processing
 	for _, namespace := range namespaces {
-		log.Printf("Discovered namespace named %s", namespace.Name)
+		// publishing discovered namespace
+		err := n.broker.Publish(Subject, broker.Message{
+			Type:   "Namespace",
+			Object: namespace,
+		})
+		if err != nil {
+			log.Printf("Error publishing namespace named %s", namespace.Name)
+		} else {
+			log.Printf("Published namespace named %s", namespace.Name)
+		}
+
+		NamespaceName = append(NamespaceName, namespace.Name)
 	}
 
 	// no data is feeded to future steps or stages

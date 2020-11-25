@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -10,11 +11,13 @@ import (
 type Cluster struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
-func NewCluster(client *discovery.Client) *Cluster {
+func NewCluster(client *discovery.Client, broker broker.Broker) *Cluster {
 	return &Cluster{
 		client: client,
+		broker: broker,
 	}
 }
 

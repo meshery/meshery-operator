@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -21,19 +22,28 @@ var (
 
 	// TODO: need some solution for this
 	Namespaces = []string{"default", "istio-system"}
+	Subject    = "Istio-Discovery"
 )
 
-func Initialize(client *discovery.Client) *pipeline.Pipeline {
+func Initialize(client *discovery.Client, broker broker.Broker) *pipeline.Pipeline {
 
 	// Mesh Discovery Stage
 	mdstage := MeshDiscoveryStage
-	mdstage.AddStep(NewIstio(client))
+	mdstage.AddStep(NewIstio(client, broker))
 
 	// Resource Discovery Stage
 	rdstage := ResourcesDiscoveryStage
-	rdstage.AddStep(NewVirtualService(client))
-	rdstage.AddStep(NewWorkloadEntry(client))
-	rdstage.AddStep(NewSidecar(client))
+	rdstage.AddStep(NewAuthorizationPolicy(client, broker))
+	rdstage.AddStep(NewDestinationRule(client, broker))
+	rdstage.AddStep(NewEnvoyFilter(client, broker))
+	rdstage.AddStep(NewGateway(client, broker))
+	rdstage.AddStep(NewPeerAuthentication(client, broker))
+	rdstage.AddStep(NewRequestAuthenticaton(client, broker))
+	rdstage.AddStep(NewServiceEntry(client, broker))
+	// rdstage.AddStep(NewWorkloadGroup(client, broker))
+	rdstage.AddStep(NewVirtualService(client, broker))
+	rdstage.AddStep(NewWorkloadEntry(client, broker))
+	rdstage.AddStep(NewSidecar(client, broker))
 
 	// Create Pipeline
 	istioPipeline := pipeline.New(Name, 1000)

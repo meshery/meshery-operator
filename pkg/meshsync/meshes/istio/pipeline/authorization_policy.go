@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -11,12 +12,14 @@ import (
 type AuthorizationPolicy struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewAuthorizationPolicy - constructor
-func NewAuthorizationPolicy(client *discovery.Client) *AuthorizationPolicy {
+func NewAuthorizationPolicy(client *discovery.Client, broker broker.Broker) *AuthorizationPolicy {
 	return &AuthorizationPolicy{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -35,7 +38,16 @@ func (ap *AuthorizationPolicy) Exec(request *pipeline.Request) *pipeline.Result 
 
 		// processing
 		for _, authorizationPolicy := range authorizationPolicies {
-			log.Printf("Discovered authorization policy named %s in namespace %s", authorizationPolicy.Name, namespace)
+			// publishing discovered authorizationPolicy
+			err := ap.broker.Publish(Subject, broker.Message{
+				Type:   "authorizationPolicy",
+				Object: authorizationPolicy,
+			})
+			if err != nil {
+				log.Printf("Error publishing authorizationPolicy named %s", authorizationPolicy.Name)
+			} else {
+				log.Printf("Published authorizationPolicy named %s", authorizationPolicy.Name)
+			}
 		}
 	}
 

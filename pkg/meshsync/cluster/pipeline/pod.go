@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -11,12 +12,14 @@ import (
 type Pod struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewPod - constructor
-func NewPod(client *discovery.Client) *Pod {
+func NewPod(client *discovery.Client, broker broker.Broker) *Pod {
 	return &Pod{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -26,11 +29,11 @@ func (p *Pod) Exec(request *pipeline.Request) *pipeline.Result {
 	log.Println("Pod Discovery Started")
 
 	// get all namespaces
-	namespaces := []string{"default"}
+	namespaces := NamespaceName
 
 	for _, namespace := range namespaces {
 		// get Pods
-		Pods, err := p.client.ListPods(namespace)
+		pods, err := p.client.ListPods(namespace)
 		if err != nil {
 			return &pipeline.Result{
 				Error: err,
@@ -38,8 +41,17 @@ func (p *Pod) Exec(request *pipeline.Request) *pipeline.Result {
 		}
 
 		// processing
-		for _, Pod := range Pods {
-			log.Printf("Discovered Pod named %s in namespace %s", Pod.Name, namespace)
+		for _, pod := range pods {
+			// publishing discovered pod
+			err := p.broker.Publish(Subject, broker.Message{
+				Type:   "Pod",
+				Object: pod,
+			})
+			if err != nil {
+				log.Printf("Error publishing pod named %s", pod.Name)
+			} else {
+				log.Printf("Published pod named %s", pod.Name)
+			}
 		}
 	}
 

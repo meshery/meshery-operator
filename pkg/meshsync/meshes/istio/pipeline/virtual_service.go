@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -15,12 +16,14 @@ const (
 type VirtualService struct {
 	pipeline.StepContext
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewVirtualService constructor
-func NewVirtualService(client *discovery.Client) *VirtualService {
+func NewVirtualService(client *discovery.Client, broker broker.Broker) *VirtualService {
 	return &VirtualService{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -38,9 +41,18 @@ func (vs *VirtualService) Exec(request *pipeline.Request) *pipeline.Result {
 			}
 		}
 
-		// process virtualServices
+		// processing
 		for _, virtualService := range virtualServices {
-			log.Printf("Discovered virtual service named %s in namespace %s", virtualService.Name, namespace)
+			// publishing discovered virtualService
+			err := vs.broker.Publish(Subject, broker.Message{
+				Type:   "VirtualService",
+				Object: virtualService,
+			})
+			if err != nil {
+				log.Printf("Error publishing virtual service named %s", virtualService.Name)
+			} else {
+				log.Printf("Published virtual service named %s", virtualService.Name)
+			}
 		}
 	}
 

@@ -3,6 +3,7 @@ package pipeline
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	"github.com/myntra/pipeline"
 )
@@ -12,12 +13,14 @@ type Sidecar struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
+	broker broker.Broker
 }
 
 // NewSidecar - constructor
-func NewSidecar(client *discovery.Client) *Sidecar {
+func NewSidecar(client *discovery.Client, broker broker.Broker) *Sidecar {
 	return &Sidecar{
 		client: client,
+		broker: broker,
 	}
 }
 
@@ -34,9 +37,18 @@ func (s *Sidecar) Exec(request *pipeline.Request) *pipeline.Result {
 			}
 		}
 
-		// process Sidecars
+		// processing
 		for _, sidecar := range sidecars {
-			log.Printf("Discovered sidecar named %s in namespace %s", sidecar.Name, namespace)
+			// publishing discovered sidecar
+			err := s.broker.Publish(Subject, broker.Message{
+				Type:   "Sidecar",
+				Object: sidecar,
+			})
+			if err != nil {
+				log.Printf("Error publishing sidecar named %s", sidecar.Name)
+			} else {
+				log.Printf("Published sidecar named %s", sidecar.Name)
+			}
 		}
 	}
 
