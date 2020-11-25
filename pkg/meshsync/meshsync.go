@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/layer5io/meshery-operator/pkg/broker"
 	"github.com/layer5io/meshery-operator/pkg/meshsync/service"
 	utils "github.com/layer5io/meshkit/utils/kubernetes"
 )
@@ -16,7 +17,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = service.Discover(kubeconfig)
+	br, err := broker.New(broker.NATSKey, "<server-url>")
+	if err != nil {
+		log.Printf("Error while creating broker: %s", err)
+		os.Exit(1)
+	}
+
+	err = service.Discover(kubeconfig, br)
 	if err != nil {
 		log.Printf("Error while discovery: %s", err)
 		os.Exit(1)

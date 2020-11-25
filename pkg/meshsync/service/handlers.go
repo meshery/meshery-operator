@@ -5,7 +5,9 @@ import (
 	"log"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
+	informers "github.com/layer5io/meshery-operator/pkg/informers"
 	"github.com/layer5io/meshery-operator/pkg/meshsync/cluster"
 	"github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio"
 	proto "github.com/layer5io/meshery-operator/pkg/meshsync/proto"
@@ -35,7 +37,7 @@ func (s *Service) Sync(context.Context, *proto.Request) (*proto.Response, error)
 	}, nil
 }
 
-func Discover(config *rest.Config) error {
+func Discover(config *rest.Config, broker broker.Broker) error {
 
 	// Configure discovery
 	client, err := discovery.NewClient(config)
@@ -44,15 +46,34 @@ func Discover(config *rest.Config) error {
 		return err
 	}
 
-	err = cluster.StartDiscovery(client)
+	err = cluster.StartDiscovery(client, broker)
 	if err != nil {
 		return err
 	}
 
-	err = istio.StartDiscovery(client)
+	err = istio.StartDiscovery(client, broker)
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+// StartInformer - run informer
+func StartInformers(config *rest.Config) error {
+
+	// Configure discovery
+	client, err := informers.NewClient(config)
+	if err != nil {
+		log.Printf("Couldnot create informer client: %s", err)
+		return err
+	}
+
+	log.Println("start cluster informers")
+	cluster.StartInformer(client)
+
+	log.Println("start istio informers")
+	istio.StartInformer(client)
 
 	return nil
 }

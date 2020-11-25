@@ -1,5 +1,5 @@
 /*
-Copyright 2020 Layer5, Inc.
+
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,28 +25,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	meshsyncpackage "github.com/layer5io/meshery-operator/pkg/meshsync"
+	natspackage "github.com/layer5io/meshery-operator/pkg/broker/nats"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/types"
 )
 
-// MeshSyncReconciler reconciles a MeshSync object
-type MeshSyncReconciler struct {
+// BrokerReconciler reconciles a Broker object
+type BrokerReconciler struct {
 	client.Client
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=meshery.layer5.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=meshery.layer5.io,resources=meshsyncs/status,verbs=get;update;patch
-func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+// +kubebuilder:rbac:groups=meshery.layer5.io,resources=brokers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=meshery.layer5.io,resources=brokers/status,verbs=get;update;patch
 
+func (r *BrokerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("meshsync", req.NamespacedName)
+	log := r.Log.WithValues("nats", req.NamespacedName)
 	log.Info("Reconcillation")
 
 	// Check if resource exists
-	baseResource := &mesheryv1alpha1.MeshSync{}
+	baseResource := &mesheryv1alpha1.Broker{}
 	err := r.Get(ctx, req.NamespacedName, baseResource)
 	if err != nil {
 		if kubeerror.IsNotFound(err) {
@@ -57,11 +57,11 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	// Check if controllers running
-	// Meshsync
-	meshsync := meshsyncpackage.GetResource(baseResource)
-	err = r.Get(ctx, types.NamespacedName{Name: baseResource.Name, Namespace: baseResource.Namespace}, meshsync)
+	// Nats
+	nats := natspackage.GetResource(baseResource)
+	err = r.Get(ctx, types.NamespacedName{Name: baseResource.Name, Namespace: baseResource.Namespace}, nats)
 	if err != nil && kubeerror.IsNotFound(err) {
-		dep := meshsyncpackage.CreateResource(baseResource, r.Scheme)
+		dep := natspackage.CreateResource(baseResource, r.Scheme)
 		log.Error(err, "Failed to get Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
 		err = r.Create(ctx, dep)
 		if err != nil {
@@ -76,8 +76,8 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&mesheryv1alpha1.MeshSync{}).
+		For(&mesheryv1alpha1.Broker{}).
 		Complete(r)
 }
