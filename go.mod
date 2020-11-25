@@ -15,7 +15,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/layer5io/meshkit v0.1.27
 	github.com/myntra/pipeline v0.0.0-20180618182531-2babf4864ce8
-	github.com/nats-io/nats.go v1.9.1
+	github.com/nats-io/nats.go v1.10.0
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
 	golang.org/x/tools v0.0.0-20200804011535-6c149bb5ef0d // indirect
