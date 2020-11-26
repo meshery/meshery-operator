@@ -10,7 +10,7 @@ replace (
 require (
 	cloud.google.com/go v0.62.0 // indirect
 	github.com/allegro/bigcache v1.2.1
-	github.com/go-logr/logr v0.1.0
+	github.com/go-logr/logr v0.3.0
 	github.com/golang/protobuf v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/layer5io/meshkit v0.1.27
