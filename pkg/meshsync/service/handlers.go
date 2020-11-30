@@ -60,7 +60,7 @@ func Discover(config *rest.Config, broker broker.Broker) error {
 }
 
 // StartInformer - run informer
-func StartInformers(config *rest.Config) error {
+func StartInformers(config *rest.Config, broker broker.Broker) error {
 
 	// Configure discovery
 	client, err := informers.NewClient(config)
@@ -70,10 +70,10 @@ func StartInformers(config *rest.Config) error {
 	}
 
 	log.Println("start cluster informers")
-	cluster.StartInformer(client)
+	cluster.StartInformer(client, broker)
 
 	log.Println("start istio informers")
-	istio.StartInformer(client)
+	istio.StartInformer(client, broker)
 
 	return nil
 }

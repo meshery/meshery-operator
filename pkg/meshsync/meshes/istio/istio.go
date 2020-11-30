@@ -40,6 +40,6 @@ func StartDiscovery(dclient *discovery.Client, broker broker.Broker) error {
 	return nil
 }
 
-func StartInformer(iclient *inf.Client) {
-	informers.Initialize(iclient)
+func StartInformer(iclient *inf.Client, broker broker.Broker) {
+	informers.Initialize(iclient, broker)
 }
