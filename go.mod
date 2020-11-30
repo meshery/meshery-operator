@@ -20,7 +20,7 @@ require (
 	github.com/onsi/gomega v1.10.1
 	golang.org/x/tools v0.0.0-20200804011535-6c149bb5ef0d // indirect
 	google.golang.org/genproto v0.0.0-20200804131852-c06518451d9c // indirect
-	google.golang.org/grpc v1.31.0
+	google.golang.org/grpc v1.33.2
 	google.golang.org/protobuf v1.25.0
 	istio.io/client-go v1.8.0-alpha.2
 	k8s.io/api v0.18.12
