@@ -18,7 +18,7 @@ func (c *Cluster) NamespaceInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				Namespace := obj.(*v1.Namespace)
 				log.Printf("Namespace Named: %s - added", Namespace.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Namespace",
 					Object: Namespace,
 				})
@@ -26,7 +26,7 @@ func (c *Cluster) NamespaceInformer() cache.SharedIndexInformer {
 			UpdateFunc: func(new interface{}, old interface{}) {
 				Namespace := new.(*v1.Namespace)
 				log.Printf("Namespace Named: %s - updated", Namespace.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Namespace",
 					Object: Namespace,
 				})
@@ -34,7 +34,7 @@ func (c *Cluster) NamespaceInformer() cache.SharedIndexInformer {
 			DeleteFunc: func(obj interface{}) {
 				Namespace := obj.(*v1.Namespace)
 				log.Printf("Namespace Named: %s - deleted", Namespace.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Namespace",
 					Object: Namespace,
 				})

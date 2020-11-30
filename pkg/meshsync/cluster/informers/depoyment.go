@@ -18,7 +18,7 @@ func (c *Cluster) DeploymentInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				deployment := obj.(*v1.Deployment)
 				log.Printf("Deployment Named: %s - added", deployment.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Deployment",
 					Object: deployment,
 				})
@@ -26,7 +26,7 @@ func (c *Cluster) DeploymentInformer() cache.SharedIndexInformer {
 			UpdateFunc: func(new interface{}, old interface{}) {
 				deployment := new.(*v1.Deployment)
 				log.Printf("Deployment Named: %s - updated", deployment.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Deployment",
 					Object: deployment,
 				})
@@ -34,7 +34,7 @@ func (c *Cluster) DeploymentInformer() cache.SharedIndexInformer {
 			DeleteFunc: func(obj interface{}) {
 				deployment := obj.(*v1.Deployment)
 				log.Printf("Deployment Named: %s - deleted", deployment.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Deployment",
 					Object: deployment,
 				})

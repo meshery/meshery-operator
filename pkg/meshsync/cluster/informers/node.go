@@ -18,7 +18,7 @@ func (c *Cluster) NodeInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				Node := obj.(*v1.Node)
 				log.Printf("Node Named: %s - added", Node.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Node",
 					Object: Node,
 				})
@@ -26,7 +26,7 @@ func (c *Cluster) NodeInformer() cache.SharedIndexInformer {
 			UpdateFunc: func(new interface{}, old interface{}) {
 				Node := new.(*v1.Node)
 				log.Printf("Node Named: %s - updated", Node.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Node",
 					Object: Node,
 				})
@@ -34,7 +34,7 @@ func (c *Cluster) NodeInformer() cache.SharedIndexInformer {
 			DeleteFunc: func(obj interface{}) {
 				Node := obj.(*v1.Node)
 				log.Printf("Node Named: %s - deleted", Node.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Node",
 					Object: Node,
 				})

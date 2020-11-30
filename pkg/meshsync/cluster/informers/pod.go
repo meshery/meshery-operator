@@ -18,7 +18,7 @@ func (c *Cluster) PodInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				Pod := obj.(*v1.Pod)
 				log.Printf("Pod Named: %s - added", Pod.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Pod",
 					Object: Pod,
 				})
@@ -26,7 +26,7 @@ func (c *Cluster) PodInformer() cache.SharedIndexInformer {
 			UpdateFunc: func(new interface{}, old interface{}) {
 				Pod := new.(*v1.Pod)
 				log.Printf("Pod Named: %s - updated", Pod.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Pod",
 					Object: Pod,
 				})
@@ -34,7 +34,7 @@ func (c *Cluster) PodInformer() cache.SharedIndexInformer {
 			DeleteFunc: func(obj interface{}) {
 				Pod := obj.(*v1.Pod)
 				log.Printf("Pod Named: %s - deleted", Pod.Name)
-				c.broker.Publish("cluster", broker.Message{
+				c.broker.Publish(Subject, broker.Message{
 					Type:   "Pod",
 					Object: Pod,
 				})
