@@ -3,6 +3,7 @@ package informers
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -14,26 +15,32 @@ func (c *Cluster) NamespaceInformer() cache.SharedIndexInformer {
 	// register event handlers
 	namespaceInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    addNamespace,
-			UpdateFunc: updateNamespace,
-			DeleteFunc: deleteNamespace,
+			AddFunc: func(obj interface{}) {
+				Namespace := obj.(*v1.Namespace)
+				log.Printf("Namespace Named: %s - added", Namespace.Name)
+				c.broker.Publish("cluster", broker.Message{
+					Type:   "Namespace",
+					Object: Namespace,
+				})
+			},
+			UpdateFunc: func(new interface{}, old interface{}) {
+				Namespace := new.(*v1.Namespace)
+				log.Printf("Namespace Named: %s - updated", Namespace.Name)
+				c.broker.Publish("cluster", broker.Message{
+					Type:   "Namespace",
+					Object: Namespace,
+				})
+			},
+			DeleteFunc: func(obj interface{}) {
+				Namespace := obj.(*v1.Namespace)
+				log.Printf("Namespace Named: %s - deleted", Namespace.Name)
+				c.broker.Publish("cluster", broker.Message{
+					Type:   "Namespace",
+					Object: Namespace,
+				})
+			},
 		},
 	)
 
 	return namespaceInformer
-}
-
-func deleteNamespace(obj interface{}) {
-	namespace := obj.(*v1.Namespace)
-	log.Printf("Namespace Named: %s - deleted", namespace.Name)
-}
-
-func addNamespace(obj interface{}) {
-	namespace := obj.(*v1.Namespace)
-	log.Printf("Namespace Named: %s - added", namespace.Name)
-}
-
-func updateNamespace(new interface{}, old interface{}) {
-	namespace := new.(*v1.Namespace)
-	log.Printf("Namespace Named: %s - updated", namespace.Name)
 }

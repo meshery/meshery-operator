@@ -3,6 +3,7 @@ package informers
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -14,26 +15,32 @@ func (c *Cluster) NodeInformer() cache.SharedIndexInformer {
 	// register event handlers
 	nodeInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    addNode,
-			UpdateFunc: updateNode,
-			DeleteFunc: deleteNode,
+			AddFunc: func(obj interface{}) {
+				Node := obj.(*v1.Node)
+				log.Printf("Node Named: %s - added", Node.Name)
+				c.broker.Publish("cluster", broker.Message{
+					Type:   "Node",
+					Object: Node,
+				})
+			},
+			UpdateFunc: func(new interface{}, old interface{}) {
+				Node := new.(*v1.Node)
+				log.Printf("Node Named: %s - updated", Node.Name)
+				c.broker.Publish("cluster", broker.Message{
+					Type:   "Node",
+					Object: Node,
+				})
+			},
+			DeleteFunc: func(obj interface{}) {
+				Node := obj.(*v1.Node)
+				log.Printf("Node Named: %s - deleted", Node.Name)
+				c.broker.Publish("cluster", broker.Message{
+					Type:   "Node",
+					Object: Node,
+				})
+			},
 		},
 	)
 
 	return nodeInformer
-}
-
-func deleteNode(obj interface{}) {
-	node := obj.(*v1.Node)
-	log.Printf("node Named: %s - deleted", node.Name)
-}
-
-func addNode(obj interface{}) {
-	node := obj.(*v1.Node)
-	log.Printf("node Named: %s - added", node.Name)
-}
-
-func updateNode(new interface{}, old interface{}) {
-	node := new.(*v1.Node)
-	log.Printf("node Named: %s - updated", node.Name)
 }

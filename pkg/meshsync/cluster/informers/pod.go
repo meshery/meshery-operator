@@ -3,6 +3,7 @@ package informers
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -14,26 +15,32 @@ func (c *Cluster) PodInformer() cache.SharedIndexInformer {
 	// register event handlers
 	podInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    addPod,
-			UpdateFunc: updatePod,
-			DeleteFunc: deletePod,
+			AddFunc: func(obj interface{}) {
+				Pod := obj.(*v1.Pod)
+				log.Printf("Pod Named: %s - added", Pod.Name)
+				c.broker.Publish("cluster", broker.Message{
+					Type:   "Pod",
+					Object: Pod,
+				})
+			},
+			UpdateFunc: func(new interface{}, old interface{}) {
+				Pod := new.(*v1.Pod)
+				log.Printf("Pod Named: %s - updated", Pod.Name)
+				c.broker.Publish("cluster", broker.Message{
+					Type:   "Pod",
+					Object: Pod,
+				})
+			},
+			DeleteFunc: func(obj interface{}) {
+				Pod := obj.(*v1.Pod)
+				log.Printf("Pod Named: %s - deleted", Pod.Name)
+				c.broker.Publish("cluster", broker.Message{
+					Type:   "Pod",
+					Object: Pod,
+				})
+			},
 		},
 	)
 
 	return podInformer
-}
-
-func deletePod(obj interface{}) {
-	pod := obj.(*v1.Pod)
-	log.Printf("Pod Named: %s - deleted", pod.Name)
-}
-
-func addPod(obj interface{}) {
-	pod := obj.(*v1.Pod)
-	log.Printf("Pod Named: %s - added", pod.Name)
-}
-
-func updatePod(new interface{}, old interface{}) {
-	pod := new.(*v1.Pod)
-	log.Printf("Pod Named: %s - updated", pod.Name)
 }
