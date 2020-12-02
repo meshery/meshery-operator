@@ -35,7 +35,7 @@ func Setup(dclient *discovery.Client, broker broker.Handler, iclient *inf.Client
 		return ErrInitPipeline(result.Error)
 	}
 
-	// err := informers.Initialize(iclient)
+	// err := informers.Initialize(iclient, broker)
 	// if err != nil {
 	// 	return ErrInitInformer(err)
 	// }

@@ -3,6 +3,7 @@ package informers
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	v1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"k8s.io/client-go/tools/cache"
 )
@@ -14,26 +15,32 @@ func (i *Istio) WorkloadGroupInformer() cache.SharedIndexInformer {
 	// register event handlers
 	WorkloadGroupInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    addWorkloadGroup,
-			UpdateFunc: updateWorkloadGroup,
-			DeleteFunc: deleteWorkloadGroup,
+			AddFunc: func(obj interface{}) {
+				WorkloadGroup := obj.(*v1alpha3.WorkloadGroup)
+				log.Printf("WorkloadGroup Named: %s - added", WorkloadGroup.Name)
+				i.broker.Publish(Subject, broker.Message{
+					Type:   "WorkloadGroup",
+					Object: WorkloadGroup,
+				})
+			},
+			UpdateFunc: func(new interface{}, old interface{}) {
+				WorkloadGroup := new.(*v1alpha3.WorkloadGroup)
+				log.Printf("WorkloadGroup Named: %s - updated", WorkloadGroup.Name)
+				i.broker.Publish(Subject, broker.Message{
+					Type:   "WorkloadGroup",
+					Object: WorkloadGroup,
+				})
+			},
+			DeleteFunc: func(obj interface{}) {
+				WorkloadGroup := obj.(*v1alpha3.WorkloadGroup)
+				log.Printf("WorkloadGroup Named: %s - deleted", WorkloadGroup.Name)
+				i.broker.Publish(Subject, broker.Message{
+					Type:   "WorkloadGroup",
+					Object: WorkloadGroup,
+				})
+			},
 		},
 	)
 
 	return WorkloadGroupInformer
-}
-
-func deleteWorkloadGroup(obj interface{}) {
-	WorkloadGroup := obj.(*v1alpha3.WorkloadGroup)
-	log.Printf("WorkloadGroup Named: %s - deleted", WorkloadGroup.Name)
-}
-
-func addWorkloadGroup(obj interface{}) {
-	WorkloadGroup := obj.(*v1alpha3.WorkloadGroup)
-	log.Printf("WorkloadGroup Named: %s - added", WorkloadGroup.Name)
-}
-
-func updateWorkloadGroup(new interface{}, old interface{}) {
-	WorkloadGroup := new.(*v1alpha3.WorkloadGroup)
-	log.Printf("WorkloadGroup Named: %s - updated", WorkloadGroup.Name)
 }

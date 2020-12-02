@@ -3,6 +3,7 @@ package informers
 import (
 	"log"
 
+	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	v1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -14,26 +15,32 @@ func (i *Istio) DestinationRuleInformer() cache.SharedIndexInformer {
 	// register event handlers
 	DestinationRuleInformer.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    addDestinationRule,
-			UpdateFunc: updateDestinationRule,
-			DeleteFunc: deleteDestinationRule,
+			AddFunc: func(obj interface{}) {
+				DestinationRule := obj.(*v1beta1.DestinationRule)
+				log.Printf("DestinationRule Named: %s - added", DestinationRule.Name)
+				i.broker.Publish(Subject, broker.Message{
+					Type:   "DestinationRule",
+					Object: DestinationRule,
+				})
+			},
+			UpdateFunc: func(new interface{}, old interface{}) {
+				DestinationRule := new.(*v1beta1.DestinationRule)
+				log.Printf("DestinationRule Named: %s - updated", DestinationRule.Name)
+				i.broker.Publish(Subject, broker.Message{
+					Type:   "DestinationRule",
+					Object: DestinationRule,
+				})
+			},
+			DeleteFunc: func(obj interface{}) {
+				DestinationRule := obj.(*v1beta1.DestinationRule)
+				log.Printf("DestinationRule Named: %s - deleted", DestinationRule.Name)
+				i.broker.Publish(Subject, broker.Message{
+					Type:   "DestinationRule",
+					Object: DestinationRule,
+				})
+			},
 		},
 	)
 
 	return DestinationRuleInformer
-}
-
-func deleteDestinationRule(obj interface{}) {
-	DestinationRule := obj.(*v1beta1.DestinationRule)
-	log.Printf("DestinationRule Named: %s - deleted", DestinationRule.Name)
-}
-
-func addDestinationRule(obj interface{}) {
-	DestinationRule := obj.(*v1beta1.DestinationRule)
-	log.Printf("DestinationRule Named: %s - added", DestinationRule.Name)
-}
-
-func updateDestinationRule(new interface{}, old interface{}) {
-	DestinationRule := new.(*v1beta1.DestinationRule)
-	log.Printf("DestinationRule Named: %s - updated", DestinationRule.Name)
 }

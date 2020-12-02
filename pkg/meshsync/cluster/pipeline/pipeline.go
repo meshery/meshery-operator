@@ -19,7 +19,7 @@ var (
 		Concurrent: false,
 		Steps:      []pipeline.Step{},
 	}
-	Subject = "Cluster-Discovery"
+	Subject = "cluster"
 )
 
 func Initialize(client *discovery.Client, broker broker.Handler) *pipeline.Pipeline {

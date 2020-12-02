@@ -22,7 +22,7 @@ var (
 
 	// TODO: need some solution for this
 	Namespaces = []string{"default", "istio-system"}
-	Subject    = "Istio"
+	Subject    = "istio"
 )
 
 func Initialize(client *discovery.Client, broker broker.Handler) *pipeline.Pipeline {
