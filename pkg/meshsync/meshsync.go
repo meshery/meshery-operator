@@ -29,6 +29,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = service.StartInformers(kubeconfig, br)
+	if err != nil {
+		log.Printf("Error using informers: %s", err)
+		os.Exit(1)
+	}
+
 	err = service.Start(&service.Service{
 		Name:      "meshsync",
 		Port:      "11000",
