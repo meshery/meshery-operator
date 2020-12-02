@@ -22,7 +22,7 @@ require (
 	google.golang.org/genproto v0.0.0-20200804131852-c06518451d9c // indirect
 	google.golang.org/grpc v1.33.2
 	google.golang.org/protobuf v1.25.0
-	istio.io/client-go v1.8.0-alpha.2
+	istio.io/client-go v1.8.0
 	k8s.io/api v0.18.12
 	k8s.io/apimachinery v0.18.12
 	k8s.io/client-go v0.18.12
