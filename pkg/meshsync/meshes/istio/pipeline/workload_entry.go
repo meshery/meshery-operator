@@ -12,11 +12,11 @@ import (
 type WorkloadEntry struct {
 	pipeline.StepContext
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewWOrkloadEntry - constructor
-func NewWorkloadEntry(client *discovery.Client, broker broker.Broker) *WorkloadEntry {
+func NewWorkloadEntry(client *discovery.Client, broker broker.Handler) *WorkloadEntry {
 	return &WorkloadEntry{
 		client: client,
 		broker: broker,

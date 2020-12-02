@@ -13,11 +13,11 @@ type Sidecar struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewSidecar - constructor
-func NewSidecar(client *discovery.Client, broker broker.Broker) *Sidecar {
+func NewSidecar(client *discovery.Client, broker broker.Handler) *Sidecar {
 	return &Sidecar{
 		client: client,
 		broker: broker,

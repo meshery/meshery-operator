@@ -13,11 +13,11 @@ type WorkloadGroup struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewWorkloadGroup - constructor
-func NewWorkloadGroup(client *discovery.Client, broker broker.Broker) *WorkloadGroup {
+func NewWorkloadGroup(client *discovery.Client, broker broker.Handler) *WorkloadGroup {
 	return &WorkloadGroup{
 		client: client,
 		broker: broker,

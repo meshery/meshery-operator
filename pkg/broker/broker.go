@@ -19,7 +19,7 @@ type SubscribeInterface interface {
 	SubscribeWithHandler(string, string) error
 }
 
-type Broker interface {
+type Handler interface {
 	PublishInterface
 	SubscribeInterface
 }
@@ -28,8 +28,8 @@ const (
 	NATSKey = "nats"
 )
 
-func New(kind string, url string) (Broker, error) {
-	var broker Broker
+func New(kind string, url string) (Handler, error) {
+	var broker Handler
 	switch kind {
 	case NATSKey:
 		return nats.New(url)

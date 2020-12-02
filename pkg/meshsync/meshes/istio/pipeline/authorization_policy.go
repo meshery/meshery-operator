@@ -12,11 +12,11 @@ import (
 type AuthorizationPolicy struct {
 	pipeline.StepContext
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewAuthorizationPolicy - constructor
-func NewAuthorizationPolicy(client *discovery.Client, broker broker.Broker) *AuthorizationPolicy {
+func NewAuthorizationPolicy(client *discovery.Client, broker broker.Handler) *AuthorizationPolicy {
 	return &AuthorizationPolicy{
 		client: client,
 		broker: broker,

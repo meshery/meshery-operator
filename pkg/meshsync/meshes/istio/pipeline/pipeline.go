@@ -22,10 +22,10 @@ var (
 
 	// TODO: need some solution for this
 	Namespaces = []string{"default", "istio-system"}
-	Subject    = "Istio-Discovery"
+	Subject    = "Istio"
 )
 
-func Initialize(client *discovery.Client, broker broker.Broker) *pipeline.Pipeline {
+func Initialize(client *discovery.Client, broker broker.Handler) *pipeline.Pipeline {
 
 	// Mesh Discovery Stage
 	mdstage := MeshDiscoveryStage

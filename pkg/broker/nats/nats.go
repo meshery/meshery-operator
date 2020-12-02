@@ -11,11 +11,11 @@ type Nats struct {
 func New(serverURL string) (*Nats, error) {
 	nc, err := nats.Connect(serverURL)
 	if err != nil {
-		return nil, err
+		return nil, ErrConnect(err)
 	}
 	ec, err := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
 	if err != nil {
-		return nil, err
+		return nil, ErrEncodedConn(err)
 	}
 	return &Nats{ec: ec}, nil
 }
@@ -23,7 +23,7 @@ func New(serverURL string) (*Nats, error) {
 // Publish - to publish messages
 func (n *Nats) Publish(subject string, message interface{}) error {
 	err := n.ec.Publish(subject, message)
-	return err
+	return ErrPublish(err)
 }
 
 // PublishWithCallback - will implement the request-reply mechanisms
@@ -34,7 +34,7 @@ func (n *Nats) Publish(subject string, message interface{}) error {
 // TODO Ques: After this the requestor have to subscribe to the reply subject
 func (n *Nats) PublishWithCallback(request string, reply string, message interface{}) error {
 	err := n.ec.PublishRequest(request, reply, message)
-	return err
+	return ErrPublishRequest(err)
 }
 
 // Subscribe - for subscribing messages
@@ -44,7 +44,7 @@ func (n *Nats) Subscribe(subject string, queue string) error {
 	// no handler
 	// TODO there should be a callback that handler received messges
 	_, err := n.ec.QueueSubscribe(subject, queue, func() {})
-	return err
+	return ErrQueueSubscribe(err)
 }
 
 // SubscribeWithHandler - for handling request-reply protocol
@@ -53,5 +53,5 @@ func (n *Nats) Subscribe(subject string, queue string) error {
 func (n *Nats) SubscribeWithHandler(subject string, queue string) error {
 	// no handler
 	_, err := n.ec.QueueSubscribe(subject, queue, func() {})
-	return err
+	return ErrQueueSubscribe(err)
 }

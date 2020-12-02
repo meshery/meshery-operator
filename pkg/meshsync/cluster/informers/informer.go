@@ -6,7 +6,7 @@ import (
 )
 
 // Initialize will initiate all the informers
-func Initialize(client *inf.Client) {
+func Initialize(client *inf.Client) error {
 	c := New(client)
 
 	// initiating informers
@@ -14,4 +14,6 @@ func Initialize(client *inf.Client) {
 	go c.NamespaceInformer().Run(wait.NeverStop)
 	go c.DeploymentInformer().Run(wait.NeverStop)
 	go c.PodInformer().Run(wait.NeverStop)
+
+	return nil
 }

@@ -6,7 +6,7 @@ import (
 )
 
 // Initialize will initiate all the informers
-func Initialize(client *inf.Client) {
+func Initialize(client *inf.Client) error {
 	c := New(client)
 
 	// initiating informers
@@ -21,4 +21,6 @@ func Initialize(client *inf.Client) {
 	go c.RequestAuthenticationInformer().Run(wait.NeverStop)
 	go c.ServiceEntryInformer().Run(wait.NeverStop)
 	// go c.WorkloadGroupInformer().Run(wait.NeverStop)
+
+	return nil
 }

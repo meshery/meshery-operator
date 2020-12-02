@@ -11,10 +11,10 @@ import (
 type Istio struct {
 	pipeline.StepContext
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
-func NewIstio(client *discovery.Client, broker broker.Broker) *Istio {
+func NewIstio(client *discovery.Client, broker broker.Handler) *Istio {
 	return &Istio{
 		client: client,
 		broker: broker,

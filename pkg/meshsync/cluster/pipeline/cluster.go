@@ -11,10 +11,10 @@ import (
 type Cluster struct {
 	pipeline.StepContext
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
-func NewCluster(client *discovery.Client, broker broker.Broker) *Cluster {
+func NewCluster(client *discovery.Client, broker broker.Handler) *Cluster {
 	return &Cluster{
 		client: client,
 		broker: broker,

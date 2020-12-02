@@ -16,11 +16,11 @@ const (
 type VirtualService struct {
 	pipeline.StepContext
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewVirtualService constructor
-func NewVirtualService(client *discovery.Client, broker broker.Broker) *VirtualService {
+func NewVirtualService(client *discovery.Client, broker broker.Handler) *VirtualService {
 	return &VirtualService{
 		client: client,
 		broker: broker,

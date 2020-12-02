@@ -13,10 +13,10 @@ type Gateway struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
-func NewGateway(client *discovery.Client, broker broker.Broker) *Gateway {
+func NewGateway(client *discovery.Client, broker broker.Handler) *Gateway {
 	return &Gateway{
 		client: client,
 		broker: broker,

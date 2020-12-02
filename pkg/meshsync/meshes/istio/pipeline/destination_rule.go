@@ -12,11 +12,11 @@ import (
 type DestinationRule struct {
 	pipeline.StepContext
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewDestinationRule - constructor
-func NewDestinationRule(client *discovery.Client, broker broker.Broker) *DestinationRule {
+func NewDestinationRule(client *discovery.Client, broker broker.Handler) *DestinationRule {
 	return &DestinationRule{
 		client: client,
 		broker: broker,
