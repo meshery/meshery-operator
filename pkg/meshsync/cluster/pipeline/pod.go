@@ -12,11 +12,11 @@ import (
 type Pod struct {
 	pipeline.StepContext
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewPod - constructor
-func NewPod(client *discovery.Client, broker broker.Broker) *Pod {
+func NewPod(client *discovery.Client, broker broker.Handler) *Pod {
 	return &Pod{
 		client: client,
 		broker: broker,

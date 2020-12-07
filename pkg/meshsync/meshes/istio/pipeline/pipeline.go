@@ -25,7 +25,7 @@ var (
 	Subject    = "istio"
 )
 
-func Initialize(client *discovery.Client, broker broker.Broker) *pipeline.Pipeline {
+func Initialize(client *discovery.Client, broker broker.Handler) *pipeline.Pipeline {
 
 	// Mesh Discovery Stage
 	mdstage := MeshDiscoveryStage

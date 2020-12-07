@@ -14,11 +14,11 @@ var NamespaceName []string
 type Namespace struct {
 	pipeline.StepContext
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewNamespace - constructor
-func NewNamespace(client *discovery.Client, broker broker.Broker) *Namespace {
+func NewNamespace(client *discovery.Client, broker broker.Handler) *Namespace {
 	return &Namespace{
 		client: client,
 		broker: broker,

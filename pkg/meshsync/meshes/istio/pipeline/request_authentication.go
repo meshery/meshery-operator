@@ -13,11 +13,11 @@ type RequestAuthenticaton struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewRequestAuthenticaton - constructor
-func NewRequestAuthenticaton(client *discovery.Client, broker broker.Broker) *RequestAuthenticaton {
+func NewRequestAuthenticaton(client *discovery.Client, broker broker.Handler) *RequestAuthenticaton {
 	return &RequestAuthenticaton{
 		client: client,
 		broker: broker,

@@ -13,11 +13,11 @@ type EnvoyFilter struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewEnvoyFilter - constructor
-func NewEnvoyFilter(client *discovery.Client, broker broker.Broker) *EnvoyFilter {
+func NewEnvoyFilter(client *discovery.Client, broker broker.Handler) *EnvoyFilter {
 	return &EnvoyFilter{
 		client: client,
 		broker: broker,

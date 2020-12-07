@@ -12,11 +12,11 @@ import (
 type Node struct {
 	pipeline.StepContext
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewNode - constructor
-func NewNode(client *discovery.Client, broker broker.Broker) *Node {
+func NewNode(client *discovery.Client, broker broker.Handler) *Node {
 	return &Node{
 		client: client,
 		broker: broker,

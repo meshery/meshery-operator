@@ -24,4 +24,6 @@ func Initialize(client *inf.Client, broker broker.Broker) {
 	go c.RequestAuthenticationInformer().Run(wait.NeverStop)
 	go c.ServiceEntryInformer().Run(wait.NeverStop)
 	// go c.WorkloadGroupInformer().Run(wait.NeverStop)
+
+	return nil
 }

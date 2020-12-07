@@ -7,7 +7,9 @@ import (
 
 	middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	"github.com/layer5io/meshery-operator/pkg/broker"
 	proto "github.com/layer5io/meshery-operator/pkg/meshsync/proto"
+	"github.com/layer5io/meshkit/logger"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -19,6 +21,8 @@ type Service struct {
 	Port      string    `json:"port"`
 	Version   string    `json:"version"`
 	StartedAt time.Time `json:"startedat"`
+	Logger    logger.Handler
+	Broker    broker.Handler
 }
 
 // panicHandler is the handler function to handle panic errors.

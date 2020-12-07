@@ -13,11 +13,11 @@ type PeerAuthentication struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewPeerAuthentication - constructor
-func NewPeerAuthentication(client *discovery.Client, broker broker.Broker) *PeerAuthentication {
+func NewPeerAuthentication(client *discovery.Client, broker broker.Handler) *PeerAuthentication {
 	return &PeerAuthentication{
 		client: client,
 		broker: broker,

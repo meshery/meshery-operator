@@ -1,8 +1,6 @@
 package istio
 
 import (
-	"log"
-
 	networkingV1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	networkingV1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	securityV1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
@@ -10,7 +8,7 @@ import (
 	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	inf "github.com/layer5io/meshery-operator/pkg/informers"
-	informers "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/informers"
+	// informers "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/informers"
 	pipeline "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/pipeline"
 )
 
@@ -28,18 +26,19 @@ type Resources struct {
 	WorkloadGroups         []networkingV1alpha3.WorkloadGroup      `json:"workloadgroups,omitempty"`
 }
 
-func StartDiscovery(dclient *discovery.Client, broker broker.Broker) error {
+func Setup(dclient *discovery.Client, broker broker.Handler, iclient *inf.Client) error {
 	// Get pipeline instance
 	pl := pipeline.Initialize(dclient, broker)
 	// run pipelines
 	result := pl.Run()
 	if result.Error != nil {
-		log.Printf("Error executing cluster pipeline: %s", result.Error)
-		return result.Error
+		return ErrInitPipeline(result.Error)
 	}
-	return nil
-}
 
-func StartInformer(iclient *inf.Client, broker broker.Broker) {
-	informers.Initialize(iclient, broker)
+	// err := informers.Initialize(iclient, broker)
+	// if err != nil {
+	// 	return ErrInitInformer(err)
+	// }
+
+	return nil
 }

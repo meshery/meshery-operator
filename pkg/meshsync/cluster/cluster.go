@@ -1,12 +1,10 @@
 package cluster
 
 import (
-	"log"
-
 	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	inf "github.com/layer5io/meshery-operator/pkg/informers"
-	informers "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/informers"
+	// informers "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/informers"
 	pipeline "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/pipeline"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,18 +25,19 @@ type LocalResources struct {
 	Pods        []corev1.Pod        `json:"pods,omitempty"`
 }
 
-func StartDiscovery(dclient *discovery.Client, broker broker.Broker) error {
+func Setup(dclient *discovery.Client, broker broker.Handler, iclient *inf.Client) error {
 	// Get pipeline instance
 	pl := pipeline.Initialize(dclient, broker)
 	// run pipelines
 	result := pl.Run()
 	if result.Error != nil {
-		log.Printf("Error executing cluster pipeline: %s", result.Error)
-		return result.Error
+		return ErrInitPipeline(result.Error)
 	}
-	return nil
-}
 
-func StartInformer(iclient *inf.Client, broker broker.Broker) {
-	informers.Initialize(iclient, broker)
+	// err := informers.Initialize(iclient, broker)
+	// if err != nil {
+	// 	return ErrInitInformer(err)
+	// }
+
+	return nil
 }

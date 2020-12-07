@@ -17,4 +17,6 @@ func Initialize(client *inf.Client, broker broker.Broker) {
 	go c.NamespaceInformer().Run(wait.NeverStop)
 	go c.DeploymentInformer().Run(wait.NeverStop)
 	go c.PodInformer().Run(wait.NeverStop)
+
+	return nil
 }

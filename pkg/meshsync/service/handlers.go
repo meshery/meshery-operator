@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	informers "github.com/layer5io/meshery-operator/pkg/informers"
 	"github.com/layer5io/meshery-operator/pkg/meshsync/cluster"
@@ -37,43 +36,34 @@ func (s *Service) Sync(context.Context, *proto.Request) (*proto.Response, error)
 	}, nil
 }
 
-func Discover(config *rest.Config, broker broker.Broker) error {
-
+func (s *Service) Initialize(config *rest.Config) error {
 	// Configure discovery
-	client, err := discovery.NewClient(config)
+	dclient, err := discovery.NewClient(config)
 	if err != nil {
+		s.Logger.Error(ErrNewDiscovery(err))
 		log.Printf("Couldnot create client: %s", err)
-		return err
+		return ErrNewDiscovery(err)
 	}
 
-	err = cluster.StartDiscovery(client, broker)
+	// Configure informers
+	iclient, err := informers.NewClient(config)
 	if err != nil {
-		return err
-	}
-
-	err = istio.StartDiscovery(client, broker)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// StartInformer - run informer
-func StartInformers(config *rest.Config, broker broker.Broker) error {
-
-	// Configure discovery
-	client, err := informers.NewClient(config)
-	if err != nil {
+		s.Logger.Error(ErrNewInformer(err))
 		log.Printf("Couldnot create informer client: %s", err)
 		return err
 	}
 
-	log.Println("start cluster informers")
-	cluster.StartInformer(client, broker)
+	err = cluster.Setup(dclient, s.Broker, iclient)
+	if err != nil {
+		s.Logger.Error(ErrSetupCluster(err))
+		return err
+	}
 
-	log.Println("start istio informers")
-	istio.StartInformer(client, broker)
+	err = istio.Setup(dclient, s.Broker, iclient)
+	if err != nil {
+		s.Logger.Error(ErrSetupIstio(err))
+		return err
+	}
 
 	return nil
 }

@@ -13,11 +13,11 @@ type ServiceEntry struct {
 	pipeline.StepContext
 	// clients
 	client *discovery.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
 // NewServiceEntry - constructor
-func NewServiceEntry(client *discovery.Client, broker broker.Broker) *ServiceEntry {
+func NewServiceEntry(client *discovery.Client, broker broker.Handler) *ServiceEntry {
 	return &ServiceEntry{
 		client: client,
 		broker: broker,
