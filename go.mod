@@ -13,7 +13,7 @@ require (
 	github.com/go-logr/logr v0.3.0
 	github.com/golang/protobuf v1.4.3
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
-	github.com/layer5io/meshkit v0.1.28
+	github.com/layer5io/meshkit v0.1.29
 	github.com/myntra/pipeline v0.0.0-20180618182531-2babf4864ce8
 	github.com/nats-io/nats.go v1.10.0
 	github.com/onsi/ginkgo v1.14.2
