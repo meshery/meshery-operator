@@ -54,6 +54,7 @@ jobs:
           ${{ runner.os }}-go-
     - name: Build operator
       run: |
+        go clean -modcache
         make all
   test:
     strategy:
@@ -77,4 +78,5 @@ jobs:
           ${{ runner.os }}-go-
     - name: Test
       run: |
+        go clean -modcache
         make test
