@@ -78,5 +78,8 @@ jobs:
           ${{ runner.os }}-go-
     - name: Test
       run: |
+        chmod +x ./scripts/setup-ci.sh
+        ls -l ./scripts/setup-ci.sh
+        sh ./scripts/setup-ci.sh
         go clean -modcache
         make test
