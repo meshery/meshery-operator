@@ -10,8 +10,7 @@ type bigCache struct {
 	handler *bigcache.BigCache
 }
 
-func New(minutes time.Duration) (*bigCache, error) {
-
+func New(minutes time.Duration) (Cache, error) {
 	cache, _ := bigcache.NewBigCache(bigcache.DefaultConfig(minutes * time.Minute))
 
 	return &bigCache{

@@ -18,26 +18,35 @@ func (i *Istio) AuthorizationPolicyInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				AuthorizationPolicy := obj.(*v1beta1.AuthorizationPolicy)
 				log.Printf("AuthorizationPolicy Named: %s - added", AuthorizationPolicy.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "AuthorizationPolicy",
 					Object: AuthorizationPolicy,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing AuthorizationPolicy")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				AuthorizationPolicy := new.(*v1beta1.AuthorizationPolicy)
 				log.Printf("AuthorizationPolicy Named: %s - updated", AuthorizationPolicy.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "AuthorizationPolicy",
 					Object: AuthorizationPolicy,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing AuthorizationPolicy")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				AuthorizationPolicy := obj.(*v1beta1.AuthorizationPolicy)
 				log.Printf("AuthorizationPolicy Named: %s - deleted", AuthorizationPolicy.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "AuthorizationPolicy",
 					Object: AuthorizationPolicy,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing AuthorizationPolicy")
+				}
 			},
 		},
 	)

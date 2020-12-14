@@ -18,11 +18,11 @@ func GetResource(m *mesheryv1alpha1.Broker) runtime.Object {
 func CreateResource(m *mesheryv1alpha1.Broker, scheme *runtime.Scheme) *appsv1.Deployment {
 	dep := resource(m.ObjectMeta.Name, m.ObjectMeta.Namespace, m.Spec.Size)
 	// Set Meshsync instance as the owner and controller
-	ctrl.SetControllerReference(m, dep, scheme)
+	_ = ctrl.SetControllerReference(m, dep, scheme)
 	return dep
 }
 
-func resource(name string, namespace string, replicas int32) *appsv1.Deployment {
+func resource(name, namespace string, replicas int32) *appsv1.Deployment {
 	labels := map[string]string{
 		"app": name,
 	}

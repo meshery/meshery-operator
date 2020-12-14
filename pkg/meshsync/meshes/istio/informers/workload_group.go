@@ -18,26 +18,35 @@ func (i *Istio) WorkloadGroupInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				WorkloadGroup := obj.(*v1alpha3.WorkloadGroup)
 				log.Printf("WorkloadGroup Named: %s - added", WorkloadGroup.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "WorkloadGroup",
 					Object: WorkloadGroup,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing WorkloadGroup")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				WorkloadGroup := new.(*v1alpha3.WorkloadGroup)
 				log.Printf("WorkloadGroup Named: %s - updated", WorkloadGroup.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "WorkloadGroup",
 					Object: WorkloadGroup,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing WorkloadGroup")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				WorkloadGroup := obj.(*v1alpha3.WorkloadGroup)
 				log.Printf("WorkloadGroup Named: %s - deleted", WorkloadGroup.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "WorkloadGroup",
 					Object: WorkloadGroup,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing WorkloadGroup")
+				}
 			},
 		},
 	)

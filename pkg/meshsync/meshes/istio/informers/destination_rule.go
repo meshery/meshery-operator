@@ -18,26 +18,35 @@ func (i *Istio) DestinationRuleInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				DestinationRule := obj.(*v1beta1.DestinationRule)
 				log.Printf("DestinationRule Named: %s - added", DestinationRule.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "DestinationRule",
 					Object: DestinationRule,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing DestinationRule")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				DestinationRule := new.(*v1beta1.DestinationRule)
 				log.Printf("DestinationRule Named: %s - updated", DestinationRule.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "DestinationRule",
 					Object: DestinationRule,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing DestinationRule")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				DestinationRule := obj.(*v1beta1.DestinationRule)
 				log.Printf("DestinationRule Named: %s - deleted", DestinationRule.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "DestinationRule",
 					Object: DestinationRule,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing DestinationRule")
+				}
 			},
 		},
 	)

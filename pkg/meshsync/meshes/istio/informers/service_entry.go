@@ -18,26 +18,35 @@ func (i *Istio) ServiceEntryInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				ServiceEntry := obj.(*v1beta1.ServiceEntry)
 				log.Printf("ServiceEntry Named: %s - added", ServiceEntry.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "ServiceEntry",
 					Object: ServiceEntry,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing ServiceEntry")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				ServiceEntry := new.(*v1beta1.ServiceEntry)
 				log.Printf("ServiceEntry Named: %s - updated", ServiceEntry.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "ServiceEntry",
 					Object: ServiceEntry,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing ServiceEntry")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				ServiceEntry := obj.(*v1beta1.ServiceEntry)
 				log.Printf("ServiceEntry Named: %s - deleted", ServiceEntry.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "ServiceEntry",
 					Object: ServiceEntry,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing ServiceEntry")
+				}
 			},
 		},
 	)

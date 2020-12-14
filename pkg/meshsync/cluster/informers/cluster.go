@@ -27,34 +27,41 @@ func New(client *informers.Client, broker broker.Handler) *Cluster {
 // will get the object and log that
 // and it will publish the object
 func (c *Cluster) resourceEventHandlerFuncs(resourceType string) cache.ResourceEventHandlerFuncs {
-
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			c.broker.Publish(Subject, broker.Message{
+			err := c.broker.Publish(Subject, broker.Message{
 				Type:   resourceType,
 				Object: obj,
 			})
+			if err != nil {
+				log.Println("Error publishing resource")
+			}
 			object := obj.(metav1.Object)
 			log.Printf("%s Named: %s - added", resourceType, object.GetName())
 		},
 		UpdateFunc: func(new interface{}, old interface{}) {
-			c.broker.Publish(Subject, broker.Message{
+			err := c.broker.Publish(Subject, broker.Message{
 				Type:   resourceType,
 				Object: new,
 			})
+			if err != nil {
+				log.Println("Error publishing resource")
+			}
 			object := new.(metav1.Object)
 			log.Printf("%s Named: %s - updated", resourceType, object.GetName())
 		},
 		DeleteFunc: func(obj interface{}) {
-			c.broker.Publish(Subject, broker.Message{
+			err := c.broker.Publish(Subject, broker.Message{
 				Type:   resourceType,
 				Object: obj,
 			})
+			if err != nil {
+				log.Println("Error publishing resource")
+			}
 			object := obj.(metav1.Object)
 			log.Printf("%s Named: %s - deleted", resourceType, object.GetName())
 		},
 	}
-
 }
 
 // NodeInformer - for Nodes

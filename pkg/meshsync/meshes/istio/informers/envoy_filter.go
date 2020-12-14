@@ -18,26 +18,35 @@ func (i *Istio) EnvoyFilterInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				EnvoyFilter := obj.(*v1alpha3.EnvoyFilter)
 				log.Printf("EnvoyFilter Named: %s - added", EnvoyFilter.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "EnvoyFilter",
 					Object: EnvoyFilter,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing EnvoyFilter")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				EnvoyFilter := new.(*v1alpha3.EnvoyFilter)
 				log.Printf("EnvoyFilter Named: %s - updated", EnvoyFilter.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "EnvoyFilter",
 					Object: EnvoyFilter,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing EnvoyFilter")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				EnvoyFilter := obj.(*v1alpha3.EnvoyFilter)
 				log.Printf("EnvoyFilter Named: %s - deleted", EnvoyFilter.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "EnvoyFilter",
 					Object: EnvoyFilter,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing EnvoyFilter")
+				}
 			},
 		},
 	)

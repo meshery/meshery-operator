@@ -15,8 +15,7 @@ var (
 	serviceName = "meshsync"
 )
 
-func main() {
-
+func Main() {
 	// Initialize Logger instance
 	log, err := logger.New(serviceName, logger.Options{
 		Format: logger.SyslogLogFormat,

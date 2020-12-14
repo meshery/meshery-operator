@@ -20,13 +20,12 @@ var (
 		Steps:      []pipeline.Step{},
 	}
 
-	// TODO: need some solution for this
+	// Namespaces : need some solution for this
 	Namespaces = []string{"default", "istio-system"}
 	Subject    = "istio"
 )
 
 func Initialize(client *discovery.Client, broker broker.Handler) *pipeline.Pipeline {
-
 	// Mesh Discovery Stage
 	mdstage := MeshDiscoveryStage
 	mdstage.AddStep(NewIstio(client, broker))
