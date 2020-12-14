@@ -9,12 +9,14 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+var Subject = "cluster"
+
 type Cluster struct {
 	client *informers.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
-func New(client *informers.Client, broker broker.Broker) *Cluster {
+func New(client *informers.Client, broker broker.Handler) *Cluster {
 	return &Cluster{
 		client: client,
 		broker: broker,

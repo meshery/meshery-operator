@@ -10,6 +10,7 @@ replace (
 require (
 	cloud.google.com/go v0.62.0 // indirect
 	github.com/allegro/bigcache v1.2.1
+	github.com/bombsimon/logrusr v1.0.0
 	github.com/go-logr/logr v0.3.0
 	github.com/golang/protobuf v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
@@ -18,6 +19,7 @@ require (
 	github.com/nats-io/nats.go v1.10.0
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.1
+	github.com/sirupsen/logrus v1.6.0
 	golang.org/x/tools v0.0.0-20200804011535-6c149bb5ef0d // indirect
 	google.golang.org/genproto v0.0.0-20200804131852-c06518451d9c // indirect
 	google.golang.org/grpc v1.33.2

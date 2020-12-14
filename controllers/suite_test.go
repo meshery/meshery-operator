@@ -20,15 +20,16 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bombsimon/logrusr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -50,7 +51,7 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
+	logf.SetLogger(logrusr.NewLogger(logrus.New()))
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
