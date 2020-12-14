@@ -41,7 +41,7 @@ func (s *Service) Initialize(config *rest.Config) error {
 	dclient, err := discovery.NewClient(config)
 	if err != nil {
 		s.Logger.Error(ErrNewDiscovery(err))
-		log.Printf("Couldnot create client: %s", err)
+		log.Printf("Error in creating discovery client: %s", err)
 		return ErrNewDiscovery(err)
 	}
 
@@ -49,7 +49,7 @@ func (s *Service) Initialize(config *rest.Config) error {
 	iclient, err := informers.NewClient(config)
 	if err != nil {
 		s.Logger.Error(ErrNewInformer(err))
-		log.Printf("Couldnot create informer client: %s", err)
+		log.Printf("Error in creating informer client: %s", err)
 		return err
 	}
 

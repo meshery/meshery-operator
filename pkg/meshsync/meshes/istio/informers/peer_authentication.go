@@ -18,26 +18,35 @@ func (i *Istio) PeerAuthenticationInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				PeerAuthentication := obj.(*v1beta1.PeerAuthentication)
 				log.Printf("PeerAuthentication Named: %s - added", PeerAuthentication.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "PeerAuthentication",
 					Object: PeerAuthentication,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing PeerAuthentication")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				PeerAuthentication := new.(*v1beta1.PeerAuthentication)
 				log.Printf("PeerAuthentication Named: %s - updated", PeerAuthentication.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "PeerAuthentication",
 					Object: PeerAuthentication,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing PeerAuthentication")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				PeerAuthentication := obj.(*v1beta1.PeerAuthentication)
 				log.Printf("PeerAuthentication Named: %s - deleted", PeerAuthentication.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "PeerAuthentication",
 					Object: PeerAuthentication,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing PeerAuthentication")
+				}
 			},
 		},
 	)

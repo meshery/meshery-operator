@@ -18,26 +18,35 @@ func (i *Istio) SidecarInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				Sidecar := obj.(*v1beta1.Sidecar)
 				log.Printf("Sidecar Named: %s - added", Sidecar.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "Sidecar",
 					Object: Sidecar,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing Sidecar")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				Sidecar := new.(*v1beta1.Sidecar)
 				log.Printf("Sidecar Named: %s - updated", Sidecar.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "Sidecar",
 					Object: Sidecar,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing Sidecar")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				Sidecar := obj.(*v1beta1.Sidecar)
 				log.Printf("Sidecar Named: %s - deleted", Sidecar.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "Sidecar",
 					Object: Sidecar,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing Sidecar")
+				}
 			},
 		},
 	)

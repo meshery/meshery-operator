@@ -32,7 +32,7 @@ func (n *Nats) Publish(subject string, message interface{}) error {
 // reply - this string will be used by the replier to publish replies
 // message - message send by the requestor to replier
 // TODO Ques: After this the requestor have to subscribe to the reply subject
-func (n *Nats) PublishWithCallback(request string, reply string, message interface{}) error {
+func (n *Nats) PublishWithCallback(request, reply string, message interface{}) error {
 	err := n.ec.PublishRequest(request, reply, message)
 	return ErrPublishRequest(err)
 }
@@ -40,7 +40,7 @@ func (n *Nats) PublishWithCallback(request string, reply string, message interfa
 // Subscribe - for subscribing messages
 // TODO Ques: Do we want to unsubscribe
 // TODO will the method-user just subsribe, how will it handle the received messages?
-func (n *Nats) Subscribe(subject string, queue string) error {
+func (n *Nats) Subscribe(subject, queue string) error {
 	// no handler
 	// TODO there should be a callback that handler received messges
 	_, err := n.ec.QueueSubscribe(subject, queue, func() {})
@@ -50,7 +50,7 @@ func (n *Nats) Subscribe(subject string, queue string) error {
 // SubscribeWithHandler - for handling request-reply protocol
 // request is the subject to which the this thing is listening
 // when there will be a request
-func (n *Nats) SubscribeWithHandler(subject string, queue string) error {
+func (n *Nats) SubscribeWithHandler(subject, queue string) error {
 	// no handler
 	_, err := n.ec.QueueSubscribe(subject, queue, func() {})
 	return ErrQueueSubscribe(err)

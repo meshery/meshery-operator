@@ -18,26 +18,35 @@ func (i *Istio) RequestAuthenticationInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				RequestAuthentication := obj.(*v1beta1.RequestAuthentication)
 				log.Printf("RequestAuthentication Named: %s - added", RequestAuthentication.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "RequestAuthentication",
 					Object: RequestAuthentication,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing RequestAuthentication")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				RequestAuthentication := new.(*v1beta1.RequestAuthentication)
 				log.Printf("RequestAuthentication Named: %s - updated", RequestAuthentication.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "RequestAuthentication",
 					Object: RequestAuthentication,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing RequestAuthentication")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				RequestAuthentication := obj.(*v1beta1.RequestAuthentication)
 				log.Printf("RequestAuthentication Named: %s - deleted", RequestAuthentication.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "RequestAuthentication",
 					Object: RequestAuthentication,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing RequestAuthentication")
+				}
 			},
 		},
 	)

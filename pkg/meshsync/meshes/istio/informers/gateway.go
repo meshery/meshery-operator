@@ -18,26 +18,35 @@ func (i *Istio) GatewayInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				Gateway := obj.(*v1beta1.Gateway)
 				log.Printf("Gateway Named: %s - added", Gateway.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "Gateway",
 					Object: Gateway,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing Gateway")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				Gateway := new.(*v1beta1.Gateway)
 				log.Printf("Gateway Named: %s - updated", Gateway.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "Gateway",
 					Object: Gateway,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing Gateway")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				Gateway := obj.(*v1beta1.Gateway)
 				log.Printf("Gateway Named: %s - deleted", Gateway.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "Gateway",
 					Object: Gateway,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing Gateway")
+				}
 			},
 		},
 	)

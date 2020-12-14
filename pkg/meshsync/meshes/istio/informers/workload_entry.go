@@ -18,26 +18,35 @@ func (i *Istio) WorkloadEntryInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				WorkloadEntry := obj.(*v1beta1.WorkloadEntry)
 				log.Printf("WorkloadEntry Named: %s - added", WorkloadEntry.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "WorkloadEntry",
 					Object: WorkloadEntry,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing WorkloadEntry")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				WorkloadEntry := new.(*v1beta1.WorkloadEntry)
 				log.Printf("WorkloadEntry Named: %s - updated", WorkloadEntry.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "WorkloadEntry",
 					Object: WorkloadEntry,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing WorkloadEntry")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				WorkloadEntry := obj.(*v1beta1.WorkloadEntry)
 				log.Printf("WorkloadEntry Named: %s - deleted", WorkloadEntry.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "WorkloadEntry",
 					Object: WorkloadEntry,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing WorkloadEntry")
+				}
 			},
 		},
 	)

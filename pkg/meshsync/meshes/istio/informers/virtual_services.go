@@ -18,26 +18,35 @@ func (i *Istio) VirtualServiceInformer() cache.SharedIndexInformer {
 			AddFunc: func(obj interface{}) {
 				VirtualService := obj.(*v1beta1.VirtualService)
 				log.Printf("VirtualService Named: %s - added", VirtualService.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "VirtualService",
 					Object: VirtualService,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing VirtualService")
+				}
 			},
 			UpdateFunc: func(new interface{}, old interface{}) {
 				VirtualService := new.(*v1beta1.VirtualService)
 				log.Printf("VirtualService Named: %s - updated", VirtualService.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "VirtualService",
 					Object: VirtualService,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing VirtualService")
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				VirtualService := obj.(*v1beta1.VirtualService)
 				log.Printf("VirtualService Named: %s - deleted", VirtualService.Name)
-				i.broker.Publish(Subject, broker.Message{
+				err := i.broker.Publish(Subject, broker.Message{
 					Type:   "VirtualService",
 					Object: VirtualService,
 				})
+				if err != nil {
+					log.Println("NATS: Error publishing VirtualService")
+				}
 			},
 		},
 	)

@@ -28,10 +28,13 @@ const (
 	NATSKey = "nats"
 )
 
-func New(kind string, url string) (Handler, error) {
+func New(kind, url string) (Handler, error) {
 	var broker Handler
-	switch kind {
-	case NATSKey:
+	// switch kind {
+	// case NATSKey:
+	// 	return nats.New(url)
+	// }
+	if kind == NATSKey {
 		return nats.New(url)
 	}
 	return broker, nil
