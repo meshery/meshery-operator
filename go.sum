@@ -1186,8 +1186,10 @@ honnef.co/go/tools v0.0.1-2020.1.4 h1:UoveltGrhghAA7ePc+e+QYDHXrBps2PqFZiHkGR/xK
 honnef.co/go/tools v0.0.1-2020.1.4/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9vFzvIQ3k=
 istio.io/api v0.0.0-20201112235759-fa4ee46c5dc2 h1:tqbH+pnDd5U+j767XNtijNHvxu1Lc6sWOQ884PwRFE8=
 istio.io/api v0.0.0-20201112235759-fa4ee46c5dc2/go.mod h1:88HN3o1fSD1jo+Z1WTLlJfMm9biopur6Ct9BFKjiB64=
+istio.io/api v0.0.0-20201123152548-197f11e4ea09/go.mod h1:88HN3o1fSD1jo+Z1WTLlJfMm9biopur6Ct9BFKjiB64=
 istio.io/client-go v1.8.0 h1:D2V3Qh86sBg3EErtE24n6QtcDl5N40q/gn5Ozg/73wo=
 istio.io/client-go v1.8.0/go.mod h1:0nF7VTYOLjNpgr3Ro66LtFRYbdUzzmg4NC97PdTpNRw=
+istio.io/client-go v1.8.1/go.mod h1:Qymv71lwIqjDTkaE2NqBYLL+Bl5KsCfzEDhntXypHYY=
 istio.io/gogo-genproto v0.0.0-20190930162913-45029607206a h1:w7zILua2dnYo9CxImhpNW4NE/8ZxEoc/wfBfHrhUhrE=
 istio.io/gogo-genproto v0.0.0-20190930162913-45029607206a/go.mod h1:OzpAts7jljZceG4Vqi5/zXy/pOg1b209T3jb7Nv5wIs=
 k8s.io/api v0.17.0/go.mod h1:npsyOePkeP0CPwyGfXDHxvypiYMJxBWAMpQxCaJ4ZxI=
@@ -1248,6 +1250,8 @@ k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a/go.mod h1:1TqjTSzOxsLGIKf
 k8s.io/kube-openapi v0.0.0-20200121204235-bf4fb3bd569c/go.mod h1:GRQhZsXIAJ1xR0C9bd8UpWHZ5plfAS9fzPjJuQ6JL3E=
 k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6 h1:Oh3Mzx5pJ+yIumsAD0MOECPVeXsVot0UkiaCGVyfGQY=
 k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6/go.mod h1:GRQhZsXIAJ1xR0C9bd8UpWHZ5plfAS9fzPjJuQ6JL3E=
+k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6 h1:+WnxoVtG8TMiudHBSEtrVL1egv36TkkJm+bA8AxicmQ=
+k8s.io/kube-openapi v0.0.0-20200805222855-6aeccd4b50c6/go.mod h1:UuqjUnNftUyPE5H64/qeyjQoUZhGpeFDVdxjTeEVN2o=
 k8s.io/kubectl v0.18.8/go.mod h1:PlEgIAjOMua4hDFTEkVf+W5M0asHUKfE4y7VDZkpLHM=
 k8s.io/kubernetes v1.13.0/go.mod h1:ocZa8+6APFNC2tX1DZASIbocyYT5jHzqFVsY5aoB7Jk=
 k8s.io/metrics v0.18.8/go.mod h1:j7JzZdiyhLP2BsJm/Fzjs+j5Lb1Y7TySjhPWqBPwRXA=
