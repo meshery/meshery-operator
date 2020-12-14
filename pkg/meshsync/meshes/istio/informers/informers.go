@@ -9,7 +9,7 @@ import (
 var Subject = "istio"
 
 // Initialize will initiate all the informers
-func Initialize(client *inf.Client, broker broker.Broker) {
+func Initialize(client *inf.Client, broker broker.Handler) error {
 	c := New(client, broker)
 
 	// initiating informers
