@@ -8,7 +8,7 @@ import (
 	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	inf "github.com/layer5io/meshery-operator/pkg/informers"
-	// informers "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/informers"
+	informers "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/informers"
 	pipeline "github.com/layer5io/meshery-operator/pkg/meshsync/meshes/istio/pipeline"
 )
 
@@ -35,10 +35,10 @@ func Setup(dclient *discovery.Client, broker broker.Handler, iclient *inf.Client
 		return ErrInitPipeline(result.Error)
 	}
 
-	// err := informers.Initialize(iclient, broker)
-	// if err != nil {
-	// 	return ErrInitInformer(err)
-	// }
+	err := informers.Initialize(iclient, broker)
+	if err != nil {
+		return ErrInitInformer(err)
+	}
 
 	return nil
 }

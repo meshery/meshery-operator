@@ -1,11 +1,11 @@
-package main
+package meshsync
 
 import (
 	"fmt"
 	"os"
 	"time"
 
-	// "github.com/layer5io/meshery-operator/pkg/broker"
+	"github.com/layer5io/meshery-operator/pkg/broker"
 	"github.com/layer5io/meshery-operator/pkg/meshsync/service"
 	"github.com/layer5io/meshkit/logger"
 	"github.com/layer5io/meshkit/utils/kubernetes"
@@ -33,12 +33,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// // Initialize Broker instance
-	// br, err := broker.New(broker.NATSKey, "<server-url>")
-	// if err != nil {
-	// 	log.Error(err)
-	// 	os.Exit(1)
-	// }
+	// Initialize Broker instance
+	br, err := broker.New(broker.NATSKey, "<server-url>")
+	if err != nil {
+		log.Error(err)
+		os.Exit(1)
+	}
 
 	// Initialize service by running pre-defined tasks
 	sHandler := &service.Service{
@@ -47,7 +47,7 @@ func main() {
 		Version:   "v0.0.1-alpha3",
 		StartedAt: time.Now(),
 		Logger:    log,
-		Broker:    nil,
+		Broker:    br,
 	}
 
 	err = sHandler.Initialize(kubeconfig)

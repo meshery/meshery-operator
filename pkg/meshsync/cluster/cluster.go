@@ -4,7 +4,7 @@ import (
 	broker "github.com/layer5io/meshery-operator/pkg/broker"
 	discovery "github.com/layer5io/meshery-operator/pkg/discovery"
 	inf "github.com/layer5io/meshery-operator/pkg/informers"
-	// informers "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/informers"
+	informers "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/informers"
 	pipeline "github.com/layer5io/meshery-operator/pkg/meshsync/cluster/pipeline"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,10 +34,10 @@ func Setup(dclient *discovery.Client, broker broker.Handler, iclient *inf.Client
 		return ErrInitPipeline(result.Error)
 	}
 
-	// err := informers.Initialize(iclient, broker)
-	// if err != nil {
-	// 	return ErrInitInformer(err)
-	// }
+	err := informers.Initialize(iclient, broker)
+	if err != nil {
+		return ErrInitInformer(err)
+	}
 
 	return nil
 }

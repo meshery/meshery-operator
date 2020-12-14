@@ -7,10 +7,10 @@ import (
 
 type Istio struct {
 	client *informers.Client
-	broker broker.Broker
+	broker broker.Handler
 }
 
-func New(client *informers.Client, broker broker.Broker) *Istio {
+func New(client *informers.Client, broker broker.Handler) *Istio {
 	return &Istio{
 		client: client,
 		broker: broker,
