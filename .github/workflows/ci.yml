@@ -83,3 +83,15 @@ jobs:
         sh ./scripts/setup-ci.sh
         go clean -modcache
         make test
+  docker-test:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@master
+        with:
+          fetch-depth: 1
+      - name: Docker edge build & tag
+        if: startsWith(github.ref, 'refs/tags/') != true && success()
+        run: |
+          make docker-build
