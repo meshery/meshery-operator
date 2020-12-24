@@ -22,8 +22,7 @@ import (
 
 // MeshSyncSpec defines the desired state of MeshSync
 type MeshSyncSpec struct {
-	Cluster string `json:"cluster,omitempty"`
-	Size    int32  `json:"size,omitempty"`
+	Size int32 `json:"size,omitempty"`
 }
 
 // MeshSyncStatus defines the observed state of MeshSync

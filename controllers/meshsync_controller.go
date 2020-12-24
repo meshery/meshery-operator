@@ -43,40 +43,60 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log.WithValues("meshsync", req.NamespacedName)
 	log.Info("Reconcillation")
+	baseResource := &mesheryv1alpha1.MeshSync{}
 
 	// Check if resource exists
-	baseResource := &mesheryv1alpha1.MeshSync{}
 	err := r.Get(ctx, req.NamespacedName, baseResource)
 	if err != nil {
 		if kubeerror.IsNotFound(err) {
-			return ctrl.Result{}, nil
+			baseResource.Name = req.Name
+			baseResource.Namespace = req.Namespace
+			return r.reconcileMeshsync(ctx, false, baseResource, req)
 		}
-		log.Error(err, "Meshsync resource not found")
 		return ctrl.Result{}, err
 	}
 
-	// Check if controllers running
-	// Meshsync
-	meshsync := meshsyncpackage.GetResource(baseResource)
-	err = r.Get(ctx, types.NamespacedName{Name: baseResource.Name, Namespace: baseResource.Namespace}, meshsync)
-	if err != nil && kubeerror.IsNotFound(err) {
-		dep := meshsyncpackage.CreateResource(baseResource, r.Scheme)
-		log.Error(err, "Failed to get Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		err = r.Create(ctx, dep)
-		if err != nil {
-			log.Error(err, "Failed to create new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{Requeue: true}, nil
-	} else if err != nil {
-		return ctrl.Result{}, ErrGetMeshsync(err)
+	// Check if Meshsync controller running
+	result, err := r.reconcileMeshsync(ctx, true, baseResource, req)
+	if err != nil {
+		return ctrl.Result{}, ErrReconcileMeshsync(err)
 	}
 
-	return ctrl.Result{}, nil
+	return result, nil
 }
 
 func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.MeshSync{}).
 		Complete(r)
+}
+
+func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
+
+	object := meshsyncpackage.GetObjects(baseResource)[meshsyncpackage.ServerObject]
+	err := r.Get(ctx,
+		types.NamespacedName{
+			Name:      baseResource.Name,
+			Namespace: baseResource.Namespace,
+		},
+		object,
+	)
+	if err != nil && kubeerror.IsNotFound(err) && enable {
+		er := r.Create(ctx, object)
+		if er != nil {
+			return ctrl.Result{}, ErrCreateMeshsync(er)
+		}
+		_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
+		return ctrl.Result{Requeue: true}, nil
+	} else if err != nil && enable {
+		return ctrl.Result{}, ErrGetMeshsync(err)
+	} else if err == nil && !kubeerror.IsNotFound(err) && !enable {
+		er := r.Delete(ctx, object)
+		if er != nil {
+			return ctrl.Result{}, ErrDeleteMeshsync(er)
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	return ctrl.Result{}, nil
 }

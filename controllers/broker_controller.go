@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	natspackage "github.com/layer5io/meshery-operator/pkg/broker/nats"
+	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/types"
 )
@@ -42,42 +42,62 @@ type BrokerReconciler struct {
 
 func (r *BrokerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("nats", req.NamespacedName)
+	log := r.Log.WithValues("broker", req.NamespacedName)
 	log.Info("Reconcillation")
+	baseResource := &mesheryv1alpha1.Broker{}
 
 	// Check if resource exists
-	baseResource := &mesheryv1alpha1.Broker{}
 	err := r.Get(ctx, req.NamespacedName, baseResource)
 	if err != nil {
 		if kubeerror.IsNotFound(err) {
-			return ctrl.Result{}, nil
+			baseResource.Name = req.Name
+			baseResource.Namespace = req.Namespace
+			return r.reconcileBroker(ctx, false, baseResource, req)
 		}
-		log.Error(err, "Meshsync resource not found")
 		return ctrl.Result{}, err
 	}
 
-	// Check if controllers running
-	// Nats
-	nats := natspackage.GetResource(baseResource)
-	err = r.Get(ctx, types.NamespacedName{Name: baseResource.Name, Namespace: baseResource.Namespace}, nats)
-	if err != nil && kubeerror.IsNotFound(err) {
-		dep := natspackage.CreateResource(baseResource, r.Scheme)
-		log.Error(err, "Failed to get Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		err = r.Create(ctx, dep)
-		if err != nil {
-			log.Error(err, "Failed to create new Deployment", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{Requeue: true}, nil
-	} else if err != nil {
-		return ctrl.Result{}, ErrGetMeshsync(err)
+	// Check if Broker controller running
+	result, err := r.reconcileBroker(ctx, true, baseResource, req)
+	if err != nil {
+		return ctrl.Result{}, ErrReconcileBroker(err)
 	}
 
-	return ctrl.Result{}, nil
+	return result, nil
 }
 
 func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.Broker{}).
 		Complete(r)
+}
+
+func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.Broker, req ctrl.Request) (ctrl.Result, error) {
+
+	object := brokerpackage.GetObjects(baseResource)[brokerpackage.ServerObject]
+	err := r.Get(ctx,
+		types.NamespacedName{
+			Name:      baseResource.Name,
+			Namespace: baseResource.Namespace,
+		},
+		object,
+	)
+	if err != nil && kubeerror.IsNotFound(err) && enable {
+		er := r.Create(ctx, object)
+		if er != nil {
+			return ctrl.Result{}, ErrCreateMeshsync(er)
+		}
+		_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
+		return ctrl.Result{Requeue: true}, nil
+	} else if err != nil && enable {
+		return ctrl.Result{}, ErrGetMeshsync(err)
+	} else if err == nil && !kubeerror.IsNotFound(err) && !enable {
+		er := r.Delete(ctx, object)
+		if er != nil {
+			return ctrl.Result{}, ErrDeleteMeshsync(er)
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	return ctrl.Result{}, nil
 }

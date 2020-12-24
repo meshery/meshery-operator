@@ -36,8 +36,6 @@ spec:
         spec:
           description: MeshSyncSpec defines the desired state of MeshSync
           properties:
-            cluster:
-              type: string
             size:
               format: int32
               type: integer

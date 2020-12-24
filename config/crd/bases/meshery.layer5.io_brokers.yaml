@@ -36,7 +36,9 @@ spec:
         spec:
           description: BrokerSpec defines the desired state of Broker
           properties:
-            cluster:
+            name:
+              type: string
+            namespace:
               type: string
             size:
               format: int32
