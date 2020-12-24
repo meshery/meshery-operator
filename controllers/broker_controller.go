@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -33,8 +34,9 @@ import (
 // BrokerReconciler reconciles a Broker object
 type BrokerReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Clientset *kubernetes.Clientset
+	Log       logr.Logger
+	Scheme    *runtime.Scheme
 }
 
 // +kubebuilder:rbac:groups=meshery.layer5.io,resources=brokers,verbs=get;list;watch;create;update;patch;delete
@@ -57,10 +59,22 @@ func (r *BrokerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
-	// Check if Broker controller running
+	// Check if Broker controller deployed
 	result, err := r.reconcileBroker(ctx, true, baseResource, req)
 	if err != nil {
 		return ctrl.Result{}, ErrReconcileBroker(err)
+	}
+
+	// Check if Broker controller started
+	err = brokerpackage.CheckHealth(ctx, baseResource, r.Clientset)
+	if err != nil {
+		return ctrl.Result{Requeue: true}, ErrCheckHealth(err)
+	}
+
+	// Get broker endpoint
+	err = brokerpackage.GetEndpoint(ctx, baseResource, r.Clientset)
+	if err != nil {
+		return ctrl.Result{}, ErrGetEndpoint(err)
 	}
 
 	return result, nil

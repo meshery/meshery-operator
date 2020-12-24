@@ -30,6 +30,7 @@ type BrokerSpec struct {
 
 // BrokerStatus defines the observed state of Broker
 type BrokerStatus struct {
+	Endpoint   string      `json:"endpoint,omitempty"`
 	Conditions []Condition `json:"conditions,omitempty"`
 }
 

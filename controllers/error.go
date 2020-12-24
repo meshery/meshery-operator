@@ -14,6 +14,8 @@ const (
 	ErrReconcileCRCode       = "meshsync_test"
 	ErrDeleteMeshsyncCode    = "meshsync_test"
 	ErrDeleteBrokerCode      = "meshsync_test"
+	ErrCheckHealthCode       = "meshsync_test"
+	ErrGetEndpointCode       = "meshsync_test"
 )
 
 func ErrGetMeshsync(err error) error {
@@ -50,4 +52,12 @@ func ErrReconcileBroker(err error) error {
 
 func ErrReconcileCR(err error) error {
 	return errors.NewDefault(ErrReconcileCRCode, "Error during custom resource reconcillation", err.Error())
+}
+
+func ErrCheckHealth(err error) error {
+	return errors.NewDefault(ErrCheckHealthCode, "Error during health check", err.Error())
+}
+
+func ErrGetEndpoint(err error) error {
+	return errors.NewDefault(ErrGetEndpointCode, "Error getting endpoint", err.Error())
 }

@@ -1,9 +1,13 @@
 package broker
 
 import (
+	"context"
+
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -48,4 +52,35 @@ func getServerConfig() Object {
 func getAccountConfig() Object {
 	obj := AccountsConfigMap
 	return obj
+}
+
+func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset) error {
+	obj, err := client.AppsV1().StatefulSets(m.ObjectMeta.Namespace).Get(ctx, m.ObjectMeta.Name, metav1.GetOptions{})
+	if err != nil {
+		return ErrGettingResource(err)
+	}
+
+	if obj.Status.Replicas != obj.Status.ReadyReplicas {
+		return ErrReplicasNotReady(obj.Status.Conditions[0].Reason)
+	}
+
+	if obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown {
+		return ErrConditionFalse(obj.Status.Conditions[0].Reason)
+	}
+
+	return nil
+}
+
+func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset) error {
+	obj, err := client.CoreV1().Services(m.ObjectMeta.Namespace).Get(ctx, m.ObjectMeta.Name, metav1.GetOptions{})
+	if err != nil {
+		return ErrGettingResource(err)
+	}
+
+	// if obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown {
+	// 	return ErrConditionFalse(obj.Status.Conditions[0].Reason)
+	// }
+
+	m.Status.Endpoint = obj.Status.LoadBalancer.Ingress[0].IP
+	return nil
 }

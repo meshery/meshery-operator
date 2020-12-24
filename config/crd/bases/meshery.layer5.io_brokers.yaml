@@ -36,10 +36,6 @@ spec:
         spec:
           description: BrokerSpec defines the desired state of Broker
           properties:
-            name:
-              type: string
-            namespace:
-              type: string
             size:
               format: int32
               type: integer
@@ -50,14 +46,14 @@ spec:
             conditions:
               items:
                 properties:
-                  lastProbeTime:
-                    format: date-time
-                    type: string
                   lastTransitionTime:
                     format: date-time
                     type: string
                   message:
                     type: string
+                  observedGeneration:
+                    format: int64
+                    type: integer
                   reason:
                     type: string
                   status:
@@ -65,10 +61,15 @@ spec:
                   type:
                     type: string
                 required:
+                - lastTransitionTime
+                - message
+                - reason
                 - status
                 - type
                 type: object
               type: array
+            endpoint:
+              type: string
           type: object
       type: object
   version: v1alpha1
