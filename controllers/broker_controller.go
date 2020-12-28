@@ -44,7 +44,7 @@ type BrokerReconciler struct {
 
 func (r *BrokerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("broker", req.NamespacedName)
+	log := r.Log.WithValues("namespace", req.NamespacedName)
 	log.Info("Reconcillation")
 	baseResource := &mesheryv1alpha1.Broker{}
 

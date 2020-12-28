@@ -8,15 +8,14 @@ replace (
 )
 
 require (
-	github.com/bombsimon/logrusr v1.0.0
+	cloud.google.com/go v0.62.0 // indirect
 	github.com/go-logr/logr v0.3.0
+	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/google/uuid v1.1.2 // indirect
 	github.com/layer5io/meshkit v0.1.31
-	github.com/layer5io/meshsync v0.0.0-20201217151817-9cddb43166ca
-	github.com/nats-io/nats.go v1.10.0
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.4
-	github.com/sirupsen/logrus v1.6.0
-	istio.io/client-go v1.8.1
+	golang.org/x/tools v0.0.0-20200804011535-6c149bb5ef0d // indirect
 	k8s.io/api v0.18.12
 	k8s.io/apimachinery v0.18.12
 	k8s.io/client-go v0.18.12
