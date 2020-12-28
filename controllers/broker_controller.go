@@ -87,7 +87,6 @@ func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.Broker, req ctrl.Request) (ctrl.Result, error) {
-
 	object := brokerpackage.GetObjects(baseResource)[brokerpackage.ServerObject]
 	err := r.Get(ctx,
 		types.NamespacedName{

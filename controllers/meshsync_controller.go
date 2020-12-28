@@ -98,7 +98,6 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 }
 
 func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
-
 	object := meshsyncpackage.GetObjects(baseResource)[meshsyncpackage.ServerObject]
 	err := r.Get(ctx,
 		types.NamespacedName{

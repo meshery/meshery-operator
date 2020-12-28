@@ -21,7 +21,7 @@ func GetObjects(m *mesheryv1alpha1.MeshSync) map[string]Object {
 	}
 }
 
-func getServerObject(namespace string, name string, replicas int32, url string) Object {
+func getServerObject(namespace, name string, replicas int32, url string) Object {
 	obj := Deployment
 	obj.ObjectMeta.Namespace = namespace
 	obj.ObjectMeta.Name = name

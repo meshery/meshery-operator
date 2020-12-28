@@ -73,27 +73,27 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
-				corev1.ServicePort{
+				{
 					Name: "client",
 					Port: val4222,
 				},
-				corev1.ServicePort{
+				{
 					Name: "cluster",
 					Port: val6222,
 				},
-				corev1.ServicePort{
+				{
 					Name: "monitor",
 					Port: val8222,
 				},
-				corev1.ServicePort{
+				{
 					Name: "metrics",
 					Port: val7777,
 				},
-				corev1.ServicePort{
+				{
 					Name: "leafnodes",
 					Port: val7422,
 				},
-				corev1.ServicePort{
+				{
 					Name: "gateways",
 					Port: val7522,
 				},
@@ -126,7 +126,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 		},
 		Spec: corev1.PodSpec{
 			Volumes: []corev1.Volume{
-				corev1.Volume{
+				{
 					Name: "config-volume",
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -136,13 +136,13 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 						},
 					},
 				},
-				corev1.Volume{
+				{
 					Name: "pid",
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
 				},
-				corev1.Volume{
+				{
 					Name: "resolver-volume",
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -156,37 +156,37 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 			ShareProcessNamespace:         &valtrue,
 			TerminationGracePeriodSeconds: &val60,
 			Containers: []corev1.Container{
-				corev1.Container{
+				{
 					Name:            "nats",
 					Image:           "nats:2.1.9-alpine3.12",
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Ports: []corev1.ContainerPort{
-						corev1.ContainerPort{
+						{
 							Name:          "client",
 							HostPort:      val4222,
 							ContainerPort: val4222,
 						},
-						corev1.ContainerPort{
+						{
 							Name:          "cluster",
 							HostPort:      val6222,
 							ContainerPort: val6222,
 						},
-						corev1.ContainerPort{
+						{
 							Name:          "leafnodes",
 							HostPort:      val7422,
 							ContainerPort: val7422,
 						},
-						corev1.ContainerPort{
+						{
 							Name:          "gateways",
 							HostPort:      val7522,
 							ContainerPort: val7522,
 						},
-						corev1.ContainerPort{
+						{
 							Name:          "monitor",
 							HostPort:      val8222,
 							ContainerPort: val8222,
 						},
-						corev1.ContainerPort{
+						{
 							Name:          "metrics",
 							HostPort:      val7777,
 							ContainerPort: val7777,
@@ -196,7 +196,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 						"nats-server", "--config", "/etc/nats-config/nats.conf",
 					},
 					Env: []corev1.EnvVar{
-						corev1.EnvVar{
+						{
 							Name: "POD_NAME",
 							ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{
@@ -204,7 +204,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 								},
 							},
 						},
-						corev1.EnvVar{
+						{
 							Name: "POD_NAMESPACE",
 							ValueFrom: &corev1.EnvVarSource{
 								FieldRef: &corev1.ObjectFieldSelector{
@@ -212,21 +212,21 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 								},
 							},
 						},
-						corev1.EnvVar{
+						{
 							Name:  "CLUSTER_ADVERTISE",
 							Value: "$(POD_NAME).meshery-nats.$(POD_NAMESPACE).svc",
 						},
 					},
 					VolumeMounts: []corev1.VolumeMount{
-						corev1.VolumeMount{
+						{
 							Name:      "config-volume",
 							MountPath: "/etc/nats-config",
 						},
-						corev1.VolumeMount{
+						{
 							Name:      "pid",
 							MountPath: "/var/run/nats",
 						},
-						corev1.VolumeMount{
+						{
 							Name:      "resolver-volume",
 							MountPath: "/etc/nats-config/accounts",
 						},
@@ -265,7 +265,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 						},
 					},
 				},
-				corev1.Container{
+				{
 					Name:            "reloader",
 					Image:           "connecteverything/nats-server-config-reloader:0.6.0",
 					ImagePullPolicy: corev1.PullIfNotPresent,
@@ -273,17 +273,17 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 						"nats-server-config-reloader", "-pid", "/var/run/nats/nats.pid", "-config", "/etc/nats-config/nats.conf",
 					},
 					VolumeMounts: []corev1.VolumeMount{
-						corev1.VolumeMount{
+						{
 							Name:      "config-volume",
 							MountPath: "/etc/nats-config",
 						},
-						corev1.VolumeMount{
+						{
 							Name:      "pid",
 							MountPath: "/var/run/nats",
 						},
 					},
 				},
-				corev1.Container{
+				{
 					Name:            "metrics",
 					Image:           "synadia/prometheus-nats-exporter:0.5.0",
 					ImagePullPolicy: corev1.PullIfNotPresent,
@@ -291,7 +291,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 						"-connz", "-routez", "-subz", "-varz", "-prefix=nats", "-use_internal_server_id", "http://localhost:8222/",
 					},
 					Ports: []corev1.ContainerPort{
-						corev1.ContainerPort{
+						{
 							Name:          "metrics",
 							HostPort:      val7777,
 							ContainerPort: val7777,

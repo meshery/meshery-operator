@@ -45,12 +45,12 @@ var (
 			ShareProcessNamespace:         &valtrue,
 			TerminationGracePeriodSeconds: &val60,
 			Containers: []corev1.Container{
-				corev1.Container{
+				{
 					Name:            "meshsync",
 					Image:           "layer5io/meshery-meshsync:stable-latest",
 					ImagePullPolicy: corev1.PullAlways,
 					Ports: []corev1.ContainerPort{
-						corev1.ContainerPort{
+						{
 							Name:          "client",
 							HostPort:      val11000,
 							ContainerPort: val11000,
@@ -60,7 +60,7 @@ var (
 						"./meshery-meshsync", "--broker-url", "$(BROKER_URL)",
 					},
 					Env: []corev1.EnvVar{
-						corev1.EnvVar{
+						{
 							Name:  "BROKER_URL",
 							Value: "http://localhost:4222",
 						},

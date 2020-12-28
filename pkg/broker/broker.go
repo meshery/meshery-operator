@@ -32,7 +32,7 @@ func GetObjects(m *mesheryv1alpha1.Broker) map[string]Object {
 	}
 }
 
-func getServerObject(namespace string, name string, replicas int32) Object {
+func getServerObject(namespace, name string, replicas int32) Object {
 	obj := StatefulSet
 	obj.ObjectMeta.Namespace = namespace
 	obj.ObjectMeta.Name = name
