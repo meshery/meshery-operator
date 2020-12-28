@@ -1,23 +1,29 @@
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	Ready    ConditionType = "Ready"
-	Running  ConditionType = "Running"
-	NotReady ConditionType = "NotReady"
+	Healthy    ConditionType = "healthy"
+	NotHealthy ConditionType = "not healthy"
+	Unknown    ConditionType = "unknown"
+
+	ConditionTrue    ConditionStatus = "True"
+	ConditionFalse   ConditionStatus = "False"
+	ConditionUnknown ConditionStatus = "Unknown"
 )
 
 type ConditionType string
 
+type ConditionStatus string
+
 type Condition struct {
-	Type               ConditionType          `json:"type"`
-	Status             corev1.ConditionStatus `json:"status"`
-	LastProbeTime      metav1.Time            `json:"lastProbeTime,omitempty"`
-	LastTransitionTime metav1.Time            `json:"lastTransitionTime,omitempty"`
-	Reason             string                 `json:"reason,omitempty"`
-	Message            string                 `json:"message,omitempty"`
+	Type               ConditionType   `json:"type"`
+	Status             ConditionStatus `json:"status"`
+	ObservedGeneration int64           `json:"observedGeneration,omitempty"`
+	LastProbeTime      metav1.Time     `json:"lastProbeTime,omitempty"`
+	LastTransitionTime metav1.Time     `json:"lastTransitionTime"`
+	Reason             string          `json:"reason"`
+	Message            string          `json:"message"`
 }

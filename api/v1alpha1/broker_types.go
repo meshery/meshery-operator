@@ -25,12 +25,12 @@ import (
 
 // BrokerSpec defines the desired state of Broker
 type BrokerSpec struct {
-	Cluster string `json:"cluster,omitempty"`
-	Size    int32  `json:"size,omitempty"`
+	Size int32 `json:"size,omitempty"`
 }
 
 // BrokerStatus defines the observed state of Broker
 type BrokerStatus struct {
+	Endpoint   string      `json:"endpoint,omitempty"`
 	Conditions []Condition `json:"conditions,omitempty"`
 }
 

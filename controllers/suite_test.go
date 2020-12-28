@@ -20,10 +20,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bombsimon/logrusr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,6 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	"github.com/layer5io/meshkit/logger"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -51,14 +50,20 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	logf.SetLogger(logrusr.NewLogger(logrus.New()))
+	var err error
+	// Initialize Logger instance
+	log, err := logger.New("meshery-operator-test", logger.Options{
+		Format: logger.SyslogLogFormat,
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	logf.SetLogger(log.ControllerLogger())
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{filepath.Join("..", "config", "crd", "bases")},
 	}
 
-	var err error
 	cfg, err = testEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(cfg).ToNot(BeNil())

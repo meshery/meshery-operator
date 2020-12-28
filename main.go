@@ -20,8 +20,6 @@ import (
 	"flag"
 	"os"
 
-	"github.com/bombsimon/logrusr"
-	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -30,6 +28,8 @@ import (
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	"github.com/layer5io/meshery-operator/controllers"
+	"github.com/layer5io/meshkit/logger"
+	"k8s.io/client-go/kubernetes"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -54,7 +54,16 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
 
-	ctrl.SetLogger(logrusr.NewLogger(logrus.New()))
+	// Initialize Logger instance
+	log, err := logger.New("meshery-operator", logger.Options{
+		Format: logger.SyslogLogFormat,
+	})
+	if err != nil {
+		setupLog.Error(err, "unable to initialize logger")
+		os.Exit(1)
+	}
+
+	ctrl.SetLogger(log.ControllerLogger())
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
@@ -68,18 +77,26 @@ func main() {
 		os.Exit(1)
 	}
 
+	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		setupLog.Error(err, "unable to initialize clientset")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.MeshSyncReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("MeshSync"),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Clientset: clientset,
+		Log:       ctrl.Log.WithName("controllers").WithName("MeshSync"),
+		Scheme:    mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MeshSync")
 		os.Exit(1)
 	}
 	if err = (&controllers.BrokerReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Broker"),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Clientset: clientset,
+		Log:       ctrl.Log.WithName("controllers").WithName("Broker"),
+		Scheme:    mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Broker")
 		os.Exit(1)
