@@ -61,12 +61,8 @@ var (
 					},
 					Env: []corev1.EnvVar{
 						corev1.EnvVar{
-							Name: "BROKER_URL",
-							ValueFrom: &corev1.EnvVarSource{
-								FieldRef: &corev1.ObjectFieldSelector{
-									FieldPath: "metadata.name",
-								},
-							},
+							Name:  "BROKER_URL",
+							Value: "http://localhost:4222",
 						},
 					},
 				},

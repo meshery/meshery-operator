@@ -20,14 +20,30 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type CustomMeshsyncBroker struct {
+	URL string `json:"url,omitempty"`
+}
+
+type NativeMeshsyncBroker struct {
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
+type MeshsyncBroker struct {
+	Custom CustomMeshsyncBroker `json:"custom,omitempty"`
+	Native NativeMeshsyncBroker `json:"native,omitempty"`
+}
+
 // MeshSyncSpec defines the desired state of MeshSync
 type MeshSyncSpec struct {
-	Size int32 `json:"size,omitempty"`
+	Size   int32          `json:"size,omitempty"`
+	Broker MeshsyncBroker `json:"broker,omitempty"`
 }
 
 // MeshSyncStatus defines the observed state of MeshSync
 type MeshSyncStatus struct {
-	Conditions []Condition `json:"conditions,omitempty"`
+	PublishingTo string      `json:"publishing-to,omitempty"`
+	Conditions   []Condition `json:"conditions,omitempty"`
 }
 
 // MeshSync is the Schema for the meshsyncs API

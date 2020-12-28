@@ -26,6 +26,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
 	meshsyncpackage "github.com/layer5io/meshery-operator/pkg/meshsync"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/types"
@@ -58,6 +59,12 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
+	// Get broker configuration
+	err = r.reconcileBrokerConfig(ctx, baseResource)
+	if err != nil {
+		return ctrl.Result{}, ErrReconcileMeshsync(err)
+	}
+
 	// Check if Meshsync controller running
 	result, err := r.reconcileMeshsync(ctx, true, baseResource, req)
 	if err != nil {
@@ -71,6 +78,23 @@ func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.MeshSync{}).
 		Complete(r)
+}
+func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
+	brokerresource := &mesheryv1alpha1.Broker{}
+	nullNativeResource := mesheryv1alpha1.NativeMeshsyncBroker{}
+	if baseResource.Spec.Broker.Native != nullNativeResource {
+		brokerresource.ObjectMeta.Namespace = baseResource.Spec.Broker.Native.Namespace
+		brokerresource.ObjectMeta.Name = baseResource.Spec.Broker.Native.Name
+		err := brokerpackage.GetEndpoint(ctx, brokerresource, r.Clientset)
+		if err != nil {
+			return ErrGetEndpoint(err)
+		}
+		baseResource.Status.PublishingTo = brokerresource.Status.Endpoint
+	}
+
+	// Add handler for custom broker config
+
+	return nil
 }
 
 func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {

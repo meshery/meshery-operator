@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"fmt"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -77,10 +78,13 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 		return ErrGettingResource(err)
 	}
 
+	// // To be upgraded for client-go 0.20+
 	// if obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown {
 	// 	return ErrConditionFalse(obj.Status.Conditions[0].Reason)
 	// }
 
-	m.Status.Endpoint = obj.Status.LoadBalancer.Ingress[0].IP
+	// m.Status.Endpoint = fmt.Sprintf("http://%s:%d", obj.Status.LoadBalancer.Ingress[0].IP, obj.Status.LoadBalancer.Ingress[0].Ports[0].Port)
+
+	m.Status.Endpoint = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].IP)
 	return nil
 }

@@ -46,6 +46,9 @@ spec:
             conditions:
               items:
                 properties:
+                  lastProbeTime:
+                    format: date-time
+                    type: string
                   lastTransitionTime:
                     format: date-time
                     type: string

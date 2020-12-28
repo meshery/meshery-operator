@@ -17,14 +17,15 @@ type Object interface {
 
 func GetObjects(m *mesheryv1alpha1.MeshSync) map[string]Object {
 	return map[string]Object{
-		ServerObject: getServerObject(m.ObjectMeta.Namespace, m.ObjectMeta.Name, m.Spec.Size),
+		ServerObject: getServerObject(m.ObjectMeta.Namespace, m.ObjectMeta.Name, m.Spec.Size, m.Status.PublishingTo),
 	}
 }
 
-func getServerObject(namespace string, name string, replicas int32) Object {
+func getServerObject(namespace string, name string, replicas int32, url string) Object {
 	obj := Deployment
 	obj.ObjectMeta.Namespace = namespace
 	obj.ObjectMeta.Name = name
 	obj.Spec.Replicas = &replicas
+	obj.Spec.Template.Spec.Containers[0].Env[0].Value = url // Set broker endpoint
 	return obj
 }

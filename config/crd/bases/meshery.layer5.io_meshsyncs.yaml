@@ -36,6 +36,21 @@ spec:
         spec:
           description: MeshSyncSpec defines the desired state of MeshSync
           properties:
+            broker:
+              properties:
+                custom:
+                  properties:
+                    url:
+                      type: string
+                  type: object
+                native:
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+              type: object
             size:
               format: int32
               type: integer
@@ -46,6 +61,9 @@ spec:
             conditions:
               items:
                 properties:
+                  lastProbeTime:
+                    format: date-time
+                    type: string
                   lastTransitionTime:
                     format: date-time
                     type: string
@@ -68,6 +86,8 @@ spec:
                 - type
                 type: object
               type: array
+            publishing-to:
+              type: string
           type: object
       type: object
   version: v1alpha1
