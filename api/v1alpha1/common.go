@@ -19,11 +19,11 @@ type ConditionType string
 type ConditionStatus string
 
 type Condition struct {
-	Type               ConditionType   `json:"type"`
-	Status             ConditionStatus `json:"status"`
-	ObservedGeneration int64           `json:"observedGeneration,omitempty"`
-	LastProbeTime      metav1.Time     `json:"lastProbeTime,omitempty"`
-	LastTransitionTime metav1.Time     `json:"lastTransitionTime"`
-	Reason             string          `json:"reason"`
-	Message            string          `json:"message"`
+	Type               ConditionType   `json:"type" yaml:"type"`
+	Status             ConditionStatus `json:"status" yaml:"status"`
+	ObservedGeneration int64           `json:"observedGeneration,omitempty" yaml:"observedGeneration,omitempty"`
+	LastProbeTime      metav1.Time     `json:"lastProbeTime,omitempty" yaml:"lastProbeTime,omitempty"`
+	LastTransitionTime metav1.Time     `json:"lastTransitionTime" yaml:"lastTransitionTime"`
+	Reason             string          `json:"reason" yaml:"reason"`
+	Message            string          `json:"message" yaml:"message"`
 }

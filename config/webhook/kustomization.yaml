@@ -1,3 +1,4 @@
+namePrefix: meshery-
 resources:
 - manifests.yaml
 - service.yaml
