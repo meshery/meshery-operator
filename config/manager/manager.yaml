@@ -28,7 +28,7 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
       containers:
-      - name: meshery-operator
+      - name: manager
         image: layer5io/meshery-operator:stable-latest
         imagePullPolicy: Always
         resources:
