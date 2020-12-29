@@ -12,7 +12,7 @@ endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
-IMG ?= meshery-operator:latest
+IMG ?= meshery-operator:stable-latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -66,8 +66,11 @@ vet:
 	go vet ./...
 
 # Generate code
-generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+generate: controller-gen kustomize
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."; \
+	$(KUSTOMIZE) build config/default > config/manifests/default.yaml; \
+	$(KUSTOMIZE) build config/rbac > config/manifests/rbac.yaml; \
+	$(KUSTOMIZE) build config/crd > config/manifests/crd.yaml
 
 # Build the docker image
 docker-build:

@@ -1,7 +1,11 @@
 apiVersion: meshery.layer5.io/v1alpha1
 kind: MeshSync
 metadata:
-  name: meshsync-test
-  namespace: "default"
+  name: meshsync
+  namespace: default
 spec:
   size: 1
+  broker:
+    native:
+      name: meshery-broker
+      namespace: default

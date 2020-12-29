@@ -1,0 +1,141 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: meshery-leader-election-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: meshery-manager-role
+rules:
+- apiGroups:
+  - meshery.layer5.io
+  resources:
+  - brokers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - meshery.layer5.io
+  resources:
+  - brokers/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: meshery-proxy-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: meshery-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: meshery-leader-election-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: meshery-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: meshery-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: meshery-manager-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: meshery-proxy-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: meshery-proxy-role
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: meshery-controller-manager-metrics-service
+  namespace: system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+  selector:
+    control-plane: controller-manager

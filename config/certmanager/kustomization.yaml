@@ -1,3 +1,4 @@
+namePrefix: meshery-
 resources:
 - certificate.yaml
 

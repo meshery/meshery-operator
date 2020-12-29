@@ -1,7 +1,7 @@
 apiVersion: meshery.layer5.io/v1alpha1
 kind: Broker
 metadata:
-  name: broker-test
-  namespace: "default"
+  name: broker
+  namespace: default
 spec:
   size: 1

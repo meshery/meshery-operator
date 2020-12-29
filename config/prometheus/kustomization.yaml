@@ -1,2 +1,3 @@
+namePrefix: meshery-
 resources:
 - monitor.yaml
