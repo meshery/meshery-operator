@@ -232,8 +232,18 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  name: meshery-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
   creationTimestamp: null
-  name: meshery-manager-role
+  name: meshery-operator-role
 rules:
 - apiGroups:
   - meshery.layer5.io
@@ -274,16 +284,6 @@ rules:
   verbs:
   - create
 ---
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRole
-metadata:
-  name: meshery-metrics-reader
-rules:
-- nonResourceURLs:
-  - /metrics
-  verbs:
-  - get
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -301,11 +301,11 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: meshery-manager-rolebinding
+  name: meshery-operator-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: meshery-manager-role
+  name: meshery-operator-role
 subjects:
 - kind: ServiceAccount
   name: default
@@ -328,8 +328,9 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    control-plane: controller-manager
-  name: meshery-controller-manager-metrics-service
+    app: meshery
+    component: operator
+  name: meshery-operator-metrics-service
   namespace: meshery
 spec:
   ports:
@@ -337,7 +338,8 @@ spec:
     port: 8443
     targetPort: https
   selector:
-    control-plane: controller-manager
+    app: meshery
+    component: operator
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -373,14 +375,11 @@ spec:
       - args:
         - --metrics-addr=127.0.0.1:8080
         - --enable-leader-election
-        name: manager
-      - args:
-        - --enable-leader-election
         command:
         - /manager
         image: layer5io/meshery-operator:stable-latest
         imagePullPolicy: Always
-        name: meshery-operator
+        name: manager
         ports:
         - containerPort: 9443
           hostPort: 9443
