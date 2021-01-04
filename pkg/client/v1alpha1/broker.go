@@ -8,7 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
@@ -44,13 +43,13 @@ func newBrokers(c *CoreClient, namespace string) *broker {
 }
 
 // Get takes name of the broker, and returns the corresponding broker object, and an error if there is any.
-func (c *broker) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1alpha1.Broker, err error) {
+func (c *broker) Get(ctx context.Context, name string, opts metav1.GetOptions) (result *v1alpha1.Broker, err error) {
 	result = &v1alpha1.Broker{}
 	err = c.client.Get().
 		Namespace(c.ns).
-		Resource("broker").
+		Resource("brokers").
 		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
+		VersionedParams(&opts, ParameterCodec).
 		Do(ctx).
 		Into(result)
 	return
@@ -65,8 +64,8 @@ func (c *broker) List(ctx context.Context, opts metav1.ListOptions) (result *v1a
 	result = &v1alpha1.BrokerList{}
 	err = c.client.Get().
 		Namespace(c.ns).
-		Resource("broker").
-		VersionedParams(&opts, scheme.ParameterCodec).
+		Resource("brokers").
+		VersionedParams(&opts, ParameterCodec).
 		Timeout(timeout).
 		Do(ctx).
 		Into(result)
@@ -82,8 +81,8 @@ func (c *broker) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Inte
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
-		Resource("broker").
-		VersionedParams(&opts, scheme.ParameterCodec).
+		Resource("brokers").
+		VersionedParams(&opts, ParameterCodec).
 		Timeout(timeout).
 		Watch(ctx)
 }
@@ -93,8 +92,8 @@ func (c *broker) Create(ctx context.Context, broker *v1alpha1.Broker, opts metav
 	result = &v1alpha1.Broker{}
 	err = c.client.Post().
 		Namespace(c.ns).
-		Resource("broker").
-		VersionedParams(&opts, scheme.ParameterCodec).
+		Resource("brokers").
+		VersionedParams(&opts, ParameterCodec).
 		Body(broker).
 		Do(ctx).
 		Into(result)
@@ -106,9 +105,9 @@ func (c *broker) Update(ctx context.Context, broker *v1alpha1.Broker, opts metav
 	result = &v1alpha1.Broker{}
 	err = c.client.Put().
 		Namespace(c.ns).
-		Resource("broker").
+		Resource("brokers").
 		Name(broker.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
+		VersionedParams(&opts, ParameterCodec).
 		Body(broker).
 		Do(ctx).
 		Into(result)
@@ -119,7 +118,7 @@ func (c *broker) Update(ctx context.Context, broker *v1alpha1.Broker, opts metav
 func (c *broker) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
-		Resource("broker").
+		Resource("brokers").
 		Name(name).
 		Body(&opts).
 		Do(ctx).
@@ -131,10 +130,10 @@ func (c *broker) Patch(ctx context.Context, name string, pt types.PatchType, dat
 	result = &v1alpha1.Broker{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
-		Resource("broker").
+		Resource("brokers").
 		Name(name).
 		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
+		VersionedParams(&opts, ParameterCodec).
 		Body(data).
 		Do(ctx).
 		Into(result)

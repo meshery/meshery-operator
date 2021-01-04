@@ -8,7 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	scheme "k8s.io/client-go/kubernetes/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
@@ -44,13 +43,13 @@ func newMeshSyncs(c *CoreClient, namespace string) *meshsync {
 }
 
 // Get takes name of the meshsync, and returns the corresponding meshsync object, and an error if there is any.
-func (c *meshsync) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1alpha1.MeshSync, err error) {
+func (c *meshsync) Get(ctx context.Context, name string, opts metav1.GetOptions) (result *v1alpha1.MeshSync, err error) {
 	result = &v1alpha1.MeshSync{}
 	err = c.client.Get().
 		Namespace(c.ns).
-		Resource("meshsync").
+		Resource("meshsyncs").
 		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
+		VersionedParams(&opts, ParameterCodec).
 		Do(ctx).
 		Into(result)
 	return
@@ -65,8 +64,8 @@ func (c *meshsync) List(ctx context.Context, opts metav1.ListOptions) (result *v
 	result = &v1alpha1.MeshSyncList{}
 	err = c.client.Get().
 		Namespace(c.ns).
-		Resource("meshsync").
-		VersionedParams(&opts, scheme.ParameterCodec).
+		Resource("meshsyncs").
+		VersionedParams(&opts, ParameterCodec).
 		Timeout(timeout).
 		Do(ctx).
 		Into(result)
@@ -82,8 +81,8 @@ func (c *meshsync) Watch(ctx context.Context, opts metav1.ListOptions) (watch.In
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
-		Resource("meshsync").
-		VersionedParams(&opts, scheme.ParameterCodec).
+		Resource("meshsyncs").
+		VersionedParams(&opts, ParameterCodec).
 		Timeout(timeout).
 		Watch(ctx)
 }
@@ -93,8 +92,8 @@ func (c *meshsync) Create(ctx context.Context, meshsync *v1alpha1.MeshSync, opts
 	result = &v1alpha1.MeshSync{}
 	err = c.client.Post().
 		Namespace(c.ns).
-		Resource("meshsync").
-		VersionedParams(&opts, scheme.ParameterCodec).
+		Resource("meshsyncs").
+		VersionedParams(&opts, ParameterCodec).
 		Body(meshsync).
 		Do(ctx).
 		Into(result)
@@ -106,9 +105,9 @@ func (c *meshsync) Update(ctx context.Context, meshsync *v1alpha1.MeshSync, opts
 	result = &v1alpha1.MeshSync{}
 	err = c.client.Put().
 		Namespace(c.ns).
-		Resource("meshsync").
+		Resource("meshsyncs").
 		Name(meshsync.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
+		VersionedParams(&opts, ParameterCodec).
 		Body(meshsync).
 		Do(ctx).
 		Into(result)
@@ -119,7 +118,7 @@ func (c *meshsync) Update(ctx context.Context, meshsync *v1alpha1.MeshSync, opts
 func (c *meshsync) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
-		Resource("meshsync").
+		Resource("meshsyncs").
 		Name(name).
 		Body(&opts).
 		Do(ctx).
@@ -131,10 +130,10 @@ func (c *meshsync) Patch(ctx context.Context, name string, pt types.PatchType, d
 	result = &v1alpha1.MeshSync{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
-		Resource("meshsync").
+		Resource("meshsyncs").
 		Name(name).
 		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
+		VersionedParams(&opts, ParameterCodec).
 		Body(data).
 		Do(ctx).
 		Into(result)
