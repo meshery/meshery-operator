@@ -32,7 +32,6 @@ func (c *Clientset) CoreV1Alpha1() v1alpha1.CoreInterface {
 }
 
 func New(config *rest.Config) (Interface, error) {
-
 	config.GroupVersion = &SchemeGroupVersion
 	config.APIPath = "/apis"
 	config.ContentType = runtime.ContentTypeJSON
