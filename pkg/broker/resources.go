@@ -283,21 +283,21 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 						},
 					},
 				},
-				{
-					Name:            "metrics",
-					Image:           "synadia/prometheus-nats-exporter:0.5.0",
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					Args: []string{
-						"-connz", "-routez", "-subz", "-varz", "-prefix=nats", "-use_internal_server_id", "http://localhost:8222/",
-					},
-					Ports: []corev1.ContainerPort{
-						{
-							Name:          "metrics",
-							HostPort:      val7777,
-							ContainerPort: val7777,
-						},
-					},
-				},
+				// {
+				// 	Name:            "metrics",
+				// 	Image:           "synadia/prometheus-nats-exporter:0.5.0",
+				// 	ImagePullPolicy: corev1.PullIfNotPresent,
+				// 	Args: []string{
+				// 		"-connz", "-routez", "-subz", "-varz", "-prefix=nats", "-use_internal_server_id", "http://localhost:8222/",
+				// 	},
+				// 	Ports: []corev1.ContainerPort{
+				// 		{
+				// 			Name:          "metrics",
+				// 			HostPort:      val7777,
+				// 			ContainerPort: val7777,
+				// 		},
+				// 	},
+				// },
 			},
 		},
 	}
