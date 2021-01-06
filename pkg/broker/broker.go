@@ -62,7 +62,11 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 	}
 
 	if obj.Status.Replicas != obj.Status.ReadyReplicas {
-		return ErrReplicasNotReady(obj.Status.Conditions[0].Reason)
+		if len(obj.Status.Conditions) > 0 {
+
+			return ErrReplicasNotReady(obj.Status.Conditions[0].Reason)
+		}
+		return ErrReplicasNotReady("Condition Unknown")
 	}
 
 	if len(obj.Status.Conditions) > 0 && (obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown) {
