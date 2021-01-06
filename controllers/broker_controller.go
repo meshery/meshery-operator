@@ -27,6 +27,7 @@ import (
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
+	"github.com/layer5io/meshkit/utils"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/types"
 )
@@ -44,7 +45,9 @@ type BrokerReconciler struct {
 
 func (r *BrokerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("namespace", req.NamespacedName)
+	log := r.Log
+	log = log.WithValues("name", "Broker")
+	log = log.WithValues("namespace", req.NamespacedName)
 	log.Info("Reconcillation")
 	baseResource := &mesheryv1alpha1.Broker{}
 
@@ -77,6 +80,17 @@ func (r *BrokerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, ErrGetEndpoint(err)
 	}
 
+	// Patch the broker resource
+	patch, err := utils.Marshal(baseResource)
+	if err != nil {
+		return ctrl.Result{}, ErrUpdateResource(err)
+	}
+
+	err = r.Status().Patch(ctx, baseResource, client.RawPatch(types.MergePatchType, []byte(patch)))
+	if err != nil {
+		return ctrl.Result{}, ErrUpdateResource(err)
+	}
+
 	return result, nil
 }
 
@@ -87,29 +101,33 @@ func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.Broker, req ctrl.Request) (ctrl.Result, error) {
-	object := brokerpackage.GetObjects(baseResource)[brokerpackage.ServerObject]
-	err := r.Get(ctx,
-		types.NamespacedName{
-			Name:      baseResource.Name,
-			Namespace: baseResource.Namespace,
-		},
-		object,
-	)
-	if err != nil && kubeerror.IsNotFound(err) && enable {
-		er := r.Create(ctx, object)
-		if er != nil {
-			return ctrl.Result{}, ErrCreateMeshsync(er)
+
+	objects := brokerpackage.GetObjects(baseResource)
+	for _, object := range objects {
+		object.SetNamespace(baseResource.Namespace)
+		err := r.Get(ctx,
+			types.NamespacedName{
+				Name:      object.GetName(),
+				Namespace: object.GetNamespace(),
+			},
+			object,
+		)
+		if err != nil && kubeerror.IsNotFound(err) && enable {
+			er := r.Create(ctx, object)
+			if er != nil {
+				return ctrl.Result{}, ErrCreateMeshsync(er)
+			}
+			_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
+			return ctrl.Result{Requeue: true}, nil
+		} else if err != nil && enable {
+			return ctrl.Result{}, ErrGetMeshsync(err)
+		} else if err == nil && !kubeerror.IsNotFound(err) && !enable {
+			er := r.Delete(ctx, object)
+			if er != nil {
+				return ctrl.Result{}, ErrDeleteMeshsync(er)
+			}
+			return ctrl.Result{Requeue: true}, nil
 		}
-		_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
-		return ctrl.Result{Requeue: true}, nil
-	} else if err != nil && enable {
-		return ctrl.Result{}, ErrGetMeshsync(err)
-	} else if err == nil && !kubeerror.IsNotFound(err) && !enable {
-		er := r.Delete(ctx, object)
-		if er != nil {
-			return ctrl.Result{}, ErrDeleteMeshsync(er)
-		}
-		return ctrl.Result{Requeue: true}, nil
 	}
 
 	return ctrl.Result{}, nil

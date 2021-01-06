@@ -28,6 +28,7 @@ import (
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
 	meshsyncpackage "github.com/layer5io/meshery-operator/pkg/meshsync"
+	"github.com/layer5io/meshkit/utils"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/types"
 )
@@ -44,7 +45,9 @@ type MeshSyncReconciler struct {
 // +kubebuilder:rbac:groups=meshery.layer5.io,resources=meshsyncs/status,verbs=get;update;patch
 func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	log := r.Log.WithValues("namespace", req.NamespacedName)
+	log := r.Log
+	log = log.WithValues("name", "MeshSync")
+	log = log.WithValues("namespace", req.NamespacedName)
 	log.Info("Reconcillation")
 	baseResource := &mesheryv1alpha1.MeshSync{}
 
@@ -69,6 +72,17 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	result, err := r.reconcileMeshsync(ctx, true, baseResource, req)
 	if err != nil {
 		return ctrl.Result{}, ErrReconcileMeshsync(err)
+	}
+
+	// Patch the broker resource
+	patch, err := utils.Marshal(baseResource)
+	if err != nil {
+		return ctrl.Result{}, ErrUpdateResource(err)
+	}
+
+	err = r.Status().Patch(ctx, baseResource, client.RawPatch(types.MergePatchType, []byte(patch)))
+	if err != nil {
+		return ctrl.Result{}, ErrUpdateResource(err)
 	}
 
 	return result, nil

@@ -28,7 +28,7 @@ func GetObjects(m *mesheryv1alpha1.Broker) map[string]Object {
 		ServerConfig:  getServerConfig(),
 		AccountConfig: getAccountConfig(),
 		ServerObject:  getServerObject(m.ObjectMeta.Namespace, m.ObjectMeta.Name, m.Spec.Size),
-		ServiceObject: getServiceObject(),
+		ServiceObject: getServiceObject(m.ObjectMeta.Namespace, m.ObjectMeta.Name),
 	}
 }
 
@@ -40,8 +40,10 @@ func getServerObject(namespace, name string, replicas int32) Object {
 	return obj
 }
 
-func getServiceObject() Object {
+func getServiceObject(namespace, name string) Object {
 	obj := Service
+	obj.ObjectMeta.Name = name
+	obj.ObjectMeta.Namespace = namespace
 	return obj
 }
 
@@ -88,6 +90,12 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 
 	// m.Status.Endpoint = fmt.Sprintf("http://%s:%d", obj.Status.LoadBalancer.Ingress[0].IP, obj.Status.LoadBalancer.Ingress[0].Ports[0].Port)
 
-	m.Status.Endpoint = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].IP)
+	if obj.Status.Size() > 0 && obj.Status.LoadBalancer.Size() > 0 && len(obj.Status.LoadBalancer.Ingress) > 0 && obj.Status.LoadBalancer.Ingress[0].Size() > 0 {
+		if obj.Status.LoadBalancer.Ingress[0].IP == "" {
+			m.Status.Endpoint = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].Hostname)
+		} else {
+			m.Status.Endpoint = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].IP)
+		}
+	}
 	return nil
 }
