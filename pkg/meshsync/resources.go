@@ -47,7 +47,7 @@ var (
 			Containers: []corev1.Container{
 				{
 					Name:            "meshsync",
-					Image:           "layer5io/meshery-meshsync:stable-latest",
+					Image:           "layer5/meshery-meshsync:stable-latest",
 					ImagePullPolicy: corev1.PullAlways,
 					Ports: []corev1.ContainerPort{
 						{
