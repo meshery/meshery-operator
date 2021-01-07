@@ -16,6 +16,7 @@ const (
 	ErrDeleteBrokerCode      = "meshsync_test"
 	ErrCheckHealthCode       = "meshsync_test"
 	ErrGetEndpointCode       = "meshsync_test"
+	ErrUpdateResourceCode    = "meshsync_test"
 )
 
 func ErrGetMeshsync(err error) error {
@@ -60,4 +61,8 @@ func ErrCheckHealth(err error) error {
 
 func ErrGetEndpoint(err error) error {
 	return errors.NewDefault(ErrGetEndpointCode, "Error getting endpoint", err.Error())
+}
+
+func ErrUpdateResource(err error) error {
+	return errors.NewDefault(ErrUpdateResourceCode, "Error updating resource", err.Error())
 }
