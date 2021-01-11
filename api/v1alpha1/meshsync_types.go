@@ -20,34 +20,49 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type CustomMeshsyncBroker struct {
+	URL string `json:"url,omitempty" yaml:"url,omitempty"`
+}
+
+type NativeMeshsyncBroker struct {
+	Name      string `json:"name,omitempty" yaml:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+}
+
+type MeshsyncBroker struct {
+	Custom CustomMeshsyncBroker `json:"custom,omitempty" yaml:"custom,omitempty"`
+	Native NativeMeshsyncBroker `json:"native,omitempty" yaml:"native,omitempty"`
+}
+
 // MeshSyncSpec defines the desired state of MeshSync
 type MeshSyncSpec struct {
-	Cluster string `json:"cluster,omitempty"`
-	Size    int32  `json:"size,omitempty"`
+	Size   int32          `json:"size,omitempty" yaml:"size,omitempty"`
+	Broker MeshsyncBroker `json:"broker,omitempty" yaml:"broker,omitempty"`
 }
 
 // MeshSyncStatus defines the observed state of MeshSync
 type MeshSyncStatus struct {
-	Conditions []Condition `json:"conditions,omitempty"`
+	PublishingTo string      `json:"publishing-to,omitempty" yaml:"publishing-to,omitempty"`
+	Conditions   []Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // MeshSync is the Schema for the meshsyncs API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 type MeshSync struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
 
-	Spec   MeshSyncSpec   `json:"spec,omitempty"`
-	Status MeshSyncStatus `json:"status,omitempty"`
+	Spec   MeshSyncSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
+	Status MeshSyncStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // MeshSyncList contains a list of MeshSync
 // +kubebuilder:object:root=true
 type MeshSyncList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MeshSync `json:"items"`
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Items           []MeshSync `json:"items" yaml:"items"`
 }
 
 func init() {
