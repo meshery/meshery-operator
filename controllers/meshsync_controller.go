@@ -46,7 +46,7 @@ type MeshSyncReconciler struct {
 func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 	log := r.Log
-	log = log.WithValues("name", "MeshSync")
+	log = log.WithValues("controller", "MeshSync")
 	log = log.WithValues("namespace", req.NamespacedName)
 	log.Info("Reconcillation")
 	baseResource := &mesheryv1alpha1.MeshSync{}
@@ -74,7 +74,7 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, ErrReconcileMeshsync(err)
 	}
 
-	// Patch the broker resource
+	// Patch the meshsync resource
 	patch, err := utils.Marshal(baseResource)
 	if err != nil {
 		return ctrl.Result{}, ErrUpdateResource(err)

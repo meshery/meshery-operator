@@ -1,7 +1,7 @@
 apiVersion: meshery.layer5.io/v1alpha1
 kind: Broker
 metadata:
-  name: broker
+  name: meshery-broker
   namespace: meshery
 spec:
   size: 1
