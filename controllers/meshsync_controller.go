@@ -103,7 +103,7 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 		if err != nil {
 			return ErrGetEndpoint(err)
 		}
-		baseResource.Status.PublishingTo = brokerresource.Status.Endpoint
+		baseResource.Status.PublishingTo = brokerresource.Status.Endpoint.Internal
 	}
 
 	// Add handler for custom broker config

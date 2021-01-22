@@ -72,7 +72,12 @@ spec:
                 type: object
               type: array
             endpoint:
-              type: string
+              properties:
+                external:
+                  type: string
+                internal:
+                  type: string
+              type: object
           type: object
       type: object
   version: v1alpha1
