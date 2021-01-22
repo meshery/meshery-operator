@@ -90,13 +90,16 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 
 	// m.Status.Endpoint = fmt.Sprintf("http://%s:%d", obj.Status.LoadBalancer.Ingress[0].IP, obj.Status.LoadBalancer.Ingress[0].Ports[0].Port)
 	if obj.Spec.Size() > 0 && obj.Spec.ClusterIP != "" {
-		m.Status.Endpoint = fmt.Sprintf("http://%s:4222", obj.Spec.ClusterIP)
-	} else if obj.Status.Size() > 0 && obj.Status.LoadBalancer.Size() > 0 && len(obj.Status.LoadBalancer.Ingress) > 0 && obj.Status.LoadBalancer.Ingress[0].Size() > 0 {
+		m.Status.Endpoint.Internal = fmt.Sprintf("http://%s:4222", obj.Spec.ClusterIP)
+	}
+
+	if obj.Status.Size() > 0 && obj.Status.LoadBalancer.Size() > 0 && len(obj.Status.LoadBalancer.Ingress) > 0 && obj.Status.LoadBalancer.Ingress[0].Size() > 0 {
 		if obj.Status.LoadBalancer.Ingress[0].IP == "" {
-			m.Status.Endpoint = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].Hostname)
+			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].Hostname)
 		} else {
-			m.Status.Endpoint = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].IP)
+			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].IP)
 		}
 	}
+
 	return nil
 }

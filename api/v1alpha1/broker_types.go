@@ -25,9 +25,14 @@ type BrokerSpec struct {
 	Size int32 `json:"size,omitempty" yaml:"size,omitempty"`
 }
 
+type Endpoint struct {
+	Internal string `json:"internal,omitempty" yaml:"internal,omitempty"`
+	External string `json:"external,omitempty" yaml:"external,omitempty"`
+}
+
 // BrokerStatus defines the observed state of Broker
 type BrokerStatus struct {
-	Endpoint   string      `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	Endpoint   Endpoint    `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
 	Conditions []Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
