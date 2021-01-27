@@ -9,7 +9,7 @@ replace (
 
 require (
 	cloud.google.com/go v0.62.0 // indirect
-	github.com/go-logr/logr v0.3.0
+	github.com/go-logr/logr v0.4.0
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/layer5io/meshkit v0.2.0
