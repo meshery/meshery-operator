@@ -77,7 +77,7 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 	return nil
 }
 
-func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset) error {
+func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, host string) error {
 	obj, err := client.CoreV1().Services(m.ObjectMeta.Namespace).Get(ctx, m.ObjectMeta.Name, metav1.GetOptions{})
 	if err != nil {
 		return ErrGettingResource(err)
@@ -96,6 +96,8 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 	if obj.Status.Size() > 0 && obj.Status.LoadBalancer.Size() > 0 && len(obj.Status.LoadBalancer.Ingress) > 0 && obj.Status.LoadBalancer.Ingress[0].Size() > 0 {
 		if obj.Status.LoadBalancer.Ingress[0].IP == "" {
 			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].Hostname)
+		} else if obj.Status.LoadBalancer.Ingress[0].IP == obj.Spec.ClusterIP {
+			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", host)
 		} else {
 			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].IP)
 		}
