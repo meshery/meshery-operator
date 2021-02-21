@@ -83,19 +83,21 @@ func main() {
 	}
 
 	if err = (&controllers.MeshSyncReconciler{
-		Client:    mgr.GetClient(),
-		Clientset: clientset,
-		Log:       ctrl.Log,
-		Scheme:    mgr.GetScheme(),
+		KubeConfig: mgr.GetConfig(),
+		Client:     mgr.GetClient(),
+		Clientset:  clientset,
+		Log:        ctrl.Log,
+		Scheme:     mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "MeshSync")
 		os.Exit(1)
 	}
 	if err = (&controllers.BrokerReconciler{
-		Client:    mgr.GetClient(),
-		Clientset: clientset,
-		Log:       ctrl.Log,
-		Scheme:    mgr.GetScheme(),
+		KubeConfig: mgr.GetConfig(),
+		Client:     mgr.GetClient(),
+		Clientset:  clientset,
+		Log:        ctrl.Log,
+		Scheme:     mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "Broker")
 		os.Exit(1)
