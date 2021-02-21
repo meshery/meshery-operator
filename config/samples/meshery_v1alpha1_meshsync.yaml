@@ -3,6 +3,8 @@ kind: MeshSync
 metadata:
   name: meshery-meshsync
   namespace: meshery
+  annotations:
+    meshery/component-type: management-plane
 spec:
   size: 1
   broker:

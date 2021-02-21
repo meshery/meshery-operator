@@ -22,10 +22,15 @@ var (
 		"component": "meshsync",
 	}
 
+	MesheryAnnotation = map[string]string{
+		"meshery/component-type": "management-plane",
+	}
+
 	Deployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "meshery-meshsync",
-			Labels: MeshSyncLabel,
+			Name:        "meshery-meshsync",
+			Labels:      MeshSyncLabel,
+			Annotations: MesheryAnnotation,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &val1,
@@ -38,8 +43,9 @@ var (
 
 	PodTemplate = corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "meshery-meshsync",
-			Labels: MeshSyncLabel,
+			Name:        "meshery-meshsync",
+			Labels:      MeshSyncLabel,
+			Annotations: MesheryAnnotation,
 		},
 		Spec: corev1.PodSpec{
 			ShareProcessNamespace:         &valtrue,

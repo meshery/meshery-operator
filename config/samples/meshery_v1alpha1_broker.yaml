@@ -3,5 +3,7 @@ kind: Broker
 metadata:
   name: meshery-broker
   namespace: meshery
+  annotations:
+    meshery/component-type: management-plane
 spec:
   size: 1
