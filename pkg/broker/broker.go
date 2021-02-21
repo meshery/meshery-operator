@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -97,7 +98,8 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 		if obj.Status.LoadBalancer.Ingress[0].IP == "" {
 			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].Hostname)
 		} else if obj.Status.LoadBalancer.Ingress[0].IP == obj.Spec.ClusterIP {
-			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", host)
+			ip := strings.SplitAfter(strings.SplitAfter(host, "://")[1], ":")[0]
+			m.Status.Endpoint.External = fmt.Sprintf("http://%s4222", ip)
 		} else {
 			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].IP)
 		}
