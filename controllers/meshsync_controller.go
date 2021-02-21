@@ -22,7 +22,6 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -37,10 +36,9 @@ import (
 // MeshSyncReconciler reconciles a MeshSync object
 type MeshSyncReconciler struct {
 	client.Client
-	KubeConfig *rest.Config
-	Clientset  *kubernetes.Clientset
-	Log        logr.Logger
-	Scheme     *runtime.Scheme
+	Clientset *kubernetes.Clientset
+	Log       logr.Logger
+	Scheme    *runtime.Scheme
 }
 
 // +kubebuilder:rbac:groups=meshery.layer5.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
@@ -101,7 +99,7 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 	if baseResource.Spec.Broker.Native != nullNativeResource {
 		brokerresource.ObjectMeta.Namespace = baseResource.Spec.Broker.Native.Namespace
 		brokerresource.ObjectMeta.Name = baseResource.Spec.Broker.Native.Name
-		err := brokerpackage.GetEndpoint(ctx, brokerresource, r.Clientset, r.KubeConfig.Host)
+		err := brokerpackage.GetEndpoint(ctx, brokerresource, r.Clientset)
 		if err != nil {
 			return ErrGetEndpoint(err)
 		}
