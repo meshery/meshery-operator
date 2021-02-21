@@ -23,15 +23,20 @@ var (
 		"app": "meshery",
 	}
 
+	MesheryAnnotation = map[string]string{
+		"meshery/component-type": "management-plane",
+	}
+
 	BrokerLabel = map[string]string{
 		"app":       MesheryLabel["app"],
 		"component": "broker",
 	}
 
 	PrometheusAnnotation = map[string]string{
-		"prometheus.io/path":   "/metrics",
-		"prometheus.io/port":   "7777",
-		"prometheus.io/scrape": "true",
+		"meshery/component-type": "management-plane",
+		"prometheus.io/path":     "/metrics",
+		"prometheus.io/port":     "7777",
+		"prometheus.io/scrape":   "true",
 	}
 
 	NatsConfigMap = &corev1.ConfigMap{
@@ -68,8 +73,9 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 
 	Service = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "meshery-nats",
-			Labels: BrokerLabel,
+			Name:        "meshery-nats",
+			Labels:      BrokerLabel,
+			Annotations: MesheryAnnotation,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -105,8 +111,9 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 
 	StatefulSet = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "meshery-nats",
-			Labels: BrokerLabel,
+			Name:        "meshery-nats",
+			Labels:      BrokerLabel,
+			Annotations: MesheryAnnotation,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &val1,
