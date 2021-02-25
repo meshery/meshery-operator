@@ -12,7 +12,7 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/uuid v1.1.2 // indirect
-	github.com/layer5io/meshkit v0.2.0
+	github.com/layer5io/meshkit v0.2.1
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.4
 	golang.org/x/tools v0.0.0-20200804011535-6c149bb5ef0d // indirect
