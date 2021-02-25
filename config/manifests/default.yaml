@@ -259,6 +259,7 @@ rules:
   resources:
   - pods
   - services
+  - namespaces
   - configmaps
   - deployments
   - statefulsets
@@ -284,6 +285,7 @@ rules:
   - deployments/status
   - pods/status
   - services/status
+  - namespaces/status
   verbs:
   - get
   - patch
