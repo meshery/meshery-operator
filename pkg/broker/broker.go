@@ -3,9 +3,9 @@ package broker
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	mesherykube "github.com/layer5io/meshkit/utils/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -79,31 +79,16 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 }
 
 func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, host string) error {
-	obj, err := client.CoreV1().Services(m.ObjectMeta.Namespace).Get(ctx, m.ObjectMeta.Name, metav1.GetOptions{})
+	endpoint, err := mesherykube.GetServiceEndpoint(context.TODO(), client, &mesherykube.ServiceOptions{
+		Name:         m.ObjectMeta.Name,
+		Namespace:    m.ObjectMeta.Namespace,
+		PortSelector: "client",
+	})
 	if err != nil {
-		return ErrGettingResource(err)
+		return ErrGettingEndpoint(err)
 	}
 
-	// // To be upgraded for client-go 0.20+
-	// if obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown {
-	// 	return ErrConditionFalse(obj.Status.Conditions[0].Reason)
-	// }
-
-	// m.Status.Endpoint = fmt.Sprintf("http://%s:%d", obj.Status.LoadBalancer.Ingress[0].IP, obj.Status.LoadBalancer.Ingress[0].Ports[0].Port)
-	if obj.Spec.Size() > 0 && obj.Spec.ClusterIP != "" {
-		m.Status.Endpoint.Internal = fmt.Sprintf("http://%s:4222", obj.Spec.ClusterIP)
-	}
-
-	if obj.Status.Size() > 0 && obj.Status.LoadBalancer.Size() > 0 && len(obj.Status.LoadBalancer.Ingress) > 0 && obj.Status.LoadBalancer.Ingress[0].Size() > 0 {
-		if obj.Status.LoadBalancer.Ingress[0].IP == "" {
-			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].Hostname)
-		} else if obj.Status.LoadBalancer.Ingress[0].IP == obj.Spec.ClusterIP {
-			ip := strings.SplitAfter(strings.SplitAfter(host, "://")[1], ":")[0]
-			m.Status.Endpoint.External = fmt.Sprintf("http://%s4222", ip)
-		} else {
-			m.Status.Endpoint.External = fmt.Sprintf("http://%s:4222", obj.Status.LoadBalancer.Ingress[0].IP)
-		}
-	}
-
+	m.Status.Endpoint.External = fmt.Sprintf("%s:%d", endpoint.External.Address, endpoint.External.Port)
+	m.Status.Endpoint.Internal = fmt.Sprintf("%s:%d", endpoint.Internal.Address, endpoint.Internal.Port)
 	return nil
 }

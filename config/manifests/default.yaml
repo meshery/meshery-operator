@@ -209,7 +209,7 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - "configmaps"
+  - configmaps
   verbs:
   - get
   - list
@@ -251,17 +251,9 @@ metadata:
   name: meshery-operator-role
 rules:
 - apiGroups:
-  - meshery.layer5.io
-  - ""
-  - apps
+  - '*'
   resources:
-  - pods
-  - services
-  - configmaps
-  - deployments
-  - statefulsets
-  - brokers
-  - meshsyncs
+  - '*'
   verbs:
   - create
   - delete
@@ -270,22 +262,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - ""
-  - apps
-  - meshery.layer5.io
-  resources:
-  - brokers/status
-  - meshsyncs/status
-  - configmaps/status
-  - statefulsets/status
-  - deployments/status
-  - pods/status
-  - services/status
-  verbs:
-  - get
-  - patch
-  - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
