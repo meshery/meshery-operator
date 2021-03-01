@@ -15,7 +15,7 @@ require (
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/layer5io/meshkit v0.2.3
 	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.4
+	github.com/onsi/gomega v1.10.5
 	golang.org/x/tools v0.0.0-20200804011535-6c149bb5ef0d // indirect
 	k8s.io/api v0.18.12
 	k8s.io/apimachinery v0.18.12
