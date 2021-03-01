@@ -78,11 +78,12 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 	return nil
 }
 
-func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, host string) error {
+func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, url string) error {
 	endpoint, err := mesherykube.GetServiceEndpoint(context.TODO(), client, &mesherykube.ServiceOptions{
 		Name:         m.ObjectMeta.Name,
 		Namespace:    m.ObjectMeta.Namespace,
 		PortSelector: "client",
+		APIServerURL: url,
 	})
 	if err != nil {
 		return ErrGettingEndpoint(err)
