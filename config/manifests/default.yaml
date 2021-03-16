@@ -1,9 +1,6 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  labels:
-    app: meshery
-    component: operator
   name: meshery
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
@@ -327,6 +324,7 @@ metadata:
   labels:
     app: meshery
     component: operator
+    version: v0.2.11
   name: meshery-operator-metrics-service
   namespace: meshery
 spec:
@@ -337,6 +335,7 @@ spec:
   selector:
     app: meshery
     component: operator
+    version: v0.2.11
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -344,6 +343,7 @@ metadata:
   labels:
     app: meshery
     component: operator
+    version: v0.2.11
   name: meshery-operator
   namespace: meshery
 spec:
