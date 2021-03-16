@@ -3,6 +3,10 @@ kind: MeshSync
 metadata:
   name: meshery-meshsync
   namespace: meshery
+  labels:
+    app: meshery
+    component: controller
+    version: v0.1.15
   annotations:
     meshery/component-type: management-plane
 spec:
