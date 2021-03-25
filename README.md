@@ -1,6 +1,6 @@
 
 <p style="text-align:center;" align="center">
-  <img align="center" src="https://raw.githubusercontent.com/layer5io/layer5/master/assets/images/layer5/layer5-tag-white-bg.png" width="45%" /></p>
+  <img align="center" src="https://raw.githubusercontent.com/layer5io/meshery-operator/ff17ed2c7b432cf367b162da40bb9cb05c17b91c/img/readme/meshery-logo-light-text.svg" width="35%" /></p>
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/layer5/meshery-operator.svg)](https://hub.docker.com/r/layer5/meshery-operator)
 ![GitHub contributors](https://img.shields.io/github/contributors/layer5io/layer5.svg)
