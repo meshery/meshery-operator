@@ -1,4 +1,3 @@
-
 <p style="text-align:center;" align="center">
   <img align="center" src="https://raw.githubusercontent.com/layer5io/meshery-operator/master/img/readme/meshery-logo-light-text.svg" width="45%" /></p>
 
