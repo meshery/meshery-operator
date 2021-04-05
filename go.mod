@@ -13,9 +13,8 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/layer5io/meshkit v0.2.6
-	github.com/onsi/ginkgo v1.14.2
+	github.com/onsi/ginkgo v1.16.0
 	github.com/onsi/gomega v1.11.0
-	golang.org/x/tools v0.0.0-20200804011535-6c149bb5ef0d // indirect
 	k8s.io/api v0.18.12
 	k8s.io/apimachinery v0.18.12
 	k8s.io/client-go v0.18.12
