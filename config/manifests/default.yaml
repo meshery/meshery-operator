@@ -289,7 +289,7 @@ roleRef:
   name: meshery-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: meshery
   namespace: meshery
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -302,7 +302,7 @@ roleRef:
   name: meshery-operator-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: meshery
   namespace: meshery
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -315,7 +315,7 @@ roleRef:
   name: meshery-proxy-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: meshery
   namespace: meshery
 ---
 apiVersion: v1
@@ -392,3 +392,12 @@ spec:
             cpu: 100m
             memory: 20Mi
       terminationGracePeriodSeconds: 10
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: meshery
+  namespace: meshery
+  labels:
+    app.kubernetes.io/instance: meshery
+    app.kubernetes.io/name: meshery

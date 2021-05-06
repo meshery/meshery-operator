@@ -9,14 +9,13 @@ replace (
 )
 
 require (
-	cloud.google.com/go v0.62.0 // indirect
+	cloud.google.com/go v0.79.0 // indirect
 	github.com/go-logr/logr v0.4.0
-	github.com/golang/protobuf v1.4.3 // indirect
-	github.com/google/uuid v1.1.2 // indirect
-	github.com/layer5io/meshkit v0.2.6
-	github.com/onsi/ginkgo v1.14.2
-	github.com/onsi/gomega v1.10.4
-	golang.org/x/tools v0.0.0-20200804011535-6c149bb5ef0d // indirect
+	github.com/golang/protobuf v1.5.1 // indirect
+	github.com/google/uuid v1.2.0 // indirect
+	github.com/layer5io/meshkit v0.2.9
+	github.com/onsi/ginkgo v1.15.2
+	github.com/onsi/gomega v1.11.0
 	k8s.io/api v0.18.12
 	k8s.io/apimachinery v0.18.12
 	k8s.io/client-go v0.18.12
