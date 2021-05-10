@@ -18,10 +18,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -64,12 +66,13 @@ func main() {
 
 	ctrl.SetLogger(log.ControllerLogger())
 
+	opId := uuid.NewUUID()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "eac074af.layer5.io",
+		LeaderElectionID:   fmt.Sprintf("operator-%s.meshery.layer5.io", opId),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
