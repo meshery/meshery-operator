@@ -132,6 +132,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 			Annotations: PrometheusAnnotation,
 		},
 		Spec: corev1.PodSpec{
+			ServiceAccountName: "meshery",
 			Volumes: []corev1.Volume{
 				{
 					Name: "config-volume",

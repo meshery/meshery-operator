@@ -50,7 +50,7 @@ func (r *MeshSyncReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log
 	log = log.WithValues("controller", "MeshSync")
 	log = log.WithValues("namespace", req.NamespacedName)
-	log.Info("Reconcillation")
+	log.Info("Reconcilling meshsync")
 	baseResource := &mesheryv1alpha1.MeshSync{}
 
 	// Check if resource exists
