@@ -5,7 +5,7 @@ metadata:
     app: meshery
     component: operator
   name: operator-metrics-service
-  namespace: system
+  namespace: meshery
 spec:
   ports:
   - name: https
