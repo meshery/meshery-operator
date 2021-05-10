@@ -66,13 +66,13 @@ func main() {
 
 	ctrl.SetLogger(log.ControllerLogger())
 
-	opId := uuid.NewUUID()
+	opID := uuid.NewUUID()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   fmt.Sprintf("operator-%s.meshery.layer5.io", opId),
+		LeaderElectionID:   fmt.Sprintf("operator-%s.meshery.layer5.io", opID),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

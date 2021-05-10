@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-logr/logr"
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	mesherykube "github.com/layer5io/meshkit/utils/kubernetes"
 	corev1 "k8s.io/api/core/v1"
@@ -78,7 +79,7 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 	return nil
 }
 
-func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, url string) error {
+func GetEndpoint(ctx context.Context, log logr.Logger, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, url string) error {
 	endpoint, err := mesherykube.GetServiceEndpoint(context.TODO(), client, &mesherykube.ServiceOptions{
 		Name:         m.ObjectMeta.Name,
 		Namespace:    m.ObjectMeta.Namespace,
@@ -88,6 +89,9 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 	if err != nil {
 		return ErrGettingEndpoint(err)
 	}
+
+	log.Info("Discovered external endpoint: ", endpoint.External.Address, ":", endpoint.External.Port)
+	log.Info("Discovered internal endpoint: ", endpoint.Internal.Address, ":", endpoint.Internal.Port)
 
 	m.Status.Endpoint.External = fmt.Sprintf("%s:%d", endpoint.External.Address, endpoint.External.Port)
 	m.Status.Endpoint.Internal = fmt.Sprintf("%s:%d", endpoint.Internal.Address, endpoint.Internal.Port)
