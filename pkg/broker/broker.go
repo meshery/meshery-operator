@@ -90,9 +90,6 @@ func GetEndpoint(ctx context.Context, log logr.Logger, m *mesheryv1alpha1.Broker
 		return ErrGettingEndpoint(err)
 	}
 
-	log.Info("Discovered external endpoint: ", endpoint.External.Address, ":", endpoint.External.Port)
-	log.Info("Discovered internal endpoint: ", endpoint.Internal.Address, ":", endpoint.Internal.Port)
-
 	m.Status.Endpoint.External = fmt.Sprintf("%s:%d", endpoint.External.Address, endpoint.External.Port)
 	m.Status.Endpoint.Internal = fmt.Sprintf("%s:%d", endpoint.Internal.Address, endpoint.Internal.Port)
 	return nil
