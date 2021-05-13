@@ -12,7 +12,7 @@ metadata:
   labels:
     app: meshery
     component: operator
-  name: meshery
+  name: meshery-operator
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -297,7 +297,7 @@ roleRef:
   name: meshery-leader-election-role
 subjects:
 - kind: ServiceAccount
-  name: meshery
+  name: meshery-operator
   namespace: meshery
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -310,7 +310,7 @@ roleRef:
   name: meshery-operator-role
 subjects:
 - kind: ServiceAccount
-  name: meshery
+  name: meshery-operator
   namespace: meshery
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -323,7 +323,7 @@ roleRef:
   name: meshery-proxy-role
 subjects:
 - kind: ServiceAccount
-  name: meshery
+  name: meshery-operator
   namespace: meshery
 ---
 apiVersion: v1
@@ -363,7 +363,7 @@ spec:
         app: meshery
         component: operator
     spec:
-      serviceAccountName: meshery
+      serviceAccountName: meshery-operator
       containers:
       - args:
         - --secure-listen-address=0.0.0.0:8443
