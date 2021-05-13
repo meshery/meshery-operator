@@ -48,7 +48,7 @@ var (
 			Annotations: MesheryAnnotation,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName:            "meshery",
+			ServiceAccountName:            "meshery-operator",
 			ShareProcessNamespace:         &valtrue,
 			TerminationGracePeriodSeconds: &val60,
 			Containers: []corev1.Container{
