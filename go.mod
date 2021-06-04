@@ -13,7 +13,7 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/layer5io/meshkit v0.2.11
-	github.com/onsi/ginkgo v1.16.2
+	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
 	k8s.io/api v0.18.12
 	k8s.io/apimachinery v0.18.12
