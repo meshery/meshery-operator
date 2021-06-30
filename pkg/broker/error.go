@@ -5,14 +5,14 @@ import (
 )
 
 const (
-	ErrGettingResourceCode  = "meshsync_test"
-	ErrReplicasNotReadyCode = "meshsync_test"
-	ErrConditionFalseCode   = "meshsync_test"
-	ErrGettingEndpointCode  = "meshsync_test"
+	ErrGettingResourceCode  = "1013"
+	ErrReplicasNotReadyCode = "1014"
+	ErrConditionFalseCode   = "1015"
+	ErrGettingEndpointCode  = "1016"
 )
 
 func ErrGettingResource(err error) error {
-	return errors.New(ErrGettingResourceCode, errors.Alert, []string{"Unable to get requested resource"}, []string{"Unable to get requested resource while doing health check", err.Error()}, []string{}, []string{})
+	return errors.New(ErrGettingResourceCode, errors.Alert, []string{"Unable to get requested resource"}, []string{err.Error()}, []string{}, []string{})
 }
 
 func ErrGettingEndpoint(err error) error {
@@ -20,9 +20,9 @@ func ErrGettingEndpoint(err error) error {
 }
 
 func ErrReplicasNotReady(reason string) error {
-	return errors.New(ErrReplicasNotReadyCode, errors.Alert, []string{"Replicas not ready."}, []string{reason}, []string{}, []string{})
+	return errors.New(ErrReplicasNotReadyCode, errors.Alert, []string{"Replicas not ready"}, []string{reason}, []string{}, []string{})
 }
 
 func ErrConditionFalse(reason string) error {
-	return errors.New(ErrConditionFalseCode, errors.Alert, []string{"Health check condition false."}, []string{reason}, []string{}, []string{})
+	return errors.New(ErrConditionFalseCode, errors.Alert, []string{reason}, []string{}, []string{}, []string{})
 }

@@ -11,8 +11,9 @@ replace (
 require (
 	cloud.google.com/go v0.79.0 // indirect
 	github.com/go-logr/logr v0.4.0
+	github.com/golangci/golangci-lint v1.41.1 // indirect
 	github.com/google/uuid v1.2.0 // indirect
-	github.com/layer5io/meshkit v0.2.14
+	github.com/layer5io/meshkit v0.2.15
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.13.0
 	k8s.io/api v0.18.12

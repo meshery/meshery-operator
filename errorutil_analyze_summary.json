@@ -1,0 +1,29 @@
+{
+  "min_code": 1001,
+  "max_code": 1016,
+  "duplicate_codes": {},
+  "duplicate_names": [],
+  "call_expr_codes": null,
+  "int_codes": [
+    1014,
+    1016,
+    1001,
+    1004,
+    1005,
+    1010,
+    1012,
+    1006,
+    1007,
+    1011,
+    1013,
+    1015,
+    1002,
+    1003,
+    1008,
+    1009
+  ],
+  "deprecated_new_default": [
+    "controllers/error.go",
+    "pkg/broker/error.go"
+  ]
+}

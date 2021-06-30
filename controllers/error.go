@@ -5,18 +5,18 @@ import (
 )
 
 const (
-	ErrGetMeshsyncCode       = "meshsync_test"
-	ErrCreateMeshsyncCode    = "meshsync_test"
-	ErrReconcileMeshsyncCode = "meshsync_test"
-	ErrGetBrokerCode         = "meshsync_test"
-	ErrCreateBrokerCode      = "meshsync_test"
-	ErrReconcileBrokerCode   = "meshsync_test"
-	ErrReconcileCRCode       = "meshsync_test"
-	ErrDeleteMeshsyncCode    = "meshsync_test"
-	ErrDeleteBrokerCode      = "meshsync_test"
-	ErrCheckHealthCode       = "meshsync_test"
-	ErrGetEndpointCode       = "meshsync_test"
-	ErrUpdateResourceCode    = "meshsync_test"
+	ErrGetMeshsyncCode       = "1001"
+	ErrCreateMeshsyncCode    = "1002"
+	ErrReconcileMeshsyncCode = "1003"
+	ErrGetBrokerCode         = "1004"
+	ErrCreateBrokerCode      = "1005"
+	ErrReconcileBrokerCode   = "1006"
+	ErrReconcileCRCode       = "1007"
+	ErrDeleteMeshsyncCode    = "1008"
+	ErrDeleteBrokerCode      = "1009"
+	ErrCheckHealthCode       = "1010"
+	ErrGetEndpointCode       = "1011"
+	ErrUpdateResourceCode    = "1012"
 )
 
 func ErrGetMeshsync(err error) error {
@@ -52,7 +52,7 @@ func ErrReconcileBroker(err error) error {
 }
 
 func ErrReconcileCR(err error) error {
-	return errors.New(ErrReconcileCRCode, errors.Alert, []string{"Error during custom resource resource reconcillation"}, []string{err.Error()}, []string{}, []string{})
+	return errors.New(ErrReconcileCRCode, errors.Alert, []string{"Error during custom resource reconcillation"}, []string{err.Error()}, []string{}, []string{})
 }
 
 func ErrCheckHealth(err error) error {
@@ -60,9 +60,9 @@ func ErrCheckHealth(err error) error {
 }
 
 func ErrGetEndpoint(err error) error {
-	return errors.New(ErrGetEndpointCode, errors.Alert, []string{"Error gettting endpoint"}, []string{err.Error()}, []string{}, []string{})
+	return errors.New(ErrGetEndpointCode, errors.Alert, []string{"Error getting endpoint"}, []string{err.Error()}, []string{}, []string{})
 }
 
 func ErrUpdateResource(err error) error {
-	return errors.New(ErrUpdateResourceCode, errors.Alert, []string{"Error updating Resource"}, []string{err.Error()}, []string{}, []string{})
+	return errors.New(ErrUpdateResourceCode, errors.Alert, []string{"Error updating resource"}, []string{err.Error()}, []string{}, []string{})
 }
