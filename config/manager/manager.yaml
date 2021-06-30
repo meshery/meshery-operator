@@ -33,8 +33,6 @@ spec:
       - name: manager
         image: layer5/meshery-operator:stable-latest
         imagePullPolicy: Always
-        resources:
-          {}
         ports:
         - containerPort: 9443
           name: server

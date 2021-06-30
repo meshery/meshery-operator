@@ -23,7 +23,7 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-all: fmt vet error
+all: manager
 
 # Run tests
 ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
@@ -76,7 +76,7 @@ error:
 # Generate code
 generate: controller-gen kustomize
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."; \
-	$(KUSTOMIZE) build config/default > config/manifests/default.yaml; \
+	$(KUSTOMIZE) build config/default > config/manifests/default.yaml;
 
 # Build the docker image
 docker-build:
