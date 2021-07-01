@@ -291,10 +291,184 @@
       }
     ]
   },
-  "call_expr_codes": null,
-  "deprecated_new_default": [
-    "controllers/error.go",
-    "pkg/broker/error.go"
-  ],
-  "errors_raw": {}
+  "call_expr_codes": [],
+  "deprecated_new_default": [],
+  "errors_raw": {
+    "ErrCheckHealthCode": [
+      {
+        "name": "ErrCheckHealthCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error during health check",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrConditionFalseCode": [
+      {
+        "name": "ErrConditionFalseCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrCreateBrokerCode": [
+      {
+        "name": "ErrCreateBrokerCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to create broker controller",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrCreateMeshsyncCode": [
+      {
+        "name": "ErrCreateMeshsyncCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to create meshsync controller",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrDeleteBrokerCode": [
+      {
+        "name": "ErrDeleteBrokerCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to delete broker controller",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrDeleteMeshsyncCode": [
+      {
+        "name": "ErrDeleteMeshsyncCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to delete meshsync controller",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGetBrokerCode": [
+      {
+        "name": "ErrGetBrokerCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Broker resource not found",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGetEndpointCode": [
+      {
+        "name": "ErrGetEndpointCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error getting endpoint",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGetMeshsyncCode": [
+      {
+        "name": "ErrGetMeshsyncCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Meshsync resource not found",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGettingEndpointCode": [
+      {
+        "name": "ErrGettingEndpointCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to discovery endpoint",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGettingResourceCode": [
+      {
+        "name": "ErrGettingResourceCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to get requested resource",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrReconcileBrokerCode": [
+      {
+        "name": "ErrReconcileBrokerCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error during broker resource reconcillation",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrReconcileCRCode": [
+      {
+        "name": "ErrReconcileCRCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error during custom resource reconcillation",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrReconcileMeshsyncCode": [
+      {
+        "name": "ErrReconcileMeshsyncCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error during meshsync resource reconcillation",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrReplicasNotReadyCode": [
+      {
+        "name": "ErrReplicasNotReadyCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Replicas not ready",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrUpdateResourceCode": [
+      {
+        "name": "ErrUpdateResourceCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error updating resource",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ]
+  }
 }
