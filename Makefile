@@ -27,17 +27,17 @@ all: manager
 
 # Run tests
 ENVTEST_ASSETS_DIR = $(shell pwd)/testbin
-test: generate fmt vet manifests
+test: generate fmt vet error manifests
 	mkdir -p $(ENVTEST_ASSETS_DIR)
 	test -f $(ENVTEST_ASSETS_DIR)/setup-envtest.sh || curl -sSLo $(ENVTEST_ASSETS_DIR)/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.6.3/hack/setup-envtest.sh
 	source $(ENVTEST_ASSETS_DIR)/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -coverprofile cover.out
 
 # Build manager binary
-manager: generate fmt vet
+manager: generate fmt vet error
 	go build -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet manifests
+run: generate fmt vet error manifests
 	go run ./main.go
 
 # Install CRDs into a cluster
@@ -65,12 +65,18 @@ fmt:
 vet:
 	go vet ./...
 
+# Run go lint against code
+check:
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+
+# Run meshery error utility against code
+error:
+	go run github.com/layer5io/meshkit/cmd/errorutil -d . update -i ./helpers -o ./helpers
+
 # Generate code
 generate: controller-gen kustomize
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."; \
-	$(KUSTOMIZE) build config/default > config/manifests/default.yaml; \
-	$(KUSTOMIZE) build config/rbac > config/manifests/rbac.yaml; \
-	$(KUSTOMIZE) build config/crd > config/manifests/crd.yaml
+	$(KUSTOMIZE) build config/default > config/manifests/default.yaml;
 
 # Build the docker image
 docker-build:

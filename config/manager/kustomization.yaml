@@ -2,6 +2,7 @@ resources:
 - manager.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: meshery
 images:
 - name: meshery-operator
   newName: meshery-operator

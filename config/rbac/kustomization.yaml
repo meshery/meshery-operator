@@ -1,7 +1,10 @@
 namePrefix: meshery-
+namespace: meshery
 resources:
 - role.yaml
 - role_binding.yaml
+- controller_role.yaml
+- controller_role_binding.yaml
 - leader_election_role.yaml
 - leader_election_role_binding.yaml
 # Comment the following 4 lines if you want to disable

@@ -47,9 +47,10 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
+	var metricsAddr, namespace string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&namespace, "namespace", "meshery-operator", "The namespace operator is deployed to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -68,11 +69,12 @@ func main() {
 
 	opID := uuid.NewUUID()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   fmt.Sprintf("operator-%s.meshery.layer5.io", opID),
+		Scheme:                  scheme,
+		MetricsBindAddress:      metricsAddr,
+		Port:                    9443,
+		LeaderElection:          enableLeaderElection,
+		LeaderElectionID:        fmt.Sprintf("operator-%s.meshery.layer5.io", opID),
+		LeaderElectionNamespace: namespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -85,23 +87,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.MeshSyncReconciler{
+	mReconciler := &controllers.MeshSyncReconciler{
 		KubeConfig: mgr.GetConfig(),
 		Client:     mgr.GetClient(),
 		Clientset:  clientset,
 		Log:        ctrl.Log,
 		Scheme:     mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}
+
+	bReconciler := &controllers.BrokerReconciler{
+		KubeConfig: mgr.GetConfig(),
+		Client:     mgr.GetClient(),
+		Clientset:  clientset,
+		Log:        ctrl.Log,
+		Scheme:     mgr.GetScheme(),
+	}
+
+	if err = mReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "MeshSync")
 		os.Exit(1)
 	}
-	if err = (&controllers.BrokerReconciler{
-		KubeConfig: mgr.GetConfig(),
-		Client:     mgr.GetClient(),
-		Clientset:  clientset,
-		Log:        ctrl.Log,
-		Scheme:     mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	if err = bReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "Broker")
 		os.Exit(1)
 	}
@@ -111,5 +117,17 @@ func main() {
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
+	}
+
+	// Cleanup residual controllers
+	setupLog.Info("cleaning up residual controllers")
+	err = mReconciler.Cleanup()
+	if err != nil {
+		ctrl.Log.Error(err, "unable to delete controller", "MeshSync")
+	}
+
+	err = bReconciler.Cleanup()
+	if err != nil {
+		ctrl.Log.Error(err, "unable to delete controller", "Broker")
 	}
 }

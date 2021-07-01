@@ -1,0 +1,300 @@
+{
+  "entries": [
+    {
+      "name": "ErrGetMeshsyncCode",
+      "old_code": "1001",
+      "code": "1001",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrCreateMeshsyncCode",
+      "old_code": "1002",
+      "code": "1002",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrReconcileMeshsyncCode",
+      "old_code": "1003",
+      "code": "1003",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrGetBrokerCode",
+      "old_code": "1004",
+      "code": "1004",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrCreateBrokerCode",
+      "old_code": "1005",
+      "code": "1005",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrReconcileBrokerCode",
+      "old_code": "1006",
+      "code": "1006",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrReconcileCRCode",
+      "old_code": "1007",
+      "code": "1007",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrDeleteMeshsyncCode",
+      "old_code": "1008",
+      "code": "1008",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrDeleteBrokerCode",
+      "old_code": "1009",
+      "code": "1009",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrCheckHealthCode",
+      "old_code": "1010",
+      "code": "1010",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrGetEndpointCode",
+      "old_code": "1011",
+      "code": "1011",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrUpdateResourceCode",
+      "old_code": "1012",
+      "code": "1012",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrGettingResourceCode",
+      "old_code": "1013",
+      "code": "1013",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "pkg/broker/error.go"
+    },
+    {
+      "name": "ErrReplicasNotReadyCode",
+      "old_code": "1014",
+      "code": "1014",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "pkg/broker/error.go"
+    },
+    {
+      "name": "ErrConditionFalseCode",
+      "old_code": "1015",
+      "code": "1015",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "pkg/broker/error.go"
+    },
+    {
+      "name": "ErrGettingEndpointCode",
+      "old_code": "1016",
+      "code": "1016",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "pkg/broker/error.go"
+    }
+  ],
+  "literal_codes": {
+    "1001": [
+      {
+        "name": "ErrGetMeshsyncCode",
+        "old_code": "1001",
+        "code": "1001",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1002": [
+      {
+        "name": "ErrCreateMeshsyncCode",
+        "old_code": "1002",
+        "code": "1002",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1003": [
+      {
+        "name": "ErrReconcileMeshsyncCode",
+        "old_code": "1003",
+        "code": "1003",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1004": [
+      {
+        "name": "ErrGetBrokerCode",
+        "old_code": "1004",
+        "code": "1004",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1005": [
+      {
+        "name": "ErrCreateBrokerCode",
+        "old_code": "1005",
+        "code": "1005",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1006": [
+      {
+        "name": "ErrReconcileBrokerCode",
+        "old_code": "1006",
+        "code": "1006",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1007": [
+      {
+        "name": "ErrReconcileCRCode",
+        "old_code": "1007",
+        "code": "1007",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1008": [
+      {
+        "name": "ErrDeleteMeshsyncCode",
+        "old_code": "1008",
+        "code": "1008",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1009": [
+      {
+        "name": "ErrDeleteBrokerCode",
+        "old_code": "1009",
+        "code": "1009",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1010": [
+      {
+        "name": "ErrCheckHealthCode",
+        "old_code": "1010",
+        "code": "1010",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1011": [
+      {
+        "name": "ErrGetEndpointCode",
+        "old_code": "1011",
+        "code": "1011",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1012": [
+      {
+        "name": "ErrUpdateResourceCode",
+        "old_code": "1012",
+        "code": "1012",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1013": [
+      {
+        "name": "ErrGettingResourceCode",
+        "old_code": "1013",
+        "code": "1013",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "pkg/broker/error.go"
+      }
+    ],
+    "1014": [
+      {
+        "name": "ErrReplicasNotReadyCode",
+        "old_code": "1014",
+        "code": "1014",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "pkg/broker/error.go"
+      }
+    ],
+    "1015": [
+      {
+        "name": "ErrConditionFalseCode",
+        "old_code": "1015",
+        "code": "1015",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "pkg/broker/error.go"
+      }
+    ],
+    "1016": [
+      {
+        "name": "ErrGettingEndpointCode",
+        "old_code": "1016",
+        "code": "1016",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "pkg/broker/error.go"
+      }
+    ]
+  },
+  "call_expr_codes": null,
+  "deprecated_new_default": [
+    "controllers/error.go",
+    "pkg/broker/error.go"
+  ],
+  "errors_raw": {}
+}

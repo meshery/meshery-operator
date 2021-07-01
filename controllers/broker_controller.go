@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -100,6 +101,22 @@ func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.Broker{}).
 		Complete(r)
+}
+
+func (r *BrokerReconciler) Cleanup() error {
+	objects := brokerpackage.GetObjects(&mesheryv1alpha1.Broker{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "meshery-broker",
+			Namespace: "meshery",
+		},
+	})
+	for _, object := range objects {
+		err := r.Delete(context.TODO(), object)
+		if err != nil {
+			return ErrDeleteMeshsync(err)
+		}
+	}
+	return nil
 }
 
 func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.Broker, req ctrl.Request) (ctrl.Result, error) {
