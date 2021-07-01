@@ -71,7 +71,7 @@ check:
 
 # Run meshery error utility against code
 error:
-	go run github.com/layer5io/meshkit/cmd/errorutil -d . update
+	go run github.com/layer5io/meshkit/cmd/errorutil -d . update -i ./helpers -o ./helpers
 
 # Generate code
 generate: controller-gen kustomize
