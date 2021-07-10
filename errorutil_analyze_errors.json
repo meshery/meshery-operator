@@ -1,0 +1,474 @@
+{
+  "entries": [
+    {
+      "name": "ErrGetMeshsyncCode",
+      "old_code": "1001",
+      "code": "1001",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrCreateMeshsyncCode",
+      "old_code": "1002",
+      "code": "1002",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrReconcileMeshsyncCode",
+      "old_code": "1003",
+      "code": "1003",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrGetBrokerCode",
+      "old_code": "1004",
+      "code": "1004",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrCreateBrokerCode",
+      "old_code": "1005",
+      "code": "1005",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrReconcileBrokerCode",
+      "old_code": "1006",
+      "code": "1006",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrReconcileCRCode",
+      "old_code": "1007",
+      "code": "1007",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrDeleteMeshsyncCode",
+      "old_code": "1008",
+      "code": "1008",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrDeleteBrokerCode",
+      "old_code": "1009",
+      "code": "1009",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrCheckHealthCode",
+      "old_code": "1010",
+      "code": "1010",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrGetEndpointCode",
+      "old_code": "1011",
+      "code": "1011",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrUpdateResourceCode",
+      "old_code": "1012",
+      "code": "1012",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "controllers/error.go"
+    },
+    {
+      "name": "ErrGettingResourceCode",
+      "old_code": "1013",
+      "code": "1013",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "pkg/broker/error.go"
+    },
+    {
+      "name": "ErrReplicasNotReadyCode",
+      "old_code": "1014",
+      "code": "1014",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "pkg/broker/error.go"
+    },
+    {
+      "name": "ErrConditionFalseCode",
+      "old_code": "1015",
+      "code": "1015",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "pkg/broker/error.go"
+    },
+    {
+      "name": "ErrGettingEndpointCode",
+      "old_code": "1016",
+      "code": "1016",
+      "code_is_literal": true,
+      "code_is_int": true,
+      "path": "pkg/broker/error.go"
+    }
+  ],
+  "literal_codes": {
+    "1001": [
+      {
+        "name": "ErrGetMeshsyncCode",
+        "old_code": "1001",
+        "code": "1001",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1002": [
+      {
+        "name": "ErrCreateMeshsyncCode",
+        "old_code": "1002",
+        "code": "1002",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1003": [
+      {
+        "name": "ErrReconcileMeshsyncCode",
+        "old_code": "1003",
+        "code": "1003",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1004": [
+      {
+        "name": "ErrGetBrokerCode",
+        "old_code": "1004",
+        "code": "1004",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1005": [
+      {
+        "name": "ErrCreateBrokerCode",
+        "old_code": "1005",
+        "code": "1005",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1006": [
+      {
+        "name": "ErrReconcileBrokerCode",
+        "old_code": "1006",
+        "code": "1006",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1007": [
+      {
+        "name": "ErrReconcileCRCode",
+        "old_code": "1007",
+        "code": "1007",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1008": [
+      {
+        "name": "ErrDeleteMeshsyncCode",
+        "old_code": "1008",
+        "code": "1008",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1009": [
+      {
+        "name": "ErrDeleteBrokerCode",
+        "old_code": "1009",
+        "code": "1009",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1010": [
+      {
+        "name": "ErrCheckHealthCode",
+        "old_code": "1010",
+        "code": "1010",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1011": [
+      {
+        "name": "ErrGetEndpointCode",
+        "old_code": "1011",
+        "code": "1011",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1012": [
+      {
+        "name": "ErrUpdateResourceCode",
+        "old_code": "1012",
+        "code": "1012",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "controllers/error.go"
+      }
+    ],
+    "1013": [
+      {
+        "name": "ErrGettingResourceCode",
+        "old_code": "1013",
+        "code": "1013",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "pkg/broker/error.go"
+      }
+    ],
+    "1014": [
+      {
+        "name": "ErrReplicasNotReadyCode",
+        "old_code": "1014",
+        "code": "1014",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "pkg/broker/error.go"
+      }
+    ],
+    "1015": [
+      {
+        "name": "ErrConditionFalseCode",
+        "old_code": "1015",
+        "code": "1015",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "pkg/broker/error.go"
+      }
+    ],
+    "1016": [
+      {
+        "name": "ErrGettingEndpointCode",
+        "old_code": "1016",
+        "code": "1016",
+        "code_is_literal": true,
+        "code_is_int": true,
+        "path": "pkg/broker/error.go"
+      }
+    ]
+  },
+  "call_expr_codes": [],
+  "deprecated_new_default": [],
+  "errors_raw": {
+    "ErrCheckHealthCode": [
+      {
+        "name": "ErrCheckHealthCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error during health check",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrConditionFalseCode": [
+      {
+        "name": "ErrConditionFalseCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrCreateBrokerCode": [
+      {
+        "name": "ErrCreateBrokerCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to create broker controller",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrCreateMeshsyncCode": [
+      {
+        "name": "ErrCreateMeshsyncCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to create meshsync controller",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrDeleteBrokerCode": [
+      {
+        "name": "ErrDeleteBrokerCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to delete broker controller",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrDeleteMeshsyncCode": [
+      {
+        "name": "ErrDeleteMeshsyncCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to delete meshsync controller",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGetBrokerCode": [
+      {
+        "name": "ErrGetBrokerCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Broker resource not found",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGetEndpointCode": [
+      {
+        "name": "ErrGetEndpointCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error getting endpoint",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGetMeshsyncCode": [
+      {
+        "name": "ErrGetMeshsyncCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Meshsync resource not found",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGettingEndpointCode": [
+      {
+        "name": "ErrGettingEndpointCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to discovery endpoint",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrGettingResourceCode": [
+      {
+        "name": "ErrGettingResourceCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Unable to get requested resource",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrReconcileBrokerCode": [
+      {
+        "name": "ErrReconcileBrokerCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error during broker resource reconcillation",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrReconcileCRCode": [
+      {
+        "name": "ErrReconcileCRCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error during custom resource reconcillation",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrReconcileMeshsyncCode": [
+      {
+        "name": "ErrReconcileMeshsyncCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error during meshsync resource reconcillation",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrReplicasNotReadyCode": [
+      {
+        "name": "ErrReplicasNotReadyCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Replicas not ready",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ],
+    "ErrUpdateResourceCode": [
+      {
+        "name": "ErrUpdateResourceCode",
+        "code": "",
+        "severity": "Alert",
+        "long_description": "",
+        "short_description": "Error updating resource",
+        "probable_cause": "",
+        "suggested_remediation": ""
+      }
+    ]
+  }
+}

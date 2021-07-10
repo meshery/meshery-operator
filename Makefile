@@ -69,9 +69,11 @@ vet:
 check:
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
 
+# .PHONY -> you can explicitly tell Makefile that some command do not represent physical file in the system 
+.PHONY: error
 # Run meshery error utility against code
 error:
-	go run github.com/layer5io/meshkit/cmd/errorutil -d . update -i ./helpers -o ./helpers
+	go run github.com/layer5io/meshkit/cmd/errorutil -d . update 
 
 # Generate code
 generate: controller-gen kustomize
