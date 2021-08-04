@@ -539,8 +539,8 @@ github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 h1:SOEGU9fKiNWd/HOJuq
 github.com/lann/builder v0.0.0-20180802200727-47ae307949d0/go.mod h1:dXGbAdH5GtBTC4WfIxhKZfyBF/HBFgRZSWwZ9g/He9o=
 github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 h1:P6pPBnrTSX3DEVR4fDembhRWSsG5rVo6hYhAB/ADZrk=
 github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0/go.mod h1:vmVJ0l/dxyfGW6FmdpVm2joNMFikkuWg0EoCKLGUMNw=
-github.com/layer5io/meshkit v0.2.19 h1:O6Zv253CS2hJcDCnwa9OsQPcZhCYA8braptnh+mKKO4=
-github.com/layer5io/meshkit v0.2.19/go.mod h1:nkTKAEL9jZ74az1LEd157tSe3o382DxPOCgxqI7gCjk=
+github.com/layer5io/meshkit v0.2.20 h1:a4KIejSCK2YiDeHUgWG0y8lQhIzKKi4vjIi27kScZ5Y=
+github.com/layer5io/meshkit v0.2.20/go.mod h1:nkTKAEL9jZ74az1LEd157tSe3o382DxPOCgxqI7gCjk=
 github.com/lib/pq v1.0.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.2.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lib/pq v1.7.0/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
