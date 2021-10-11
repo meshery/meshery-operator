@@ -8,8 +8,8 @@ on:
   pull_request:
     tags:
       - v*
-    branches:
-      - master
+        #branches:
+        #- master
 
 jobs:
   golangci-lint:
