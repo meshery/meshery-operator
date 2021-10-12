@@ -18,7 +18,7 @@ require (
 	github.com/lib/pq v1.9.0 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/reflectwalk v1.0.1 // indirect
-	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.16.0
 	github.com/prometheus/client_golang v1.7.1 // indirect
 	github.com/rogpeppe/go-internal v1.6.2 // indirect
