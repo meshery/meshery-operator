@@ -15,7 +15,7 @@ jobs:
   golangci-lint:
     strategy:
       matrix:
-        go-version: [1.14.x]
+        go-version: [1.16.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -35,7 +35,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: [1.14.x]
+        go-version: [1.16.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -59,7 +59,7 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.14.x]
+        go-version: [1.16.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
