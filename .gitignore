@@ -16,6 +16,7 @@
 vendor/
 
 .idea
+.vscode
 
 # Miscellaneous
 **errorutil_analyze_errors.json
