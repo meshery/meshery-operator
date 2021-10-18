@@ -16,7 +16,7 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/layer5io/meshkit v0.2.31
 	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.16.0
 	github.com/rogpeppe/go-internal v1.6.2 // indirect
 	k8s.io/api v0.22.2
