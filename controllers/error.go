@@ -32,7 +32,7 @@ func ErrDeleteMeshsync(err error) error {
 }
 
 func ErrReconcileMeshsync(err error) error {
-	return errors.New(ErrReconcileMeshsyncCode, errors.Alert, []string{"Error during meshsync resource reconcillation"}, []string{err.Error()}, []string{}, []string{})
+	return errors.New(ErrReconcileMeshsyncCode, errors.Alert, []string{"Error during meshsync resource reconciliation"}, []string{err.Error()}, []string{}, []string{})
 }
 
 func ErrGetBroker(err error) error {
@@ -48,11 +48,11 @@ func ErrDeleteBroker(err error) error {
 }
 
 func ErrReconcileBroker(err error) error {
-	return errors.New(ErrReconcileBrokerCode, errors.Alert, []string{"Error during broker resource reconcillation"}, []string{err.Error()}, []string{}, []string{})
+	return errors.New(ErrReconcileBrokerCode, errors.Alert, []string{"Error during broker resource reconciliation"}, []string{err.Error()}, []string{}, []string{})
 }
 
 func ErrReconcileCR(err error) error {
-	return errors.New(ErrReconcileCRCode, errors.Alert, []string{"Error during custom resource reconcillation"}, []string{err.Error()}, []string{}, []string{})
+	return errors.New(ErrReconcileCRCode, errors.Alert, []string{"Error during custom resource reconciliation"}, []string{err.Error()}, []string{}, []string{})
 }
 
 func ErrCheckHealth(err error) error {
