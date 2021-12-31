@@ -50,7 +50,7 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	log := r.Log
 	log = log.WithValues("controller", "Broker")
 	log = log.WithValues("namespace", req.NamespacedName)
-	log.Info("Reconcilling broker")
+	log.Info("Reconciling broker")
 	baseResource := &mesheryv1alpha1.Broker{}
 
 	// Check if resource exists
