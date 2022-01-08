@@ -170,33 +170,32 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Ports: []corev1.ContainerPort{
 						{
-							Name:          "client",
-							HostPort:      val4222,
+							Name: "client",
+
 							ContainerPort: val4222,
 						},
 						{
-							Name:          "cluster",
-							HostPort:      val6222,
+							Name: "cluster",
+
 							ContainerPort: val6222,
 						},
 						{
-							Name:          "leafnodes",
-							HostPort:      val7422,
+							Name: "leafnodes",
+
 							ContainerPort: val7422,
 						},
 						{
-							Name:          "gateways",
-							HostPort:      val7522,
+							Name: "gateways",
+
 							ContainerPort: val7522,
 						},
 						{
-							Name:          "monitor",
-							HostPort:      val8222,
+							Name: "monitor",
+
 							ContainerPort: val8222,
 						},
 						{
 							Name:          "metrics",
-							HostPort:      val7777,
 							ContainerPort: val7777,
 						},
 					},
@@ -291,21 +290,6 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 						},
 					},
 				},
-				// {
-				// 	Name:            "metrics",
-				// 	Image:           "synadia/prometheus-nats-exporter:0.5.0",
-				// 	ImagePullPolicy: corev1.PullIfNotPresent,
-				// 	Args: []string{
-				// 		"-connz", "-routez", "-subz", "-varz", "-prefix=nats", "-use_internal_server_id", "http://localhost:8222/",
-				// 	},
-				// 	Ports: []corev1.ContainerPort{
-				// 		{
-				// 			Name:          "metrics",
-				// 			HostPort:      val7777,
-				// 			ContainerPort: val7777,
-				// 		},
-				// 	},
-				// },
 			},
 		},
 	}

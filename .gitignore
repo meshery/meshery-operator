@@ -17,6 +17,8 @@ vendor/
 
 .idea
 .vscode
+.DS_Store
+
 
 # Miscellaneous
 **errorutil_analyze_errors.json
