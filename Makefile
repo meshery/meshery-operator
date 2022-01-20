@@ -68,8 +68,15 @@ vet:
 	go vet ./...
 
 # Run go lint against code
-check:
+check: golint
+golint: get-lint
+golint: run-lint
+
+run-lint:
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+
+get-lint:
+	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.43.0
 
 # Run meshery error utility against code
 error:
