@@ -17,7 +17,7 @@ require (
 	github.com/layer5io/meshkit v0.5.1
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.17.0
+	github.com/onsi/gomega v1.18.1
 	github.com/rogpeppe/go-internal v1.6.2 // indirect
 	k8s.io/api v0.22.4
 	k8s.io/apimachinery v0.22.4
