@@ -9,7 +9,7 @@ replace (
 )
 
 require (
-	github.com/go-logr/logr v0.4.0
+	github.com/go-logr/logr v1.2.3
 	github.com/layer5io/meshkit v0.5.2
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.18.1
