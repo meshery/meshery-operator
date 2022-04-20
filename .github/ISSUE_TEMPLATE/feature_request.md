@@ -2,9 +2,7 @@
 name: 💡 General Feature Request
 about: Suggest an enhancement to Meshery.
 title: ''
-labels: 
- - 'kind/enhancement'
- - 'language/go'
+labels: 'kind/enhancement'
 assignees: ''
 ---
 #### Current Behavior

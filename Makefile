@@ -40,6 +40,7 @@ manager: generate fmt vet error
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet error manifests
+	go mod tidy; \
 	go run ./main.go
 
 # Install CRDs into a cluster
