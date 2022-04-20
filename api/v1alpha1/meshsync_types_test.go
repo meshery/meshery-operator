@@ -20,7 +20,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 	context := context.Background()
 
 	const (
-		URL          string = "https://layer5.io.com"
+		URL          string = "https://layer5.io"
 		str          string = "healthy"
 		Reason       string = "Testcase"
 		Message      string = "Message for testcase"
