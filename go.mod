@@ -3,7 +3,6 @@ module github.com/layer5io/meshery-operator
 go 1.17
 
 replace (
-	//	golang.org/x/sys => golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.8.1
 	github.com/kudobuilder/kuttl => github.com/layer5io/kuttl v0.4.1-0.20200806180306-b7e46afd657f
 	k8s.io/api => k8s.io/api v0.22.8
@@ -12,7 +11,6 @@ replace (
 	k8s.io/cli-runtime => k8s.io/cli-runtime v0.22.8
 	k8s.io/client-go => k8s.io/client-go v0.22.8
 	k8s.io/component-base => k8s.io/component-base v0.22.8
-	vbom.ml/util => github.com/fvbommel/util v0.0.0-20180919145318-efcd4e0f9787
 )
 
 require (
