@@ -40,6 +40,7 @@ manager: generate fmt vet error
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet error manifests
+	go mod tidy; \
 	go run ./main.go
 
 # Install CRDs into a cluster
@@ -68,8 +69,15 @@ vet:
 	go vet ./...
 
 # Run go lint against code
-check:
+check: golint
+golint: get-lint
+golint: run-lint
+
+run-lint:
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
+
+get-lint:
+	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.43.0
 
 # Run meshery error utility against code
 error:
