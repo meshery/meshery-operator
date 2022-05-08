@@ -91,7 +91,7 @@ func main() {
 		KubeConfig: mgr.GetConfig(),
 		Client:     mgr.GetClient(),
 		Clientset:  clientset,
-		Log:        ctrl.Log,
+		Log:        ctrl.Log.WithName("MeshSync"),
 		Scheme:     mgr.GetScheme(),
 	}
 
@@ -99,7 +99,7 @@ func main() {
 		KubeConfig: mgr.GetConfig(),
 		Client:     mgr.GetClient(),
 		Clientset:  clientset,
-		Log:        ctrl.Log,
+		Log:        ctrl.Log.WithName("Broker"),
 		Scheme:     mgr.GetScheme(),
 	}
 
