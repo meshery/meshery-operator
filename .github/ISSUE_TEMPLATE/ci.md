@@ -1,33 +1,21 @@
 ---
-name: 🐛 General Bug Report
-about: Report an issue to help improve the project.
-title: ''
-labels: 'kind/bug'
+name: 🛠 Continuous Integration / DevOps
+about: Improve or update workflows or other automation
+title: '[CI]'
+labels: 'area/ci'
 assignees: ''
 ---
 #### Current Behavior
-<!-- A brief description of the issue. -->
+<!-- A brief description of what the problem is. (e.g. I need to be able to...) -->
 
-#### Expected Behavior
+#### Desired Behavior
 <!-- A brief description of what you expected to happen. -->
 
-#### Screenshots/Logs
-<!-- Add screenshots, if applicable, to help explain your problem. -->
+#### Implementation
+<!-- Specifics on the approach to fulfilling the feature request. -->
 
-#### Environment
-
-- **Host OS:** Mac Linux Windows
-- **Platform:** Docker or Kubernetes
-- **Meshery Server Version:** stable-v
-- **Meshery Client Version:** stable-v
-
-<!-- Optional 
-#### To Reproduce
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
--->
+#### Acceptance Tests
+<!-- Stipulations of functional behavior or non-functional items that must be in-place in order for the issue to be closed. -->
 
 ---
 #### Contributor [Guides](https://docs.meshery.io/project/contributing) and Resources
