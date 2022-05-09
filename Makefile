@@ -39,7 +39,7 @@ manager: generate fmt vet error
 	go build -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-run: generate fmt vet error manifests
+run: 	generate fmt vet error manifests
 	go mod tidy; \
 	go run ./main.go
 
