@@ -20,17 +20,12 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
@@ -98,8 +93,6 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.MeshSync{}).
-		Watches(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForObject{}).
-		WithEventFilter(updatePredicate()).
 		Complete(r)
 }
 
@@ -164,16 +157,4 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool,
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func updatePredicate() predicate.Predicate {
-	return predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			val, ok := e.ObjectNew.GetLabels()["component"]
-			if ok && val == "broker" {
-				return ok
-			}
-			return !ok
-		},
-	}
 }
