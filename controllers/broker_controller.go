@@ -29,6 +29,7 @@ import (
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
+	"github.com/layer5io/meshery-operator/pkg/meshsync"
 	"github.com/layer5io/meshkit/utils"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/types"
@@ -105,7 +106,7 @@ func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *BrokerReconciler) Cleanup() error {
 	objects := brokerpackage.GetObjects(&mesheryv1alpha1.Broker{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      "meshery-broker",
+			Name:      meshsync.BrokerName,
 			Namespace: "meshery",
 		},
 	})

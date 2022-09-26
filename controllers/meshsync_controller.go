@@ -20,15 +20,21 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
+	"github.com/layer5io/meshery-operator/pkg/meshsync"
 	meshsyncpackage "github.com/layer5io/meshery-operator/pkg/meshsync"
 	"github.com/layer5io/meshkit/utils"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
@@ -93,13 +99,46 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.MeshSync{}).
+		Watches(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForObject{}).
+		WithEventFilter(updatePredicateOnServiceAndMeshSync()).
 		Complete(r)
 }
-
+func updatePredicateOnServiceAndMeshSync() predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(ce event.CreateEvent) bool {
+			if ce.Object.GetName() == meshsync.MeshsyncName {
+				return true
+			} else {
+				return false //Since we are watching for services as well, they should be explicitly stopped on filtering otherwise services will trigger reconcile by default
+			}
+		},
+		DeleteFunc: func(de event.DeleteEvent) bool {
+			if de.Object.GetName() == meshsync.MeshsyncName {
+				return true
+			} else {
+				return false
+			}
+		},
+		GenericFunc: func(ge event.GenericEvent) bool {
+			if ge.Object.GetName() == meshsync.MeshsyncName {
+				return true
+			} else {
+				return false
+			}
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			val := e.ObjectNew.GetName()
+			if val == meshsync.MeshsyncName || val == meshsync.BrokerName { //The second condition will be satisfied on update of meshery-broker service
+				return true
+			}
+			return false
+		},
+	}
+}
 func (r *MeshSyncReconciler) Cleanup() error {
 	objects := meshsyncpackage.GetObjects(&mesheryv1alpha1.MeshSync{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      "meshery-meshsync",
+			Name:      meshsync.MeshsyncName,
 			Namespace: "meshery",
 		},
 	})

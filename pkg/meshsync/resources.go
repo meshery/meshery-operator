@@ -6,6 +6,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	MeshsyncName = "meshery-meshsync"
+	BrokerName   = "meshery-broker"
+)
+
 var (
 	val1     int32 = 1
 	val60    int64 = 60
@@ -28,7 +33,7 @@ var (
 
 	Deployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "meshery-meshsync",
+			Name:        MeshsyncName,
 			Labels:      MeshSyncLabel,
 			Annotations: MesheryAnnotation,
 		},
@@ -43,7 +48,7 @@ var (
 
 	PodTemplate = corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "meshery-meshsync",
+			Name:        MeshsyncName,
 			Labels:      MeshSyncLabel,
 			Annotations: MesheryAnnotation,
 		},
