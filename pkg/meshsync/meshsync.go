@@ -2,6 +2,7 @@ package meshsync
 
 import (
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	v1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -22,7 +23,8 @@ func GetObjects(m *mesheryv1alpha1.MeshSync) map[string]Object {
 }
 
 func getServerObject(namespace, name string, replicas int32, url string) Object {
-	obj := Deployment
+	var obj = &v1.Deployment{}
+	Deployment.DeepCopyInto(obj)
 	obj.ObjectMeta.Namespace = namespace
 	obj.ObjectMeta.Name = name
 	obj.Spec.Replicas = &replicas

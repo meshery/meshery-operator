@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	mesherykube "github.com/layer5io/meshkit/utils/kubernetes"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -35,7 +36,8 @@ func GetObjects(m *mesheryv1alpha1.Broker) map[string]Object {
 }
 
 func getServerObject(namespace, name string, replicas int32) Object {
-	obj := StatefulSet
+	var obj = &v1.StatefulSet{}
+	StatefulSet.DeepCopyInto(obj)
 	obj.ObjectMeta.Namespace = namespace
 	obj.ObjectMeta.Name = name
 	obj.Spec.Replicas = &replicas
@@ -43,19 +45,22 @@ func getServerObject(namespace, name string, replicas int32) Object {
 }
 
 func getServiceObject(namespace, name string) Object {
-	obj := Service
+	var obj = &corev1.Service{}
+	Service.DeepCopyInto(obj)
 	obj.ObjectMeta.Name = name
 	obj.ObjectMeta.Namespace = namespace
 	return obj
 }
 
 func getServerConfig() Object {
-	obj := NatsConfigMap
+	var obj = &corev1.ConfigMap{}
+	NatsConfigMap.DeepCopyInto(obj)
 	return obj
 }
 
 func getAccountConfig() Object {
-	obj := AccountsConfigMap
+	var obj = &corev1.ConfigMap{}
+	AccountsConfigMap.DeepCopyInto(obj)
 	return obj
 }
 
