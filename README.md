@@ -16,7 +16,7 @@
 
 </div>
 
-<a href="https://meshery.io/community"><img alt="Layer5 Service Mesh Community" src="img/readme/meshery-operator-dark.svg" style="margin:10px;" width="150px" align="left" /></a>
+<a href="https://meshery.io/community"><img alt="Layer5 Service Mesh Community" src="./img/readme/meshery-operator-dark.svg" style="margin:10px;" width="150px" align="left" /></a>
 # Meshery Operator
 Meshery Operator is the multi-service mesh operator and implementation of MeshSync.
 
@@ -29,18 +29,18 @@ Meshery Operator is the multi-service mesh operator and implementation of MeshSy
 ## Join the service mesh community!
 
 <a name="contributing"></a><a name="community"></a>
-Our projects are community-built and welcome collaboration. 👍 Be sure to see the <a href="https://docs.google.com/document/d/17OPtDE_rdnPQxmk2Kauhm3GwXF1R5dZ3Cj8qZLKdo5E/edit">Layer5 Community Welcome Guide</a> for a tour of resources available to you and jump into our <a href="http://slack.layer5.io">Slack</a>!
+Our projects are community-built and welcome collaboration. 👍 Be sure to see the <a href="https://docs.google.com/document/d/17OPtDE_rdnPQxmk2Kauhm3GwXF1R5dZ3Cj8qZLKdo5E/edit">Layer5 Community Welcome Guide</a> for a tour of resources available to you and jump into our <a href="http://slack.layer5.io" img src="./img/readme/slack-dark-128.png">Slack</a>!
 
-<a href="https://meshery.io/community"><img alt="Layer5 Service Mesh Community" src="img/readme/community.svg" style="margin-left:10px;padding-top:5px;" width="110px" align="right" /></a>
+<a href="https://meshery.io/community"><img alt="Layer5 Service Mesh Community" src="./img/readme/community.png" style="margin-left:10px;padding-top:5px;" width="110px" align="right" /></a>
 
 <a href="https://meshery.io/community"><picture>
-    <source srcset="img/readme/community-dark.png" media="(prefers-color-scheme: dark)">
-    <img alt="Layer5 Service Mesh Community" src="img/readme/community.png" style="margin-left:10px;padding-top:5px;" width="110px" align="right" />
+    <source srcset="./img/readme/community-dark.png" media="(prefers-color-scheme: dark)">
+    <img alt="Layer5 Service Mesh Community" src="./img/readme/community.png" style="margin-left:10px;padding-top:5px;" width="110px" align="right" />
 </picture></a>
 
 <a href="http://slack.layer5.io"><picture>
-    <source srcset="/img/readme/slack-dark-128.png" media="(prefers-color-scheme: dark)">
-    <img alt="Layer5 Service Mesh Community" src="img/readme/slack-128.png" style="margin-right:8px;padding-top:5px;" width="140px" align="left" />
+    <source srcset="./img/readme/slack-dark-128.png" media="(prefers-color-scheme: dark)">
+    <img alt="Layer5 Service Mesh Community" src="./img/readme/slack-128.png" style="margin-right:8px;padding-top:5px;" width="140px" align="left" />
 </picture></a>
 
 <p>
