@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	util "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
@@ -140,11 +141,11 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool,
 		object,
 	)
 	if err != nil && kubeerror.IsNotFound(err) && enable {
+		_ = util.SetControllerReference(baseResource, object, r.Scheme)
 		er := r.Create(ctx, object)
 		if er != nil {
 			return ctrl.Result{}, ErrCreateMeshsync(er)
 		}
-		_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
 		return ctrl.Result{Requeue: true}, nil
 	} else if err != nil && enable {
 		return ctrl.Result{}, ErrGetMeshsync(err)
