@@ -118,16 +118,4 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-
-	// Cleanup residual controllers
-	setupLog.Info("cleaning up residual controllers")
-	err = mReconciler.Cleanup()
-	if err != nil {
-		ctrl.Log.Error(err, "unable to delete controller", "MeshSync")
-	}
-
-	err = bReconciler.Cleanup()
-	if err != nil {
-		ctrl.Log.Error(err, "unable to delete controller", "Broker")
-	}
 }

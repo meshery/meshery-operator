@@ -41,8 +41,9 @@ var (
 
 	NatsConfigMap = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "meshery-nats-config",
-			Labels: BrokerLabel,
+			Namespace: "meshery",
+			Name:      "meshery-nats-config",
+			Labels:    BrokerLabel,
 		},
 		Data: map[string]string{
 			"nats.conf": `
@@ -59,8 +60,9 @@ include "accounts/resolver.conf"`,
 
 	AccountsConfigMap = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "meshery-nats-accounts",
-			Labels: BrokerLabel,
+			Namespace: "meshery",
+			Name:      "meshery-nats-accounts",
+			Labels:    BrokerLabel,
 		},
 		Data: map[string]string{
 			"resolver.conf": `
@@ -73,6 +75,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 
 	Service = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   "meshery",
 			Name:        "meshery-nats",
 			Labels:      BrokerLabel,
 			Annotations: MesheryAnnotation,
@@ -111,6 +114,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 
 	StatefulSet = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   "meshery",
 			Name:        "meshery-nats",
 			Labels:      BrokerLabel,
 			Annotations: MesheryAnnotation,
@@ -127,6 +131,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 
 	PodTemplate = corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   "meshery",
 			Name:        "meshery-nats",
 			Labels:      BrokerLabel,
 			Annotations: PrometheusAnnotation,
