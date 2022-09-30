@@ -130,11 +130,11 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, bas
 			object,
 		)
 		if err != nil && kubeerror.IsNotFound(err) && enable {
+			_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
 			er := r.Create(ctx, object)
 			if er != nil {
 				return ctrl.Result{}, ErrCreateMeshsync(er)
 			}
-			_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
 			return ctrl.Result{Requeue: true}, nil
 		} else if err != nil && enable {
 			return ctrl.Result{}, ErrGetMeshsync(err)
