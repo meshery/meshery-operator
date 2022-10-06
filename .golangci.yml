@@ -76,12 +76,12 @@ linters:
   # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
   disable-all: true
   enable:
-    - deadcode
+    # - deadcode
     - dogsled
     - errcheck
     - gocritic
     - gofmt
-    - golint
+    # - golint
     # todo[kusthedude]: restore gosec check, once this issue is resolved https://github.com/golangci/golangci-lint/issues/177
     # - gosec
     - govet

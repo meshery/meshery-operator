@@ -11,9 +11,9 @@ import (
 )
 
 /*
-  Here we do not want test CURD of kubernetes service, we want to confirm that:
-  * our CRDs resouces group version could be support by specific kubernetes server
-  * the specific value of the CRDs field can be workwell without pruning by the api-server to etcd
+Here we do not want test CURD of kubernetes service, we want to confirm that:
+* our CRDs resouces group version could be support by specific kubernetes server
+* the specific value of the CRDs field can be workwell without pruning by the api-server to etcd
 */
 var _ = Describe("The test case for the meshsync CRDs", func() {
 

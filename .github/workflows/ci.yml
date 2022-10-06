@@ -15,13 +15,13 @@ jobs:
   golangci-lint:
     strategy:
       matrix:
-        go-version: [1.17.x]
+        go-version: [1.19.x.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@master
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@master
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
@@ -36,16 +36,16 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: [1.17.x]
+        go-version: [1.19.x.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
     - name: Install Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@master
       with:
         go-version: ${{ matrix.go-version }}
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@master
     - name: Cache go modules
       uses: actions/cache@v3
       with:
@@ -60,16 +60,16 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.17.x]
+        go-version: [1.19.x.x]
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
     - name: Install Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@master
       with:
         go-version: ${{ matrix.go-version }}
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@master
     - name: Cache go modules
       uses: actions/cache@v3
       with:
