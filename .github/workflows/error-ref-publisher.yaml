@@ -12,16 +12,16 @@ jobs:
     if: github.repository == 'meshery/meshery-operator'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@master
         # token here with write access to meshery-operator repo
         with:
           token: ${{ secrets.GH_ACCESS_TOKEN }}
           ref: 'master'
 
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@master
         with:
-          go-version: 1.17
+          go-version: 1.19
 
       - name: Run utility
         run: |
@@ -40,7 +40,7 @@ jobs:
 
       # to push changes to meshery docs
       - name: Checkout meshery
-        uses: actions/checkout@v3
+        uses: actions/checkout@master
         with:
           repository: 'meshery/meshery'
           # token with write access to meshery repository
