@@ -33,11 +33,6 @@ Our projects are community-built and welcome collaboration. 👍 Be sure to see 
 
 <a href="https://meshery.io/community"><img alt="Layer5 Service Mesh Community" src="./img/readme/community.png" style="margin-left:10px;padding-top:5px;" width="110px" align="right" /></a>
 
-<a href="https://meshery.io/community"><picture>
-    <source srcset="./img/readme/community-dark.png" media="(prefers-color-scheme: dark)">
-    <img alt="Layer5 Service Mesh Community" src="./img/readme/community.png" style="margin-left:10px;padding-top:5px;" width="110px" align="right" />
-</picture></a>
-
 <a href="http://slack.layer5.io"><picture>
     <source srcset="./img/readme/slack-dark-128.png" media="(prefers-color-scheme: dark)">
     <img alt="Layer5 Service Mesh Community" src="./img/readme/slack-128.png" style="margin-right:8px;padding-top:5px;" width="140px" align="left" />
