@@ -13,7 +13,7 @@ require (
 	github.com/go-logr/logr v1.2.3
 	github.com/layer5io/meshkit v0.6.5
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.20.2
+	github.com/onsi/gomega v1.21.1
 	k8s.io/api v0.25.2
 	k8s.io/apimachinery v0.25.2
 	k8s.io/client-go v0.25.2
