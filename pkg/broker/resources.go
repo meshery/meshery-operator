@@ -17,7 +17,7 @@ var (
 	val8222 int32 = 8222
 	val7777 int32 = 7777
 
-	valtrue bool = true
+	valtrue bool
 
 	MesheryLabel = map[string]string{
 		"app": "meshery",

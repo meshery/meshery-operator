@@ -21,17 +21,16 @@ import (
 	"fmt"
 	"os"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/uuid"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	"github.com/layer5io/meshery-operator/controllers"
 	"github.com/layer5io/meshkit/logger"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	ctrl "sigs.k8s.io/controller-runtime"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -104,11 +103,11 @@ func main() {
 	}
 
 	if err = mReconciler.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "MeshSync")
+		setupLog.Error(err, "unable to create controller", "controller", "MeshSync")
 		os.Exit(1)
 	}
 	if err = bReconciler.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "Broker")
+		setupLog.Error(err, "unable to create controller", "controller", "Broker")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
