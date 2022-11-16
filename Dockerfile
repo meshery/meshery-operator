@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.19 as builder 
+FROM cgr.dev/chainguard/go:latest as builder 
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -18,9 +18,8 @@ COPY pkg/ pkg/
 # Build
 RUN CGO_ENABLED=0 GO111MODULE=on go build -a -o manager main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+# Instead of using distroless, use Chainguard images
+FROM cgr.dev/chainguard/static:latest
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER nonroot:nonroot
