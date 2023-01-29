@@ -114,7 +114,7 @@ run-lint:
 	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
 
 get-lint:
-	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.43.0
+	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
 
 # Run meshery error utility against code
 error:
