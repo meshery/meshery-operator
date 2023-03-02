@@ -15,11 +15,11 @@ require (
 	github.com/go-logr/logr v1.2.3
 	github.com/layer5io/meshkit v0.6.27
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.23.0
+	github.com/onsi/gomega v1.24.1
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
-	k8s.io/client-go v0.26.0
-	sigs.k8s.io/controller-runtime v0.13.0
+	k8s.io/client-go v0.26.1
+	sigs.k8s.io/controller-runtime v0.14.5
 )
 
 require (
@@ -135,7 +135,7 @@ require (
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
-	golang.org/x/time v0.1.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef // indirect
@@ -149,14 +149,14 @@ require (
 	gorm.io/driver/sqlite v1.4.4 // indirect
 	gorm.io/gorm v1.24.3 // indirect
 	helm.sh/helm/v3 v3.11.1 // indirect
-	k8s.io/apiextensions-apiserver v0.26.0 // indirect
+	k8s.io/apiextensions-apiserver v0.26.1 // indirect
 	k8s.io/apiserver v0.26.0 // indirect
 	k8s.io/cli-runtime v0.26.0 // indirect
-	k8s.io/component-base v0.26.0 // indirect
+	k8s.io/component-base v0.26.1 // indirect
 	k8s.io/klog/v2 v2.90.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20230109183929-3758b55a6596 // indirect
 	k8s.io/kubectl v0.26.0 // indirect
-	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d // indirect
+	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448 // indirect
 	oras.land/oras-go v1.2.2 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
