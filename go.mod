@@ -15,7 +15,7 @@ require (
 	github.com/go-logr/logr v1.2.3
 	github.com/layer5io/meshkit v0.6.28
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.23.0
+	github.com/onsi/gomega v1.27.3
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.0
@@ -62,7 +62,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
