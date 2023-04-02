@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -55,9 +56,11 @@ var _ = BeforeSuite(func(done Done) {
 	log, err := logger.New("meshery-operator-test", logger.Options{
 		Format: logger.SyslogLogFormat,
 	})
+	fmt.Println()
 	Expect(err).ToNot(HaveOccurred())
 
 	logf.SetLogger(log.ControllerLogger())
+	fmt.Println()
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{

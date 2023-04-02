@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,9 +50,13 @@ type MeshSyncReconciler struct {
 // +kubebuilder:rbac:groups=meshery.layer5.io,resources=meshsyncs/status,verbs=get;update;patch
 func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log
-	log = log.WithValues("controller", "MeshSync")
-	log = log.WithValues("namespace", req.NamespacedName)
-	log.Info("Reconciling MeshSync")
+	fmt.Println()
+	log = log.WithValues("\tcontroller", "MeshSync")
+	fmt.Println()
+	log = log.WithValues("\tnamespace", req.NamespacedName)
+	fmt.Println()
+	log.Info("\tReconciling MeshSync")
+	fmt.Println()
 	baseResource := &mesheryv1alpha1.MeshSync{}
 
 	// Check if resource exists

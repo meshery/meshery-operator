@@ -65,6 +65,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	fmt.Println()
 	ctrl.SetLogger(log.ControllerLogger())
 
 	opID := uuid.NewUUID()
@@ -94,6 +95,7 @@ func main() {
 		Log:        ctrl.Log.WithName("MeshSync"),
 		Scheme:     mgr.GetScheme(),
 	}
+	fmt.Println()
 
 	bReconciler := &controllers.BrokerReconciler{
 		KubeConfig: mgr.GetConfig(),
@@ -113,7 +115,8 @@ func main() {
 	}
 	// +kubebuilder:scaffold:builder
 
-	setupLog.Info("starting manager")
+	setupLog.Info("\tstarting manager")
+	fmt.Println()
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)

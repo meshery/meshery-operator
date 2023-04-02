@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,9 +49,12 @@ type BrokerReconciler struct {
 
 func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log
-	log = log.WithValues("controller", "Broker")
-	log = log.WithValues("namespace", req.NamespacedName)
-	log.Info("Reconciling broker")
+	log = log.WithValues("\tcontroller", "Broker")
+	fmt.Println()
+	log = log.WithValues("\tnamespace", req.NamespacedName)
+	fmt.Println()
+	log.Info("\tReconciling broker")
+	fmt.Println()
 	baseResource := &mesheryv1alpha1.Broker{}
 
 	// Check if resource exists
