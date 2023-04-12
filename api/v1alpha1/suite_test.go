@@ -17,72 +17,39 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"path/filepath"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"github.com/layer5io/meshkit/logger"
-	// +kubebuilder:scaffold:imports
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
-
+// entry
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
-
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"apis Suite for meshsync and broker",
-		[]Reporter{printer.NewlineReporter{}})
+	RunSpecs(t, "APIs Suite")
 }
 
-var _ = BeforeSuite(func(done Done) {
-	var err error
-	// Initialize Logger instance
-	log, err := logger.New("meshery-operator-test", logger.Options{
-		Format: logger.SyslogLogFormat,
-	})
-	Expect(err).ToNot(HaveOccurred())
+var fakeClient client.Client
 
-	logf.SetLogger(log.ControllerLogger())
+var _ = BeforeSuite(func() {
+	By("Initial the fake client for the test")
 
-	By("bootstrapping test environment")
-	testEnv = &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd", "bases")},
-		//TODO due to the framework has issue here, we can manually add the path of the binary to pass these type of issues.
-		// BinaryAssetsDirectory: "",
-	}
-
-	cfg, err = testEnv.Start()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(cfg).ToNot(BeNil())
-
-	// +kubebuilder:scaffold:scheme
-
-	err = SchemeBuilder.AddToScheme(scheme.Scheme)
+	// initial scheme
+	scheme := runtime.NewScheme()
+	// for normal resources
+	_ = clientgoscheme.AddToScheme(scheme)
+	// register customize resources
+	err := AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(k8sClient).ToNot(BeNil())
+	// initial fake client
+	fakeClient = fake.NewClientBuilder().WithScheme(scheme).Build()
 
-	close(done)
-}, 60)
-
-var _ = AfterSuite(func() {
-	By("tearing down the test environment")
-	err := testEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
 })

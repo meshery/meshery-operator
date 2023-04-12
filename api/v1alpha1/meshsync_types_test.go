@@ -3,7 +3,7 @@ package v1alpha1
 import (
 	"context"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -62,30 +62,32 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 	Context("The CURD case for the meshsync CRDs", func() {
 
 		It("The meshsync CRDs create acticity should be succeed", func() {
-			err := k8sClient.Create(context, meshSync)
+			By("Create the meshsync CRDs")
+			err := fakeClient.Create(context, meshSync)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("The meshsync CRDs get should be succeed", func() {
-
+			By("Get the meshsync CRDs")
 			mesheSyncGet := &MeshSync{}
-			err := k8sClient.Get(context, typeNamespace, mesheSyncGet)
+			err := fakeClient.Get(context, typeNamespace, mesheSyncGet)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Checking the feild of the object we get")
+			By("Confirm the URL equal to https://layer5.io")
 			url := mesheSyncGet.Spec.Broker.Custom.URL
 			Expect(url == URL).Should(BeTrue())
 
 		})
 
 		It("The meshsync CRDs update the spec of the resources", func() {
+			By("Update the size of the meshsync CRDs")
 			meshSync.Spec.Size = 5
-			err := k8sClient.Update(context, meshSync, &client.UpdateOptions{FieldManager: "testcase-meshsync"})
+			err := fakeClient.Update(context, meshSync, &client.UpdateOptions{FieldManager: "testcase-meshsync"})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Get the size which updated")
+			By("Get the latest version of meshsync CRDs")
 			meshSyncGet := &MeshSync{}
-			err = k8sClient.Get(context, typeNamespace, meshSyncGet)
+			err = fakeClient.Get(context, typeNamespace, meshSyncGet)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Confirm the size equal to 5")
@@ -107,16 +109,15 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 					},
 				},
 			}
-
-			err := k8sClient.Status().Update(context, meshSync, &client.UpdateOptions{FieldManager: FileManager})
+			By("Update the status of the meshsync CRDs")
+			err := fakeClient.Status().Update(context, meshSync, &client.UpdateOptions{FieldManager: FileManager})
 
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("The meshsync CRDs remove the resources ", func() {
-
-			By("Just delete the CRDs resources")
-			err := k8sClient.Delete(context, meshSync)
+			By("Delete the meshsync CRDs")
+			err := fakeClient.Delete(context, meshSync)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
