@@ -265,3 +265,9 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+# Test coverage
+.PHONY: coverage
+coverage: ## Generate test coverage report
+	go test ./... -coverprofile cover.out
+	go tool cover -html=cover.out -o cover.html
