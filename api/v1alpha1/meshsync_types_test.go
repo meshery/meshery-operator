@@ -113,8 +113,21 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 			err := fakeClient.Status().Update(context, meshSync, &client.UpdateOptions{FieldManager: FileManager})
 
 			Expect(err).NotTo(HaveOccurred())
+			Expect(meshSync.Status.PublishingTo == PublishingTo).Should(BeTrue())
 		})
 
+		It("The meshsyncList CRDs should be support by the kubernetes server", func() {
+			By("Confirm the meshsync CRDs support by the kubernetes server")
+			meshSyncList := &MeshSyncList{}
+			err := fakeClient.List(context, meshSyncList, &client.ListOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(meshSyncList.Items) > 0).Should(BeTrue())
+		})
+
+	})
+
+	// Test coverage for delete the meshsync CRDs
+	Context("The test coverage for delete the meshsync CRDs", func() {
 		It("The meshsync CRDs remove the resources ", func() {
 			By("Delete the meshsync CRDs")
 			err := fakeClient.Delete(context, meshSync)

@@ -72,6 +72,13 @@ var _ = Describe("The test cases for customize resource: Broker", func() {
 			Expect(broker2.Spec.Size).Should(Equal(int32(2)))
 		})
 
+		// check broker list
+		It("should list the Broker object successfully", func() {
+			brokerList := &BrokerList{}
+			Expect(fakeClient.List(ctx, brokerList)).Should(Succeed())
+			Expect(len(brokerList.Items)).Should(Equal(1))
+		})
+
 		It("should delete the Broker object successfully", func() {
 			Expect(fakeClient.Delete(ctx, broker)).Should(Succeed())
 		})
