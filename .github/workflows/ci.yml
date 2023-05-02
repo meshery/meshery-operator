@@ -29,3 +29,16 @@ jobs:
         with:
           version: latest
           args: --timeout=3m
+  codecov:
+    name: Code Coverage
+    if: github.repository == 'meshery/meshery'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Run unit tests
+        run: go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
+      - name: Upload coverage to Codecov
+        if: github.repository == 'meshery/meshery'
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.txt
+          flags: unittests
