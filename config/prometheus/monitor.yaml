@@ -1,0 +1,18 @@
+
+# Prometheus Monitor Service (Metrics)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: meshery
+    component: operator
+  name: operator-metrics-monitor
+  namespace: meshery
+spec:
+  endpoints:
+    - path: /metrics
+      port: https
+  selector:
+    matchLabels:
+      app: meshery
+      component: operator

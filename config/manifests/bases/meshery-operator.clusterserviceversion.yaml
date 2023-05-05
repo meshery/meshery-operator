@@ -1,0 +1,50 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: meshery-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: MeshSync is the Schema for the meshsyncs API
+      displayName: Mesh Sync
+      kind: MeshSync
+      name: meshsyncs.meshery.layer5.io
+      version: v1alpha1
+  description: Meshery Operator is the multi-service mesh operator and implementation
+    of MeshSync.
+  displayName: meshery-operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - servicemesh
+  - meshSync
+  links:
+  - name: Meshery Operator
+    url: https://meshery-operator.domain
+  maintainers:
+  - email: urakiny@gmai.com1
+    name: aisuko
+  maturity: alpha
+  provider:
+    name: meshery
+    url: https://github.com/meshery
+  version: 0.0.0
