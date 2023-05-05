@@ -1,0 +1,63 @@
+name: Meshery-Operator CI
+
+on:
+  pull_request:
+    branches: [ master ]
+  push:
+    branches: [ master ]
+
+jobs:
+    golangci-lint:
+        strategy:
+          matrix:
+            platform: [ubuntu-22.04]
+            go-version: [1.19.x]
+        runs-on: ${{ matrix.platform }}
+        steps:
+          - uses: actions/setup-go@v4
+            with:
+              go-version: ${{ matrix.go-version }}
+          - name: Checkout code
+            uses: actions/checkout@master
+          - name: golangci-lint
+            uses: golangci/golangci-lint-action@v3
+            with:
+              version: latest
+              args: --timeout=5m
+    codecov:
+        # golandci-lint need to be run before codecov and succeed
+        needs: golangci-lint
+        name: Code Coverage
+        if: github.repository == 'meshery/meshery-operator'
+        runs-on: ubuntu-22.04
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@master
+          - name: Set up Go
+            uses: actions/setup-go@v4
+            with:
+              go-version: 1.19.x
+          - name: Run unit tests
+            run: go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
+          - name: Upload coverage to Codecov
+            if: github.repository == 'meshery/meshery-operator'
+            uses: codecov/codecov-action@v3
+            with:
+              files: ./coverage.txt
+              flags: unittests
+    # if review comment includes approved or LGTM, run the tests
+    # if review comment includes changes requested, do not run the tests
+    # if review comment includes approved or LGTM, run the tests
+    build:
+        name: Build
+        if: github.event_name == 'pull_request' && (contains(github.event.pull_request.body, 'approved') || contains(github.event.pull_request.body, 'LGTM'))
+        runs-on: ubuntu-22.04
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@master
+          - name: Set up Go
+            uses: actions/setup-go@v4
+            with:
+              go-version: 1.19.x
+          - name: Build
+            run: make build
