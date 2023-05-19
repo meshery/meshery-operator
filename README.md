@@ -10,7 +10,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/layer5io/meshery-operator)](https://goreportcard.com/report/github.com/layer5io/meshery-operator)
 [![Build Status](https://github.com/layer5io/meshery/workflows/Meshery/badge.svg)](https://github.com/layer5io/meshery-operator/actions)
 [![GitHub](https://img.shields.io/github/license/layer5io/meshery-operator.svg)](LICENSE)
-[![GitHub issues by-label](https://img.shields.io/github/issues/layer5io/meshery-operator/help%20wanted.svg)](https://github.com/layer5io/meshery-operator/issues?q=is%3Aopen+is%3Aissue+label%3A"help+wanted")
+[![codecov](https://codecov.io/gh/meshery/meshery-operator/branch/master/graph/badge.svg?token=TJZ2L4JHSA)](https://codecov.io/gh/meshery/meshery-operator)
 [![Website](https://img.shields.io/website/https/layer5.io/meshery.svg)](https://layer5.io/meshery/)
 [![Twitter Follow](https://img.shields.io/twitter/follow/layer5.svg?label=Follow&style=social)](https://twitter.com/intent/follow?screen_name=mesheryio)
 [![Discuss Users](https://img.shields.io/discourse/users?server=https%3A%2F%2Fdiscuss.layer5.io)](https://discuss.layer5.io)
