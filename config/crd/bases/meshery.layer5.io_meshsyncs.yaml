@@ -50,6 +50,10 @@ spec:
                         type: string
                     type: object
                 type: object
+              informer_config:
+                items:
+                  type: string
+                type: array
               size:
                 format: int32
                 type: integer
