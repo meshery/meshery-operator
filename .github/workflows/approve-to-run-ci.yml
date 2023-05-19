@@ -51,8 +51,8 @@ jobs:
     # if review comment includes changes requested, do not run the tests
     # if review comment includes approved or LGTM, run the tests
     build:
+        needs: [golangci-lint,codecov]
         name: Build
-        if: github.event_name == 'pull_request' && (contains(github.event.pull_request.body, 'approved') || contains(github.event.pull_request.body, 'LGTM'))
         runs-on: ubuntu-22.04
         steps:
           - name: Checkout code
