@@ -114,6 +114,17 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	err = brokerReconciler.SetupWithManager(mgr)
 	Expect(err).ToNot(HaveOccurred())
 
+	meshSyncReconciler := &MeshSyncReconciler{
+		Client:     mgr.GetClient(),
+		KubeConfig: cfg,
+		Clientset:  clientSet,
+		Log:        ctrl.Log.WithName("controllers").WithName("Broker"),
+		Scheme:     mgr.GetScheme(),
+	}
+
+	err = meshSyncReconciler.SetupWithManager(mgr)
+	Expect(err).ToNot(HaveOccurred())
+
 	// +kubebuilder:scaffold:builder
 	go func() {
 		defer GinkgoRecover()
