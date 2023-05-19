@@ -36,8 +36,9 @@ type MeshsyncBroker struct {
 
 // MeshSyncSpec defines the desired state of MeshSync
 type MeshSyncSpec struct {
-	Size   int32          `json:"size,omitempty" yaml:"size,omitempty"`
-	Broker MeshsyncBroker `json:"broker,omitempty" yaml:"broker,omitempty"`
+	InformerConfig []string       `json:"informer_config,omitempty" yaml:"size,omitempty"`
+	Size           int32          `json:"size,omitempty" yaml:"size,omitempty"`
+	Broker         MeshsyncBroker `json:"broker,omitempty" yaml:"broker,omitempty"`
 }
 
 // MeshSyncStatus defines the observed state of MeshSync
