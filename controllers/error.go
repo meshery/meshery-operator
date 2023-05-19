@@ -34,15 +34,20 @@ const (
 	ErrCheckHealthCode       = "1010"
 	ErrGetEndpointCode       = "1011"
 	ErrUpdateResourceCode    = "1012"
+	ErrUpdateMeshsyncCode    = "1013"
 )
 
 // Error definitions
+func ErrCreateMeshsync(err error) error {
+	return errors.New(ErrCreateMeshsyncCode, errors.Alert, []string{"Unable to create meshsync controller"}, []string{err.Error()}, []string{}, []string{})
+}
+
 func ErrGetMeshsync(err error) error {
 	return errors.New(ErrGetMeshsyncCode, errors.Alert, []string{"Meshsync resource not found"}, []string{err.Error()}, []string{}, []string{})
 }
 
-func ErrCreateMeshsync(err error) error {
-	return errors.New(ErrCreateMeshsyncCode, errors.Alert, []string{"Unable to create meshsync controller"}, []string{err.Error()}, []string{}, []string{})
+func ErrUpdateMeshsync(err error) error {
+	return errors.New(ErrUpdateMeshsyncCode, errors.Alert, []string{"Unable to update meshsync controller"}, []string{err.Error()}, []string{}, []string{})
 }
 
 func ErrDeleteMeshsync(err error) error {

@@ -149,10 +149,17 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool,
 		return ctrl.Result{Requeue: true}, nil
 	} else if err != nil && enable {
 		return ctrl.Result{}, ErrGetMeshsync(err)
-	} else if err == nil && !kubeerror.IsNotFound(err) && !enable {
-		er := r.Delete(ctx, object)
-		if er != nil {
-			return ctrl.Result{}, ErrDeleteMeshsync(er)
+	} else if err == nil {
+		if enable {
+			er := r.Update(ctx, object)
+			if er != nil {
+				return ctrl.Result{}, ErrUpdateMeshsync(er)
+			}
+		} else {
+			er := r.Delete(ctx, object)
+			if er != nil {
+				return ctrl.Result{}, ErrDeleteMeshsync(er)
+			}
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
