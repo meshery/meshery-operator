@@ -5,7 +5,10 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 # Current Operator version
 VERSION ?= 0.0.1
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+BIN_DIR := $(PROJECT_DIR)/bin
 
+ENVTEST_K8S_VERSION = 1.24.2
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -269,5 +272,27 @@ catalog-push: ## Push a catalog image.
 # Test coverage
 .PHONY: coverage
 coverage: ## Generate test coverage report
-	go test ./... -coverprofile cover.out
+	go test -v ./... -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
+
+.PHONY: kind
+kind:
+	curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.18.0/kind-linux-amd64
+	chmod +x ./kind
+	sudo mv ./kind /usr/local/bin/kind
+
+SETUP_ENVTEST_VERSION := d4f1e822ca11e9ff149bf2d9b5285f375334eba5
+
+bin/setup-envtest: $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION) ## Install setup-envtest CLI
+	@ln -sf setup-envtest-$(SETUP_ENVTEST_VERSION) $(BIN_DIR)/setup-envtest
+
+$(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION):
+	@mkdir -p $(BIN_DIR)
+	@GOBIN=$(BIN_DIR) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETUP_ENVTEST_VERSION)
+	@mv $(BIN_DIR)/setup-envtest $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION)
+
+# Setting test envrioment
+.PHONY: test-env
+test-env:
+	make bin/setup-envtest
+	bin//setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR)
