@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	mesherykube "github.com/layer5io/meshkit/utils/kubernetes"
 	v1 "k8s.io/api/apps/v1"
@@ -84,7 +83,7 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 	return nil
 }
 
-func GetEndpoint(ctx context.Context, log logr.Logger, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, url string) error {
+func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, url string) error {
 	endpoint, err := mesherykube.GetServiceEndpoint(context.TODO(), client, &mesherykube.ServiceOptions{
 		Name:         m.ObjectMeta.Name,
 		Namespace:    m.ObjectMeta.Namespace,

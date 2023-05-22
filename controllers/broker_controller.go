@@ -77,7 +77,7 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// Get broker endpoint
-	err = brokerpackage.GetEndpoint(ctx, log, baseResource, r.Clientset, r.KubeConfig.Host)
+	err = brokerpackage.GetEndpoint(ctx, baseResource, r.Clientset, r.KubeConfig.Host)
 	if err != nil {
 		return ctrl.Result{}, ErrGetEndpoint(err)
 	}
