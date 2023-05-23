@@ -270,8 +270,8 @@ catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 
 # Test coverage
-.PHONY: coverage
-coverage: ## Generate test coverage report
+.PHONY: coverage 
+coverage: test-env
 	go test -v ./... -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
 
@@ -295,4 +295,4 @@ $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION):
 .PHONY: test-env
 test-env:
 	make bin/setup-envtest
-	bin//setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR)
+	bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR)
