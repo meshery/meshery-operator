@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"context"
+	"reflect"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,7 +42,8 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 			Name:      "default",
 		},
 		Spec: MeshSyncSpec{
-			Size: 2,
+			InformerConfig: []string{},
+			Size:           2,
 			Broker: MeshsyncBroker{
 				Custom: CustomMeshsyncBroker{
 					URL: URL,
@@ -59,7 +61,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 		Name:      "default",
 	}
 
-	Context("The CURD case for the meshsync CRDs", func() {
+	Context("The CRUD case for the meshsync CRDs", func() {
 
 		It("The meshsync CRDs create acticity should be succeed", func() {
 			By("Create the meshsync CRDs")
@@ -77,6 +79,21 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 			url := mesheSyncGet.Spec.Broker.Custom.URL
 			Expect(url == URL).Should(BeTrue())
 
+		})
+
+		It("The meshsync CRDs update the informer config", func() {
+			By("Update the informer config of the meshsync CRDs to include 'ConfigMap'")
+			meshSync.Spec.InformerConfig = []string{"ConfigMap"}
+			err := fakeClient.Update(context, meshSync, &client.UpdateOptions{FieldManager: "testcase-meshsync"})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Get the latest version of meshsync CRDs")
+			meshSyncGet := &MeshSync{}
+			err = fakeClient.Get(context, typeNamespace, meshSyncGet)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Confirm the informer config to equal to []string{'ConfigMap'}")
+			Expect(reflect.DeepEqual(meshSyncGet.Spec.InformerConfig, []string{"ConfigMap"})).Should(BeTrue())
 		})
 
 		It("The meshsync CRDs update the spec of the resources", func() {
