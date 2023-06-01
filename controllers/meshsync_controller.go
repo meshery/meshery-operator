@@ -153,7 +153,7 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool,
 		if enable {
 			er := r.Update(ctx, object)
 			if er != nil {
-				return ctrl.Result{}, ErrUpdateMeshsync(er)
+				return ctrl.Result{}, ErrUpdateResource(er)
 			}
 		} else {
 			er := r.Delete(ctx, object)
