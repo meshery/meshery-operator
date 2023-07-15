@@ -32,6 +32,10 @@ Meshery Operator is the multi-service mesh operator and implementation of MeshSy
 
 <div>&nbsp;</div>
 
+## Contributing
+
+Please do! We're a warm and welcoming community of open source contributors. Please join. All types of contributions are welcome. Be sure to read the [Contributor Guides](https://docs.meshery.io/project/contributing) for a tour of resources available to you and how to get started.
+
 ## Join the Meshery community!
 
 <a name="contributing"></a><a name="community"></a>
@@ -64,20 +68,20 @@ Find out more on the <a href="https://layer5.io/community#meshmate">Layer5 commu
 <div>
 <a href="http://slack.layer5.io">
 <picture style="text-align:left;" align="left">
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/slack-dark-128.png"  width="110px" align="left" />
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/slack-128.png" width="110px" align="left" />
-  <img alt="Shows an illustrated light mode meshery logo in light color mode and a dark mode meshery logo dark color mode." src="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/slack-128.png" width="110px" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/slack-dark-128.png"  width="110px" />
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/slack-128.png" width="110px" />
+  <img alt="Shows an illustrated light mode meshery logo in light color mode and a dark mode meshery logo dark color mode." src="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/slack-128.png" width="110px" align="left" />
 </picture>
 </a>
-  <p align="center">
+  <br /><br />
+  <p align="left">
 <i>Not sure where to start?</i> Grab an open issue with the <a href="https://github.com/issues?q=is%3Aopen+is%3Aissue+archived%3Afalse+org%3Alayer5io+org%3Ameshery+org%3Aservice-mesh-performance+org%3Aservice-mesh-patterns+label%3A%22help+wanted%22+">help-wanted label</a>.
 </p>
-</div>
+</div><br /><br />
+  
 <div>&nbsp;</div>
 
-## Contributing
 
-Please do! We're a warm and welcoming community of open source contributors. Please join. All types of contributions are welcome. Be sure to read the [Contributor Guides](https://docs.meshery.io/project/contributing) for a tour of resources available to you and how to get started.
 
 <!-- <a href="https://youtu.be/MXQV-i-Hkf8"><img alt="Deploying Linkerd with Meshery" src="https://docs.meshery.io/assets/img/readme/deploying-linkerd-with-meshery.png" width="100%" align="center" /></a> -->
 
