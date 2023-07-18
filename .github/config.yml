@@ -21,7 +21,7 @@ firstPRMergeComment: >
   <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/meshery/meshery-operator/master/.github/welcome/meshery-celebration-light.svg">
   <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/meshery/meshery-operator/master/.github/welcome/meshery-celebration-dark.svg">
-  <img alt="Meshery Logo" src="https://raw.githubusercontent.com/meshery/meshery-operator/master/.github/welcome/meshery-celebration-dark.svg">
+  <img alt="Meshery Logo" src="https://raw.githubusercontent.com/meshery/meshery-operator/master/.github/welcome/mesherycelebration-dark.svg">
   </picture>
   \
   \
