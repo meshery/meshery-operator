@@ -13,7 +13,7 @@ replace (
 
 require (
 	github.com/go-logr/logr v1.2.4
-	github.com/layer5io/meshkit v0.6.50
+	github.com/layer5io/meshkit v0.6.53
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
 	k8s.io/api v0.26.1
@@ -151,7 +151,7 @@ require (
 	gorm.io/driver/sqlite v1.4.4 // indirect
 	gorm.io/gorm v1.24.3 // indirect
 	helm.sh/helm/v3 v3.11.1 // indirect
-	k8s.io/apiserver v0.26.0 // indirect
+	k8s.io/apiserver v0.26.1 // indirect
 	k8s.io/cli-runtime v0.26.0 // indirect
 	k8s.io/component-base v0.26.1 // indirect
 	k8s.io/klog/v2 v2.90.0 // indirect
