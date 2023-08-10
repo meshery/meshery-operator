@@ -13,7 +13,7 @@ replace (
 
 require (
 	github.com/go-logr/logr v1.2.4
-	github.com/layer5io/meshkit v0.6.50
+	github.com/layer5io/meshkit v0.6.54
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
 	k8s.io/api v0.26.1
@@ -119,7 +119,7 @@ require (
 	github.com/rubenv/sql-migrate v1.2.0 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/cobra v1.7.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -151,7 +151,7 @@ require (
 	gorm.io/driver/sqlite v1.4.4 // indirect
 	gorm.io/gorm v1.24.3 // indirect
 	helm.sh/helm/v3 v3.11.1 // indirect
-	k8s.io/apiserver v0.26.0 // indirect
+	k8s.io/apiserver v0.26.1 // indirect
 	k8s.io/cli-runtime v0.26.0 // indirect
 	k8s.io/component-base v0.26.1 // indirect
 	k8s.io/klog/v2 v2.90.0 // indirect
