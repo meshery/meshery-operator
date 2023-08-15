@@ -13,7 +13,7 @@ replace (
 
 require (
 	github.com/go-logr/logr v1.2.4
-	github.com/layer5io/meshkit v0.6.54
+	github.com/layer5io/meshkit v0.6.55
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
 	k8s.io/api v0.26.1
