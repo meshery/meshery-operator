@@ -19,18 +19,29 @@
 
 </div>
 
-<a href="https://meshery.io/community"><img alt="Layer5 Service Mesh Community" src="./img/readme/meshery-operator-dark.svg" style="margin:10px;" width="150px" align="left" /></a>
+<a href="https://meshery.io/community"><img alt="Layer5 Service Mesh Community" src="./img/readme/meshery-operator-dark.svg" style="margin:10px;" width="165px" align="left" /></a>
 # Meshery Operator
 Meshery Operator is the multi-service mesh operator and implementation of MeshSync.
-
-<br />
-<br />
-<br />
-<br />
-<br />
-
-
 <div>&nbsp;</div>
+<div>&nbsp;</div>
+<br />
+<br />
+<br />
+
+<a href="https://github.com/meshery/meshsync"><img align="left" src="https://raw.githubusercontent.com/layer5io/meshsync/master/.github/readme/images/meshsync.svg"  width="165px" /></a>
+# MeshSync
+MeshSync (Service Mesh Synchronization), an event-driven, continuous synchronization routine performs the task of ensuring that the state of configuration and status of operation of any service mesh and of the Kubernetes environment are known to Meshery. MeshSync runs as a Kubernetes custom controller under the control of Meshery Operator.
+<br />
+<br />
+
+# Meshery Broker
+<a href="https://docs.google.com/presentation/d/1SQMfyu5shjpGKlYONdVzOtd7UYTgLWBcgUvHMLCZ2tY/edit#slide=id.g10af036b3dd_0_0">Meshery Broker</a> is a custom Kubernetes controller that provides data streaming across independent components of Meshery whether those components are running inside or outside of the Kubernetes cluster.
+<br />
+<br />
+<br />
+
+
+
 
 ## Contributing
 
