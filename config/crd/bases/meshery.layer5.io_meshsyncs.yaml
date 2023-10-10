@@ -50,6 +50,48 @@ spec:
                         type: string
                     type: object
                 type: object
+              config:
+                description: Meshsync configuration controls the resources meshsync
+                  produces and consumes
+                properties:
+                  listener-config:
+                    additionalProperties:
+                      description: configures resources the meshsync subsribes to
+                      properties:
+                        connection-name:
+                          type: string
+                        name:
+                          type: string
+                        publish-to:
+                          type: string
+                        subscribe-to:
+                          type: string
+                      required:
+                      - connection-name
+                      - name
+                      - publish-to
+                      - subscribe-to
+                      type: object
+                    type: object
+                  pipeline-configs:
+                    additionalProperties:
+                      description: an array of resources that meshsync listes to and
+                        publishes their events
+                      items:
+                        description: resources that meshsync observes and publishes
+                          to a given subscriber via the broker
+                        properties:
+                          name:
+                            type: string
+                          publish-to:
+                            type: string
+                        required:
+                        - name
+                        - publish-to
+                        type: object
+                      type: array
+                    type: object
+                type: object
               size:
                 format: int32
                 type: integer
