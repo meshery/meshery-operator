@@ -51,6 +51,28 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 					Name:      "default",
 				},
 			},
+			Config: MeshsyncConfig{
+				ListenerConfigs: map[string]ListenerConfig{
+					"global": {
+						Name:           "meshsync-logstream",
+						PublishTo:      "meshery.meshsync.logs",
+						SubscribeTo:    "meshery.meshsync.logs",
+						ConnectionName: "log-stream",
+					},
+				},
+				PipelineConfigs: map[string]PipelineConfigs{
+					"global": []PipelineConfig{
+						{
+							Name:      "namespaces.v1.",
+							PublishTo: "meshery.meshsync.core",
+						},
+						{
+							Name:      "configmaps.v1.",
+							PublishTo: "meshery.meshsync.core",
+						},
+					},
+				},
+			},
 		},
 	}
 
@@ -76,6 +98,31 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 			By("Confirm the URL equal to https://layer5.io")
 			url := mesheSyncGet.Spec.Broker.Custom.URL
 			Expect(url == URL).Should(BeTrue())
+
+			By("Confirm the config matches the expected listener and pipeline configs")
+			config := mesheSyncGet.Spec.Config
+			Expect(len(config.ListenerConfigs) == 1).Should(BeTrue())
+			expectedListenerConfig := ListenerConfig{
+
+				Name:           "meshsync-logstream",
+				PublishTo:      "meshery.meshsync.logs",
+				SubscribeTo:    "meshery.meshsync.logs",
+				ConnectionName: "log-stream",
+			}
+			Expect(config.ListenerConfigs["global"] == expectedListenerConfig).Should(BeTrue())
+
+			expectedPipelineConfigs := []PipelineConfig{
+				{
+					Name:      "namespaces.v1.",
+					PublishTo: "meshery.meshsync.core",
+				},
+				{
+					Name:      "configmaps.v1.",
+					PublishTo: "meshery.meshsync.core",
+				},
+			}
+			Expect(config.PipelineConfigs["global"][0] == expectedPipelineConfigs[0]).Should(BeTrue())
+			Expect(config.PipelineConfigs["global"][1] == expectedPipelineConfigs[1]).Should(BeTrue())
 
 		})
 
