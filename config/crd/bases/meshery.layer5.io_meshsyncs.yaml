@@ -69,8 +69,6 @@ spec:
                       required:
                       - connection-name
                       - name
-                      - publish-to
-                      - subscribe-to
                       type: object
                     type: object
                   pipeline-configs:
