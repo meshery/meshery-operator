@@ -15,7 +15,7 @@ replace (
 
 require (
 	github.com/go-logr/logr v1.2.4
-	github.com/layer5io/meshkit v0.6.68
+	github.com/layer5io/meshkit v0.6.71
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.10
 	k8s.io/api v0.26.1
