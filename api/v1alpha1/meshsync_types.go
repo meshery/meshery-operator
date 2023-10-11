@@ -50,8 +50,10 @@ type ListenerConfigs []ListenerConfig
 type ListenerConfig struct {
 	Name           string `json:"name" yaml:"name"`
 	ConnectionName string `json:"connection-name" yaml:"connection-name"`
-	PublishTo      string `json:"publish-to" yaml:"publish-to"`
-	SubscribeTo    string `json:"subscribe-to" yaml:"subscribe-to"`
+	//+optional
+	PublishTo string `json:"publish-to" yaml:"publish-to"`
+	//+optional
+	SubscribeTo string `json:"subscribe-to" yaml:"subscribe-to"`
 }
 
 // Meshsync configuration controls the resources meshsync produces and consumes
