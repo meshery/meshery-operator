@@ -117,22 +117,18 @@ run-lint:
 get-lint:
 	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
 
-# Run meshery error utility against code
-error:
-	go run github.com/layer5io/meshkit/cmd/errorutil -d . analyze -i ./helpers -o ./helpers
-
 .PHONY: test
-test: manifests generate fmt vet error ## Run tests.
+test: manifests generate fmt vet ## Run tests.
 	go test ./... -coverprofile cover.out
 
 ##@ Build
 
 .PHONY: build
-build: generate fmt vet error manifests ## Build manager binary.
+build: generate fmt vet manifests ## Build manager binary.
 	go build -o bin/manager main.go
 
 .PHONY: run
-run: manifests generate fmt vet error ## Run a controller from your host.
+run: manifests generate fmt vet ## Run a controller from your host.
 	go mod tidy; \
 	go run ./main.go
 

@@ -31,7 +31,7 @@ import (
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
 	meshsyncpackage "github.com/layer5io/meshery-operator/pkg/meshsync"
-	"github.com/layer5io/meshkit/utils"
+	"github.com/meshery/meshery-operator/pkg/utils"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/types"
 )
