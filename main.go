@@ -30,7 +30,7 @@ import (
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	"github.com/layer5io/meshery-operator/controllers"
-	"github.com/layer5io/meshkit/logger"
+
 	"k8s.io/client-go/kubernetes"
 	// +kubebuilder:scaffold:imports
 )
@@ -55,17 +55,6 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
-
-	// Initialize Logger instance
-	log, err := logger.New("meshery-operator", logger.Options{
-		Format: logger.SyslogLogFormat,
-	})
-	if err != nil {
-		setupLog.Error(err, "unable to initialize logger")
-		os.Exit(1)
-	}
-
-	ctrl.SetLogger(log.ControllerLogger())
 
 	opID := uuid.NewUUID()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
