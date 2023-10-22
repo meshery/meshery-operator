@@ -107,19 +107,17 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 # Run go lint against code
-check: golint
-golint: get-lint
-golint: run-lint
+.PHONY: lint
+lint:
+	golangci-lint run -c .golangci.yml -v ./...
 
-run-lint:
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
-
-get-lint:
-	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
+.PHONY: tidy
+tidy: ## Run go mod tidy against code.
+	go mod tidy
 
 .PHONY: test
 test: manifests generate fmt vet ## Run tests.
-	go test ./... -coverprofile cover.out
+	go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
 
 ##@ Build
 
