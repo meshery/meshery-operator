@@ -7,7 +7,7 @@ import (
 	neturl "net/url"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	utils "github.com/meshery/meshery-operator/pkg/utils"
+	utils "github.com/layer5io/meshery-operator/pkg/utils"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
