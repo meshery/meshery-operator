@@ -3,9 +3,11 @@ package broker
 import (
 	"context"
 	"fmt"
+	"net"
+	neturl "net/url"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	mesherykube "github.com/layer5io/meshkit/utils/kubernetes"
+	utils "github.com/layer5io/meshery-operator/pkg/utils"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -83,15 +85,87 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 	return nil
 }
 
+// GetEndpoint returns those endpoints in the given service which match the selector.
 func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, url string) error {
-	endpoint, err := mesherykube.GetServiceEndpoint(context.TODO(), client, &mesherykube.ServiceOptions{
-		Name:         m.ObjectMeta.Name,
-		Namespace:    m.ObjectMeta.Namespace,
-		PortSelector: "client",
-		APIServerURL: url,
-	})
+
+	var serviceObj *corev1.Service
+	var err error
+	var newUrl *neturl.URL
+	var host string
+
+	serviceObj, err = client.CoreV1().Services(m.ObjectMeta.Namespace).Get(ctx, m.ObjectMeta.Name, metav1.GetOptions{})
 	if err != nil {
-		return ErrGettingEndpoint(err)
+		return ErrGettingResource(err)
+	}
+
+	var nodePort, clusterPort int32
+	endpoint := utils.Endpoint{}
+
+	for _, port := range serviceObj.Spec.Ports {
+		nodePort = port.NodePort
+		clusterPort = port.Port
+		if port.Name == "client" {
+			break
+		}
+	}
+	// get clusterip endpoint
+	endpoint.Internal = &utils.HostPort{
+		Address: serviceObj.Spec.ClusterIP,
+		Port:    clusterPort,
+	}
+	// Initialize nodePort type endpoint
+	endpoint.External = &utils.HostPort{
+		Address: "localhost",
+		Port:    nodePort,
+	}
+	if serviceObj.Status.Size() > 0 && serviceObj.Status.LoadBalancer.Size() > 0 && len(serviceObj.Status.LoadBalancer.Ingress) > 0 && serviceObj.Status.LoadBalancer.Ingress[0].Size() > 0 {
+		if serviceObj.Status.LoadBalancer.Ingress[0].IP == "" {
+			endpoint.External.Address = serviceObj.Status.LoadBalancer.Ingress[0].Hostname
+			endpoint.External.Port = clusterPort
+		} else if serviceObj.Status.LoadBalancer.Ingress[0].IP == serviceObj.Spec.ClusterIP || serviceObj.Status.LoadBalancer.Ingress[0].IP == "<pending>" {
+			if url != "" {
+				newUrl, err = neturl.Parse(url)
+				if err != nil {
+					return err
+				}
+				host, _, err = net.SplitHostPort(newUrl.Host)
+				if err != nil {
+					return err
+				}
+				endpoint.External.Address = host
+				endpoint.External.Port = nodePort
+			} else {
+				endpoint.External.Address = serviceObj.Spec.ClusterIP
+				endpoint.External.Port = clusterPort
+			}
+		} else {
+			endpoint.External.Address = serviceObj.Status.LoadBalancer.Ingress[0].IP
+			endpoint.External.Port = clusterPort
+		}
+	}
+	// Service Type ClusterIP
+	if endpoint.External.Port == 0 {
+		endpoint.Internal = &utils.HostPort{}
+	}
+	// If external endpoint not reachable
+	if !utils.TcpCheck(endpoint.External, &utils.MockOptions{}) && endpoint.External.Address != "localhost" {
+		newUrl, err = neturl.Parse(url)
+		if err != nil {
+			return nil
+		}
+		host, _, err = net.SplitHostPort(newUrl.Host)
+		if err != nil {
+			return nil
+		}
+		// Set to APIServer host (For minikube specific clusters)
+		endpoint.External.Address = host
+		// If still unable to reach, change to resolve to clusterPort
+		if !utils.TcpCheck(endpoint.External, &utils.MockOptions{}) && endpoint.External.Address != "localhost" {
+			endpoint.External.Port = nodePort
+			if !utils.TcpCheck(endpoint.External, &utils.MockOptions{}) {
+				return ErrGettingEndpoint(err)
+			}
+		}
 	}
 
 	m.Status.Endpoint.External = fmt.Sprintf("%s:%d", endpoint.External.Address, endpoint.External.Port)

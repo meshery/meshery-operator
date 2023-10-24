@@ -107,32 +107,26 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 # Run go lint against code
-check: golint
-golint: get-lint
-golint: run-lint
+.PHONY: lint
+lint:
+	golangci-lint run -c .golangci.yml -v ./...
 
-run-lint:
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint run
-
-get-lint:
-	go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
-
-# Run meshery error utility against code
-error:
-	go run github.com/layer5io/meshkit/cmd/errorutil -d . analyze -i ./helpers -o ./helpers
+.PHONY: tidy
+tidy: ## Run go mod tidy against code.
+	go mod tidy
 
 .PHONY: test
-test: manifests generate fmt vet error ## Run tests.
-	go test ./... -coverprofile cover.out
+test: manifests generate fmt vet ## Run tests.
+	go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
 
 ##@ Build
 
 .PHONY: build
-build: generate fmt vet error manifests ## Build manager binary.
+build: generate fmt vet manifests ## Build manager binary.
 	go build -o bin/manager main.go
 
 .PHONY: run
-run: manifests generate fmt vet error ## Run a controller from your host.
+run: manifests generate fmt vet ## Run a controller from your host.
 	go mod tidy; \
 	go run ./main.go
 
