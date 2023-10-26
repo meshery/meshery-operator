@@ -34,7 +34,7 @@ type MeshsyncBroker struct {
 	Native NativeMeshsyncBroker `json:"native,omitempty" yaml:"native,omitempty"`
 }
 
-// an array of resources that meshsync listes to and publishes their events
+// an array of resources that meshsync listens to and publishes their events
 type PipelineConfigs []PipelineConfig
 
 // resources that meshsync observes and publishes to a given subscriber via the broker
@@ -58,8 +58,8 @@ type ListenerConfig struct {
 
 // Meshsync configuration controls the resources meshsync produces and consumes
 type MeshsyncConfig struct {
-	PipelineConfigs map[string]PipelineConfigs `json:"pipeline-configs,omitempty" yaml:"pipeline-configs,omitempty"`
-	ListenerConfigs map[string]ListenerConfig  `json:"listener-config,omitempty" yaml:"listener-config,omitempty"`
+	Pipelines map[string]PipelineConfigs `json:"pipeline-configs,omitempty" yaml:"pipeline-configs,omitempty"`
+	Listeners map[string]ListenerConfig  `json:"listener-config,omitempty" yaml:"listener-config,omitempty"`
 }
 
 // MeshSyncSpec defines the desired state of MeshSync
