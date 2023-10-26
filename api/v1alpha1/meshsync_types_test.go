@@ -52,7 +52,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 				},
 			},
 			Config: MeshsyncConfig{
-				ListenerConfigs: map[string]ListenerConfig{
+				Listeners: map[string]ListenerConfig{
 					"global": {
 						Name:           "meshsync-logstream",
 						PublishTo:      "meshery.meshsync.logs",
@@ -60,7 +60,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 						ConnectionName: "log-stream",
 					},
 				},
-				PipelineConfigs: map[string]PipelineConfigs{
+				Pipelines: map[string]PipelineConfigs{
 					"global": []PipelineConfig{
 						{
 							Name:      "namespaces.v1.",
@@ -68,6 +68,17 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 						},
 						{
 							Name:      "configmaps.v1.",
+							PublishTo: "meshery.meshsync.core",
+						},
+					},
+					"local": []PipelineConfig{
+						// Core Resources
+						{
+							Name:      "replicasets.v1.apps",
+							PublishTo: "meshery.meshsync.core",
+						},
+						{
+							Name:      "pods.v1.",
 							PublishTo: "meshery.meshsync.core",
 						},
 					},
@@ -101,7 +112,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 
 			By("Confirm the config matches the expected listener and pipeline configs")
 			config := mesheSyncGet.Spec.Config
-			Expect(len(config.ListenerConfigs) == 1).Should(BeTrue())
+			Expect(len(config.Listeners) == 1).Should(BeTrue())
 			expectedListenerConfig := ListenerConfig{
 
 				Name:           "meshsync-logstream",
@@ -109,9 +120,9 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 				SubscribeTo:    "meshery.meshsync.logs",
 				ConnectionName: "log-stream",
 			}
-			Expect(config.ListenerConfigs["global"] == expectedListenerConfig).Should(BeTrue())
+			Expect(config.Listeners["global"] == expectedListenerConfig).Should(BeTrue())
 
-			expectedPipelineConfigs := []PipelineConfig{
+			expectedGlobalPipelineConfigs := []PipelineConfig{
 				{
 					Name:      "namespaces.v1.",
 					PublishTo: "meshery.meshsync.core",
@@ -121,9 +132,23 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 					PublishTo: "meshery.meshsync.core",
 				},
 			}
-			Expect(config.PipelineConfigs["global"][0] == expectedPipelineConfigs[0]).Should(BeTrue())
-			Expect(config.PipelineConfigs["global"][1] == expectedPipelineConfigs[1]).Should(BeTrue())
+			Expect(config.Pipelines["global"][0] == expectedGlobalPipelineConfigs[0]).Should(BeTrue())
+			Expect(config.Pipelines["global"][1] == expectedGlobalPipelineConfigs[1]).Should(BeTrue())
 
+			expectedLocalPipelineConfigs := []PipelineConfig{
+				// Core Resources
+				{
+					Name:      "replicasets.v1.apps",
+					PublishTo: "meshery.meshsync.core",
+				},
+				{
+					Name:      "pods.v1.",
+					PublishTo: "meshery.meshsync.core",
+				},
+			}
+
+			Expect(config.Pipelines["local"][0] == expectedLocalPipelineConfigs[0]).Should(BeTrue())
+			Expect(config.Pipelines["local"][1] == expectedLocalPipelineConfigs[1]).Should(BeTrue())
 		})
 
 		It("The meshsync CRDs update the spec of the resources", func() {
