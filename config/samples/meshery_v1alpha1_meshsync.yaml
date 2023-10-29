@@ -15,37 +15,8 @@ spec:
     native:
       name: meshery-broker
       namespace: meshery
-  config:
-    listener-config: 
-      log-stream:
-        connection-name: meshsync-logstream  
-        name: log-stream
-        publish-to: "meshery.meshsync.logs"
-      exec-shell:
-        connection-name: meshsync-exec  
-        name: exec-shell
-        publish-to: meshery.meshsync.exec  
-      request-stream:
-        connection-name: meshsync-request-stream  
-        name: request-stream
-        subscribe-to: meshery.meshsync.request  
-
-    pipeline-configs:
-      local:
-        - name: "replicasets.v1.apps"
-          publish-to: "meshery.meshsync.core"
-        -  name: "pods.v1."
-           publish-to: "meshery.meshsync.core"	
-        -  name: "services.v1."
-           publish-to: "meshery.meshsync.core"						
-        -  name: "deployments.v1.apps"
-           publish-to: "meshery.meshsync.core"
-        -  name: "statefulsets.v1.apps"
-           publish-to: "meshery.meshsync.core"
-      global: 
-        - name:      "namespaces.v1."
-          publish-to: "meshery.meshsync.core"
-        - name:      "configmaps.v1."
-          publish-to: "meshery.meshsync.core"						
-        - name:      "nodes.v1."
-          publish-to: "meshery.meshsync.core"
+  watch-list:
+    apiVersion: v1
+    data:
+      blacklist: "[\"namespaces.v1.\",\"configmaps.v1.\"]"
+      whitelist: "[{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADD\",\"DELETE\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"ADD\",\"MODIFIED\"]}]"
