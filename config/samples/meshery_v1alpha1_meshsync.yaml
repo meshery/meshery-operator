@@ -19,4 +19,4 @@ spec:
     apiVersion: v1
     data:
       blacklist: "[\"namespaces.v1.\",\"configmaps.v1.\"]"
-      whitelist: "[{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADD\",\"DELETE\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"ADD\",\"MODIFIED\"]}]"
+      whitelist: "[{\"Resource\":\"namespaces.v1.\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"MODIFIED\"]}]"
