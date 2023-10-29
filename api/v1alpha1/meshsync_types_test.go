@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,37 +52,19 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 					Name:      "default",
 				},
 			},
-			Config: MeshsyncConfig{
-				Listeners: map[string]ListenerConfig{
-					"global": {
-						Name:           "meshsync-logstream",
-						PublishTo:      "meshery.meshsync.logs",
-						SubscribeTo:    "meshery.meshsync.logs",
-						ConnectionName: "log-stream",
-					},
+			WatchList: corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1apha1",
+					Kind:       "ConfigMap",
 				},
-				Pipelines: map[string]PipelineConfigs{
-					"global": []PipelineConfig{
-						{
-							Name:      "namespaces.v1.",
-							PublishTo: "meshery.meshsync.core",
-						},
-						{
-							Name:      "configmaps.v1.",
-							PublishTo: "meshery.meshsync.core",
-						},
-					},
-					"local": []PipelineConfig{
-						// Core Resources
-						{
-							Name:      "replicasets.v1.apps",
-							PublishTo: "meshery.meshsync.core",
-						},
-						{
-							Name:      "pods.v1.",
-							PublishTo: "meshery.meshsync.core",
-						},
-					},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "watch-list",
+					Namespace: "default",
+				},
+				Data: map[string]string{
+					"blacklist": "blacklist",
+					"global":    "global-configs",
+					"local":     "global-configs",
 				},
 			},
 		},
@@ -111,44 +94,24 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 			Expect(url == URL).Should(BeTrue())
 
 			By("Confirm the config matches the expected listener and pipeline configs")
-			config := mesheSyncGet.Spec.Config
-			Expect(len(config.Listeners) == 1).Should(BeTrue())
-			expectedListenerConfig := ListenerConfig{
-
-				Name:           "meshsync-logstream",
-				PublishTo:      "meshery.meshsync.logs",
-				SubscribeTo:    "meshery.meshsync.logs",
-				ConnectionName: "log-stream",
-			}
-			Expect(config.Listeners["global"] == expectedListenerConfig).Should(BeTrue())
-
-			expectedGlobalPipelineConfigs := []PipelineConfig{
-				{
-					Name:      "namespaces.v1.",
-					PublishTo: "meshery.meshsync.core",
+			configMap := mesheSyncGet.Spec.WatchList
+			Expect(configMap).ShouldNot(BeNil())
+			expectedConfigMap := corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1apha1",
+					Kind:       "ConfigMap",
 				},
-				{
-					Name:      "configmaps.v1.",
-					PublishTo: "meshery.meshsync.core",
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "watch-list",
+					Namespace: "default",
+				},
+				Data: map[string]string{
+					"blacklist": "blacklist",
+					"listener":  "global-configs",
+					"pipeline":  "global-configs",
 				},
 			}
-			Expect(config.Pipelines["global"][0] == expectedGlobalPipelineConfigs[0]).Should(BeTrue())
-			Expect(config.Pipelines["global"][1] == expectedGlobalPipelineConfigs[1]).Should(BeTrue())
-
-			expectedLocalPipelineConfigs := []PipelineConfig{
-				// Core Resources
-				{
-					Name:      "replicasets.v1.apps",
-					PublishTo: "meshery.meshsync.core",
-				},
-				{
-					Name:      "pods.v1.",
-					PublishTo: "meshery.meshsync.core",
-				},
-			}
-
-			Expect(config.Pipelines["local"][0] == expectedLocalPipelineConfigs[0]).Should(BeTrue())
-			Expect(config.Pipelines["local"][1] == expectedLocalPipelineConfigs[1]).Should(BeTrue())
+			Expect(configMap).To(Equal(expectedConfigMap))
 		})
 
 		It("The meshsync CRDs update the spec of the resources", func() {
