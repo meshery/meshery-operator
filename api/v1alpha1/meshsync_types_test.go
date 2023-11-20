@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,6 +52,20 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 					Name:      "default",
 				},
 			},
+			WatchList: corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1apha1",
+					Kind:       "ConfigMap",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "watch-list",
+					Namespace: "default",
+				},
+				Data: map[string]string{
+					"blacklist": "",
+					"whitelist": "[{\"Resource\":\"namespaces.v1.\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"MODIFIED\"]}]",
+				},
+			},
 		},
 	}
 
@@ -77,6 +92,24 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 			url := mesheSyncGet.Spec.Broker.Custom.URL
 			Expect(url == URL).Should(BeTrue())
 
+			By("Confirm the config matches the expected listener and pipeline configs")
+			configMap := mesheSyncGet.Spec.WatchList
+			Expect(configMap).ShouldNot(BeNil())
+			expectedConfigMap := corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1apha1",
+					Kind:       "ConfigMap",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "watch-list",
+					Namespace: "default",
+				},
+				Data: map[string]string{
+					"blacklist": "",
+					"whitelist": "[{\"Resource\":\"namespaces.v1.\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"MODIFIED\"]}]",
+				},
+			}
+			Expect(configMap).To(Equal(expectedConfigMap))
 		})
 
 		It("The meshsync CRDs update the spec of the resources", func() {

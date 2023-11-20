@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -36,8 +37,9 @@ type MeshsyncBroker struct {
 
 // MeshSyncSpec defines the desired state of MeshSync
 type MeshSyncSpec struct {
-	Size   int32          `json:"size,omitempty" yaml:"size,omitempty"`
-	Broker MeshsyncBroker `json:"broker,omitempty" yaml:"broker,omitempty"`
+	Size      int32            `json:"size,omitempty" yaml:"size,omitempty"`
+	Broker    MeshsyncBroker   `json:"broker,omitempty" yaml:"broker,omitempty"`
+	WatchList corev1.ConfigMap `json:"watch-list,omitempty" yaml:"watch-list,omitempty"`
 }
 
 // MeshSyncStatus defines the observed state of MeshSync
