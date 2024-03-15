@@ -14,74 +14,76 @@ spec:
     singular: broker
   scope: Namespaced
   versions:
-  - name: v1alpha1
-    schema:
-      openAPIV3Schema:
-        description: Broker is the Schema for the brokers API
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: BrokerSpec defines the desired state of Broker
-            properties:
-              size:
-                format: int32
-                type: integer
-            type: object
-          status:
-            description: BrokerStatus defines the observed state of Broker
-            properties:
-              conditions:
-                items:
+    - name: v1beta1
+      schema:
+        openAPIV3Schema:
+          description: Broker is the Schema for the brokers API
+          properties:
+            apiVersion:
+              description:
+                "APIVersion defines the versioned schema of this representation
+                of an object. Servers should convert recognized schemas to the latest
+                internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources"
+              type: string
+            kind:
+              description:
+                "Kind is a string value representing the REST resource this
+                object represents. Servers may infer this from the endpoint the client
+                submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds"
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: BrokerSpec defines the desired state of Broker
+              properties:
+                size:
+                  format: int32
+                  type: integer
+              type: object
+            status:
+              description: BrokerStatus defines the observed state of Broker
+              properties:
+                conditions:
+                  items:
+                    properties:
+                      lastProbeTime:
+                        format: date-time
+                        type: string
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        type: integer
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      type:
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                endpoint:
                   properties:
-                    lastProbeTime:
-                      format: date-time
+                    external:
                       type: string
-                    lastTransitionTime:
-                      format: date-time
+                    internal:
                       type: string
-                    message:
-                      type: string
-                    observedGeneration:
-                      format: int64
-                      type: integer
-                    reason:
-                      type: string
-                    status:
-                      type: string
-                    type:
-                      type: string
-                  required:
-                  - lastTransitionTime
-                  - message
-                  - reason
-                  - status
-                  - type
                   type: object
-                type: array
-              endpoint:
-                properties:
-                  external:
-                    type: string
-                  internal:
-                    type: string
-                type: object
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
 status:
   acceptedNames:
     kind: ""
@@ -105,84 +107,86 @@ spec:
     singular: meshsync
   scope: Namespaced
   versions:
-  - name: v1alpha1
-    schema:
-      openAPIV3Schema:
-        description: MeshSync is the Schema for the meshsyncs API
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: MeshSyncSpec defines the desired state of MeshSync
-            properties:
-              broker:
-                properties:
-                  custom:
-                    properties:
-                      url:
-                        type: string
-                    type: object
-                  native:
-                    properties:
-                      name:
-                        type: string
-                      namespace:
-                        type: string
-                    type: object
-                type: object
-              size:
-                format: int32
-                type: integer
-            type: object
-          status:
-            description: MeshSyncStatus defines the observed state of MeshSync
-            properties:
-              conditions:
-                items:
+    - name: v1beta1
+      schema:
+        openAPIV3Schema:
+          description: MeshSync is the Schema for the meshsyncs API
+          properties:
+            apiVersion:
+              description:
+                "APIVersion defines the versioned schema of this representation
+                of an object. Servers should convert recognized schemas to the latest
+                internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources"
+              type: string
+            kind:
+              description:
+                "Kind is a string value representing the REST resource this
+                object represents. Servers may infer this from the endpoint the client
+                submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds"
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: MeshSyncSpec defines the desired state of MeshSync
+              properties:
+                broker:
                   properties:
-                    lastProbeTime:
-                      format: date-time
-                      type: string
-                    lastTransitionTime:
-                      format: date-time
-                      type: string
-                    message:
-                      type: string
-                    observedGeneration:
-                      format: int64
-                      type: integer
-                    reason:
-                      type: string
-                    status:
-                      type: string
-                    type:
-                      type: string
-                  required:
-                  - lastTransitionTime
-                  - message
-                  - reason
-                  - status
-                  - type
+                    custom:
+                      properties:
+                        url:
+                          type: string
+                      type: object
+                    native:
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      type: object
                   type: object
-                type: array
-              publishing-to:
-                type: string
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
+                size:
+                  format: int32
+                  type: integer
+              type: object
+            status:
+              description: MeshSyncStatus defines the observed state of MeshSync
+              properties:
+                conditions:
+                  items:
+                    properties:
+                      lastProbeTime:
+                        format: date-time
+                        type: string
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        type: string
+                      observedGeneration:
+                        format: int64
+                        type: integer
+                      reason:
+                        type: string
+                      status:
+                        type: string
+                      type:
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                publishing-to:
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
 status:
   acceptedNames:
     kind: ""
@@ -205,61 +209,61 @@ metadata:
   name: meshery-leader-election-role
   namespace: meshery
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - ""
-  resources:
-  - configmaps/status
-  verbs:
-  - get
-  - update
-  - patch
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps/status
+    verbs:
+      - get
+      - update
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: meshery-controller-role
 rules:
-- apiGroups:
-  - '*'
-  resources:
-  - '*'
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  - apiGroups:
+      - "*"
+    resources:
+      - "*"
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: meshery-metrics-reader
 rules:
-- nonResourceURLs:
-  - /metrics
-  verbs:
-  - get
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -267,44 +271,44 @@ metadata:
   creationTimestamp: null
   name: meshery-operator-role
 rules:
-- apiGroups:
-  - meshery.layer5.io
-  resources:
-  - brokers
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - meshery.layer5.io
-  resources:
-  - brokers/status
-  verbs:
-  - get
-  - patch
-  - update
+  - apiGroups:
+      - meshery.layer5.io
+    resources:
+      - brokers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - meshery.layer5.io
+    resources:
+      - brokers/status
+    verbs:
+      - get
+      - patch
+      - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: meshery-proxy-role
 rules:
-- apiGroups:
-  - authentication.k8s.io
-  resources:
-  - tokenreviews
-  verbs:
-  - create
-- apiGroups:
-  - authorization.k8s.io
-  resources:
-  - subjectaccessreviews
-  verbs:
-  - create
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -316,9 +320,9 @@ roleRef:
   kind: Role
   name: meshery-leader-election-role
 subjects:
-- kind: ServiceAccount
-  name: meshery-operator
-  namespace: meshery
+  - kind: ServiceAccount
+    name: meshery-operator
+    namespace: meshery
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -329,9 +333,9 @@ roleRef:
   kind: ClusterRole
   name: meshery-controller-role
 subjects:
-- kind: ServiceAccount
-  name: meshery-operator
-  namespace: meshery
+  - kind: ServiceAccount
+    name: meshery-operator
+    namespace: meshery
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -342,9 +346,9 @@ roleRef:
   kind: ClusterRole
   name: meshery-operator-role
 subjects:
-- kind: ServiceAccount
-  name: meshery-operator
-  namespace: meshery
+  - kind: ServiceAccount
+    name: meshery-operator
+    namespace: meshery
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -355,9 +359,9 @@ roleRef:
   kind: ClusterRole
   name: meshery-proxy-role
 subjects:
-- kind: ServiceAccount
-  name: meshery-operator
-  namespace: meshery
+  - kind: ServiceAccount
+    name: meshery-operator
+    namespace: meshery
 ---
 apiVersion: v1
 kind: Service
@@ -369,9 +373,9 @@ metadata:
   namespace: meshery
 spec:
   ports:
-  - name: https
-    port: 8443
-    targetPort: https
+    - name: https
+      port: 8443
+      targetPort: https
   selector:
     app: meshery
     component: operator
@@ -397,44 +401,44 @@ spec:
         component: operator
     spec:
       containers:
-      - args:
-        - --secure-listen-address=0.0.0.0:8443
-        - --upstream=http://127.0.0.1:8080/
-        - --logtostderr=true
-        - --v=10
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
-        name: kube-rbac-proxy
-        ports:
-        - containerPort: 8443
-          name: https
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
-      - args:
-        - --metrics-addr=127.0.0.1:8080
-        - --enable-leader-election
-        command:
-        - /manager
-        image: layer5/meshery-operator:stable-latest
-        imagePullPolicy: Always
-        name: manager
-        ports:
-        - containerPort: 9443
-          hostPort: 9443
-          name: server
-        - containerPort: 8080
-          hostPort: 8080
-          name: metrics
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
+        - args:
+            - --secure-listen-address=0.0.0.0:8443
+            - --upstream=http://127.0.0.1:8080/
+            - --logtostderr=true
+            - --v=10
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+          name: kube-rbac-proxy
+          ports:
+            - containerPort: 8443
+              name: https
+          resources:
+            limits:
+              cpu: 100m
+              memory: 30Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
+        - args:
+            - --metrics-addr=127.0.0.1:8080
+            - --enable-leader-election
+          command:
+            - /manager
+          image: layer5/meshery-operator:stable-latest
+          imagePullPolicy: Always
+          name: manager
+          ports:
+            - containerPort: 9443
+              hostPort: 9443
+              name: server
+            - containerPort: 8080
+              hostPort: 8080
+              name: metrics
+          resources:
+            limits:
+              cpu: 100m
+              memory: 30Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
       serviceAccountName: meshery-operator
       terminationGracePeriodSeconds: 10

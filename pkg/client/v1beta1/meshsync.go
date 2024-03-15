@@ -1,10 +1,10 @@
-package v1alpha1
+package v1beta1
 
 import (
 	"context"
 	"time"
 
-	v1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	v1beta1 "github.com/layer5io/meshery-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -19,13 +19,13 @@ type MeshSyncsGetter interface {
 
 // MeshSyncInterface has methods to work with MeshSync resources.
 type MeshSyncInterface interface {
-	Create(ctx context.Context, meshsync *v1alpha1.MeshSync, opts metav1.CreateOptions) (*v1alpha1.MeshSync, error)
-	Update(ctx context.Context, meshsync *v1alpha1.MeshSync, opts metav1.UpdateOptions) (*v1alpha1.MeshSync, error)
+	Create(ctx context.Context, meshsync *v1beta1.MeshSync, opts metav1.CreateOptions) (*v1beta1.MeshSync, error)
+	Update(ctx context.Context, meshsync *v1beta1.MeshSync, opts metav1.UpdateOptions) (*v1beta1.MeshSync, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1alpha1.MeshSync, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1alpha1.MeshSyncList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta1.MeshSync, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1beta1.MeshSyncList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1alpha1.MeshSync, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta1.MeshSync, err error)
 }
 
 // meshsync implements MeshSyncInterface
@@ -43,8 +43,8 @@ func newMeshSyncs(c *CoreClient, namespace string) *meshsync {
 }
 
 // Get takes name of the meshsync, and returns the corresponding meshsync object, and an error if there is any.
-func (c *meshsync) Get(ctx context.Context, name string, opts metav1.GetOptions) (result *v1alpha1.MeshSync, err error) {
-	result = &v1alpha1.MeshSync{}
+func (c *meshsync) Get(ctx context.Context, name string, opts metav1.GetOptions) (result *v1beta1.MeshSync, err error) {
+	result = &v1beta1.MeshSync{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("meshsyncs").
@@ -56,12 +56,12 @@ func (c *meshsync) Get(ctx context.Context, name string, opts metav1.GetOptions)
 }
 
 // List takes label and field selectors, and returns the list of MeshSyncs that match those selectors.
-func (c *meshsync) List(ctx context.Context, opts metav1.ListOptions) (result *v1alpha1.MeshSyncList, err error) {
+func (c *meshsync) List(ctx context.Context, opts metav1.ListOptions) (result *v1beta1.MeshSyncList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v1alpha1.MeshSyncList{}
+	result = &v1beta1.MeshSyncList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("meshsyncs").
@@ -88,8 +88,8 @@ func (c *meshsync) Watch(ctx context.Context, opts metav1.ListOptions) (watch.In
 }
 
 // Create takes the representation of a meshsync and creates it.  Returns the server's representation of the meshsync, and an error, if there is any.
-func (c *meshsync) Create(ctx context.Context, meshsync *v1alpha1.MeshSync, opts metav1.CreateOptions) (result *v1alpha1.MeshSync, err error) {
-	result = &v1alpha1.MeshSync{}
+func (c *meshsync) Create(ctx context.Context, meshsync *v1beta1.MeshSync, opts metav1.CreateOptions) (result *v1beta1.MeshSync, err error) {
+	result = &v1beta1.MeshSync{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("meshsyncs").
@@ -101,8 +101,8 @@ func (c *meshsync) Create(ctx context.Context, meshsync *v1alpha1.MeshSync, opts
 }
 
 // Update takes the representation of a meshsync and updates it. Returns the server's representation of the meshsync, and an error, if there is any.
-func (c *meshsync) Update(ctx context.Context, meshsync *v1alpha1.MeshSync, opts metav1.UpdateOptions) (result *v1alpha1.MeshSync, err error) {
-	result = &v1alpha1.MeshSync{}
+func (c *meshsync) Update(ctx context.Context, meshsync *v1beta1.MeshSync, opts metav1.UpdateOptions) (result *v1beta1.MeshSync, err error) {
+	result = &v1beta1.MeshSync{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("meshsyncs").
@@ -126,8 +126,8 @@ func (c *meshsync) Delete(ctx context.Context, name string, opts metav1.DeleteOp
 }
 
 // Patch applies the patch and returns the patched meshsync.
-func (c *meshsync) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1alpha1.MeshSync, err error) {
-	result = &v1alpha1.MeshSync{}
+func (c *meshsync) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta1.MeshSync, err error) {
+	result = &v1beta1.MeshSync{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("meshsyncs").

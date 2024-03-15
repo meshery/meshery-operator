@@ -28,7 +28,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	mesheryv1beta1 "github.com/layer5io/meshery-operator/api/v1beta1"
 	"github.com/layer5io/meshery-operator/controllers"
 
 	"k8s.io/client-go/kubernetes"
@@ -43,7 +43,7 @@ var (
 func init() {
 	// +kubebuilder:scaffold:scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(mesheryv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(mesheryv1beta1.AddToScheme(scheme))
 }
 
 func main() {

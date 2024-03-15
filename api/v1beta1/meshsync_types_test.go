@@ -1,4 +1,4 @@
-package v1alpha1
+package v1beta1
 
 import (
 	"context"
@@ -29,7 +29,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 		FileManager  string = "testcase-meshsync"
 
 		Kind       string = "MeshSync"
-		APIVersion string = "meshery.layer5.io/v1alpha1"
+		APIVersion string = "meshery.layer5.io/v1beta1"
 	)
 
 	meshSync := &MeshSync{

@@ -15,7 +15,7 @@ spec:
     singular: broker
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - name: v1beta1
     schema:
       openAPIV3Schema:
         description: Broker is the Schema for the brokers API

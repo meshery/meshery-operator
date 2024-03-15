@@ -9,14 +9,14 @@ resources:
     group: meshery
     kind: MeshSync
     # TODO(user): Update the package path for your API if the below value is incorrect.
-    path: github.com/layer5io/meshery-operator/api/v1alpha1
-    version: v1alpha1
+    path: github.com/layer5io/meshery-operator/api/v1beta1
+    version: v1beta1
   - domain: layer5.io
     group: meshery
     kind: Broker
     # TODO(user): Update the package path for your API if the below value is incorrect.
-    path: github.com/layer5io/meshery-operator/api/v1alpha1
-    version: v1alpha1
+    path: github.com/layer5io/meshery-operator/api/v1beta1
+    version: v1beta1
 version: "3"
 plugins:
   go.sdk.operatorframework.io/v3-alpha: {}

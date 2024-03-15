@@ -19,7 +19,7 @@ package broker
 import (
 	"context"
 
-	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	mesheryv1beta1 "github.com/layer5io/meshery-operator/api/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/apps/v1"
@@ -39,12 +39,12 @@ var _ = Describe("Broker funtions test cases", func() {
 
 	Context("Test for GetObjects function", func() {
 		It("should return the map of objects", func() {
-			m := &mesheryv1alpha1.Broker{
+			m := &mesheryv1beta1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: "test",
 				},
-				Spec: mesheryv1alpha1.BrokerSpec{
+				Spec: mesheryv1beta1.BrokerSpec{
 					Size: 1,
 				},
 			}
@@ -69,12 +69,12 @@ var _ = Describe("Broker funtions test cases", func() {
 
 			namespace := "default"
 			name := "default"
-			m := &mesheryv1alpha1.Broker{
+			m := &mesheryv1beta1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: mesheryv1alpha1.BrokerSpec{
+				Spec: mesheryv1beta1.BrokerSpec{
 					Size: 1,
 				},
 			}
@@ -116,12 +116,12 @@ var _ = Describe("Broker funtions test cases", func() {
 
 			name := "default"
 			namespace := "default"
-			m := &mesheryv1alpha1.Broker{
+			m := &mesheryv1beta1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: namespace,
 				},
-				Spec: mesheryv1alpha1.BrokerSpec{
+				Spec: mesheryv1beta1.BrokerSpec{
 					Size: 1,
 				},
 			}

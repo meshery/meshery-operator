@@ -1,8 +1,8 @@
 package client
 
 import (
-	apiv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	v1alpha1 "github.com/layer5io/meshery-operator/pkg/client/v1alpha1"
+	apiv1beta1 "github.com/layer5io/meshery-operator/api/v1beta1"
+	v1beta1 "github.com/layer5io/meshery-operator/pkg/client/v1beta1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -15,20 +15,20 @@ import (
 
 var (
 	Scheme             = runtime.NewScheme()
-	SchemeGroupVersion = apiv1alpha1.GroupVersion
+	SchemeGroupVersion = apiv1beta1.GroupVersion
 )
 
 type Interface interface {
-	CoreV1Alpha1() v1alpha1.CoreInterface
+	Corev1Beta1() v1beta1.CoreInterface
 }
 
 type Clientset struct {
-	corev1alpha1 *v1alpha1.CoreClient
+	corev1beta1 *v1beta1.CoreClient
 }
 
-// CoreV1Alpha1 retrieves the CoreV1Alpha1Client
-func (c *Clientset) CoreV1Alpha1() v1alpha1.CoreInterface {
-	return c.corev1alpha1
+// Corev1beta1 retrieves the Corev1beta1Client
+func (c *Clientset) Corev1Beta1() v1beta1.CoreInterface {
+	return c.corev1beta1
 }
 
 func New(config *rest.Config) (Interface, error) {
@@ -43,7 +43,7 @@ func New(config *rest.Config) (Interface, error) {
 	}
 
 	return &Clientset{
-		corev1alpha1: v1alpha1.New(client, runtime.NewParameterCodec(Scheme)),
+		corev1beta1: v1beta1.New(client, runtime.NewParameterCodec(Scheme)),
 	}, nil
 }
 
@@ -51,5 +51,5 @@ func init() {
 	metav1.AddToGroupVersion(Scheme, schema.GroupVersion{Version: "v1"})
 	// +kubebuilder:scaffold:scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(Scheme))
-	utilruntime.Must(apiv1alpha1.AddToScheme(Scheme))
+	utilruntime.Must(apiv1beta1.AddToScheme(Scheme))
 }

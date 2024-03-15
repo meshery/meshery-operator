@@ -1,10 +1,10 @@
-package v1alpha1
+package v1beta1
 
 import (
 	"context"
 	"time"
 
-	v1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	v1beta1 "github.com/layer5io/meshery-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -19,13 +19,13 @@ type BrokersGetter interface {
 
 // BrokerInterface has methods to work with Broker resources.
 type BrokerInterface interface {
-	Create(ctx context.Context, broker *v1alpha1.Broker, opts metav1.CreateOptions) (*v1alpha1.Broker, error)
-	Update(ctx context.Context, broker *v1alpha1.Broker, opts metav1.UpdateOptions) (*v1alpha1.Broker, error)
+	Create(ctx context.Context, broker *v1beta1.Broker, opts metav1.CreateOptions) (*v1beta1.Broker, error)
+	Update(ctx context.Context, broker *v1beta1.Broker, opts metav1.UpdateOptions) (*v1beta1.Broker, error)
 	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1alpha1.Broker, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1alpha1.BrokerList, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1beta1.Broker, error)
+	List(ctx context.Context, opts metav1.ListOptions) (*v1beta1.BrokerList, error)
 	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1alpha1.Broker, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta1.Broker, err error)
 }
 
 // broker implements BrokerInterface
@@ -43,8 +43,8 @@ func newBrokers(c *CoreClient, namespace string) *broker {
 }
 
 // Get takes name of the broker, and returns the corresponding broker object, and an error if there is any.
-func (c *broker) Get(ctx context.Context, name string, opts metav1.GetOptions) (result *v1alpha1.Broker, err error) {
-	result = &v1alpha1.Broker{}
+func (c *broker) Get(ctx context.Context, name string, opts metav1.GetOptions) (result *v1beta1.Broker, err error) {
+	result = &v1beta1.Broker{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("brokers").
@@ -56,12 +56,12 @@ func (c *broker) Get(ctx context.Context, name string, opts metav1.GetOptions) (
 }
 
 // List takes label and field selectors, and returns the list of Brokers that match those selectors.
-func (c *broker) List(ctx context.Context, opts metav1.ListOptions) (result *v1alpha1.BrokerList, err error) {
+func (c *broker) List(ctx context.Context, opts metav1.ListOptions) (result *v1beta1.BrokerList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v1alpha1.BrokerList{}
+	result = &v1beta1.BrokerList{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("brokers").
@@ -88,8 +88,8 @@ func (c *broker) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Inte
 }
 
 // Create takes the representation of a broker and creates it.  Returns the server's representation of the broker, and an error, if there is any.
-func (c *broker) Create(ctx context.Context, broker *v1alpha1.Broker, opts metav1.CreateOptions) (result *v1alpha1.Broker, err error) {
-	result = &v1alpha1.Broker{}
+func (c *broker) Create(ctx context.Context, broker *v1beta1.Broker, opts metav1.CreateOptions) (result *v1beta1.Broker, err error) {
+	result = &v1beta1.Broker{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("brokers").
@@ -101,8 +101,8 @@ func (c *broker) Create(ctx context.Context, broker *v1alpha1.Broker, opts metav
 }
 
 // Update takes the representation of a broker and updates it. Returns the server's representation of the broker, and an error, if there is any.
-func (c *broker) Update(ctx context.Context, broker *v1alpha1.Broker, opts metav1.UpdateOptions) (result *v1alpha1.Broker, err error) {
-	result = &v1alpha1.Broker{}
+func (c *broker) Update(ctx context.Context, broker *v1beta1.Broker, opts metav1.UpdateOptions) (result *v1beta1.Broker, err error) {
+	result = &v1beta1.Broker{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("brokers").
@@ -126,8 +126,8 @@ func (c *broker) Delete(ctx context.Context, name string, opts metav1.DeleteOpti
 }
 
 // Patch applies the patch and returns the patched broker.
-func (c *broker) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1alpha1.Broker, err error) {
-	result = &v1alpha1.Broker{}
+func (c *broker) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1beta1.Broker, err error) {
+	result = &v1beta1.Broker{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("brokers").
