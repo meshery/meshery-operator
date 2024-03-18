@@ -1,11 +1,11 @@
-apiVersion: operators.coreos.com/v1alpha1
+apiVersion: operators.coreos.com/v1beta1
 kind: ClusterServiceVersion
 metadata:
   annotations:
     alm-examples: |-
       [
         {
-          "apiVersion": "meshery.layer5.io/v1alpha1",
+          "apiVersion": "meshery.layer5.io/v1beta1",
           "kind": "Broker",
           "metadata": {
             "annotations": {
@@ -24,7 +24,7 @@ metadata:
           }
         },
         {
-          "apiVersion": "meshery.layer5.io/v1alpha1",
+          "apiVersion": "meshery.layer5.io/v1beta1",
           "kind": "MeshSync",
           "metadata": {
             "annotations": {
@@ -66,12 +66,12 @@ spec:
     owned:
     - kind: Broker
       name: brokers.meshery.layer5.io
-      version: v1alpha1
+      version: v1beta1
     - description: MeshSync is the Schema for the meshsyncs API
       displayName: Mesh Sync
       kind: MeshSync
       name: meshsyncs.meshery.layer5.io
-      version: v1alpha1
+      version: v1beta1
   description: Meshery Operator is the multi-service mesh operator and implementation
     of MeshSync.
   displayName: meshery-operator

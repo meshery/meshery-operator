@@ -27,7 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	mesheryv1beta1 "github.com/layer5io/meshery-operator/api/v1beta1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
 	"github.com/layer5io/meshery-operator/pkg/utils"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
@@ -51,7 +51,7 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	log = log.WithValues("controller", "Broker")
 	log = log.WithValues("namespace", req.NamespacedName)
 	log.Info("Reconciling broker")
-	baseResource := &mesheryv1alpha1.Broker{}
+	baseResource := &mesheryv1beta1.Broker{}
 
 	// Check if resource exists
 	err := r.Get(ctx, req.NamespacedName, baseResource)
@@ -98,12 +98,12 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&mesheryv1alpha1.Broker{}).
+		For(&mesheryv1beta1.Broker{}).
 		Complete(r)
 }
 
 func (r *BrokerReconciler) Cleanup() error {
-	objects := brokerpackage.GetObjects(&mesheryv1alpha1.Broker{
+	objects := brokerpackage.GetObjects(&mesheryv1beta1.Broker{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "meshery-broker",
 			Namespace: "meshery",
@@ -118,7 +118,7 @@ func (r *BrokerReconciler) Cleanup() error {
 	return nil
 }
 
-func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.Broker, req ctrl.Request) (ctrl.Result, error) {
+func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, baseResource *mesheryv1beta1.Broker, req ctrl.Request) (ctrl.Result, error) {
 	objects := brokerpackage.GetObjects(baseResource)
 	for _, object := range objects {
 		object.SetNamespace(baseResource.Namespace)

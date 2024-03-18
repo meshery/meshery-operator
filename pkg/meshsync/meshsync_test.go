@@ -19,17 +19,17 @@ package meshsync
 import (
 	"testing"
 
-	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	mesheryv1beta1 "github.com/layer5io/meshery-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestGetObjects(t *testing.T) {
-	m := &mesheryv1alpha1.MeshSync{
+	m := &mesheryv1beta1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: "test",
 		},
-		Spec: mesheryv1alpha1.MeshSyncSpec{
+		Spec: mesheryv1beta1.MeshSyncSpec{
 			Size: 1,
 		},
 	}

@@ -36,7 +36,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	mesheryv1beta1 "github.com/layer5io/meshery-operator/api/v1beta1"
 )
 
 // Initialize test suite entrypoint
@@ -82,7 +82,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 	scheme := runtime.NewScheme()
 
-	Expect(mesheryv1alpha1.AddToScheme(scheme)).To(Succeed())
+	Expect(mesheryv1beta1.AddToScheme(scheme)).To(Succeed())
 	Expect(k8sscheme.AddToScheme(scheme)).To(Succeed())
 	Expect(apiv1.AddToScheme(scheme)).To(Succeed())
 

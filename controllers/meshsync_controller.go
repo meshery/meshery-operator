@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	util "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	mesheryv1beta1 "github.com/layer5io/meshery-operator/api/v1beta1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
 	meshsyncpackage "github.com/layer5io/meshery-operator/pkg/meshsync"
 	"github.com/layer5io/meshery-operator/pkg/utils"
@@ -52,7 +52,7 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	log = log.WithValues("controller", "MeshSync")
 	log = log.WithValues("namespace", req.NamespacedName)
 	log.Info("Reconciling MeshSync")
-	baseResource := &mesheryv1alpha1.MeshSync{}
+	baseResource := &mesheryv1beta1.MeshSync{}
 
 	// Check if resource exists
 	err := r.Get(ctx, req.NamespacedName, baseResource)
@@ -93,12 +93,12 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&mesheryv1alpha1.MeshSync{}).
+		For(&mesheryv1beta1.MeshSync{}).
 		Complete(r)
 }
 
 func (r *MeshSyncReconciler) Cleanup() error {
-	objects := meshsyncpackage.GetObjects(&mesheryv1alpha1.MeshSync{
+	objects := meshsyncpackage.GetObjects(&mesheryv1beta1.MeshSync{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "meshery-meshsync",
 			Namespace: "meshery",
@@ -113,9 +113,9 @@ func (r *MeshSyncReconciler) Cleanup() error {
 	return nil
 }
 
-func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
-	brokerresource := &mesheryv1alpha1.Broker{}
-	nullNativeResource := mesheryv1alpha1.NativeMeshsyncBroker{}
+func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseResource *mesheryv1beta1.MeshSync) error {
+	brokerresource := &mesheryv1beta1.Broker{}
+	nullNativeResource := mesheryv1beta1.NativeMeshsyncBroker{}
 	if baseResource.Spec.Broker.Native != nullNativeResource {
 		brokerresource.ObjectMeta.Namespace = baseResource.Spec.Broker.Native.Namespace
 		brokerresource.ObjectMeta.Name = baseResource.Spec.Broker.Native.Name
@@ -131,7 +131,7 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 	return nil
 }
 
-func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
+func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool, baseResource *mesheryv1beta1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
 	object := meshsyncpackage.GetObjects(baseResource)[meshsyncpackage.ServerObject]
 	err := r.Get(ctx,
 		types.NamespacedName{
