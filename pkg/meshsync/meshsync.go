@@ -60,9 +60,6 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, client *kuber
 	}
 
 	if obj.Status.Replicas != obj.Status.ReadyReplicas {
-		if len(obj.Status.Conditions) > 0 {
-			return err
-		}
 		return err
 	}
 
