@@ -27,6 +27,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	"github.com/layer5io/meshery-operator/controllers"
@@ -55,6 +56,7 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{})))
 
 	opID := uuid.NewUUID()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -66,12 +68,14 @@ func main() {
 		LeaderElectionNamespace: namespace,
 	})
 	if err != nil {
+		fmt.Println("RERER")
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
 	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
+		fmt.Println("RERER-222")
 		setupLog.Error(err, "unable to initialize clientset")
 		os.Exit(1)
 	}
