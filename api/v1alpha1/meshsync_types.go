@@ -40,6 +40,7 @@ type MeshSyncSpec struct {
 	Size      int32            `json:"size,omitempty" yaml:"size,omitempty"`
 	Broker    MeshsyncBroker   `json:"broker,omitempty" yaml:"broker,omitempty"`
 	WatchList corev1.ConfigMap `json:"watch-list,omitempty" yaml:"watch-list,omitempty"`
+	Version   string           `json:"version,omitempty" yaml:"version,omitempty"`
 }
 
 // MeshSyncStatus defines the observed state of MeshSync
