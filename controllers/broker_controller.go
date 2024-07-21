@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 
-	"github.com/go-logr/logr"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -30,6 +29,7 @@ import (
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
 	"github.com/layer5io/meshery-operator/pkg/utils"
+	"github.com/layer5io/meshkit/logger"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/types"
 )
@@ -39,7 +39,7 @@ type BrokerReconciler struct {
 	client.Client
 	KubeConfig *rest.Config
 	Clientset  *kubernetes.Clientset
-	Log        logr.Logger
+	Log        logger.Logger
 	Scheme     *runtime.Scheme
 }
 
@@ -47,7 +47,7 @@ type BrokerReconciler struct {
 // +kubebuilder:rbac:groups=meshery.layer5.io,resources=brokers/status,verbs=get;update;patch
 
 func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log
+	log := r.Log.ControllerLogger()
 	log = log.WithValues("controller", "Broker")
 	log = log.WithValues("namespace", req.NamespacedName)
 	log.Info("Reconciling broker")
