@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -67,7 +68,9 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// Check if Broker controller deployed
 	result, err := r.reconcileBroker(ctx, true, baseResource, req)
 	if err != nil {
-		return ctrl.Result{}, ErrReconcileBroker(err)
+		err = ErrReconcileBroker(err)
+		r.Log.Error(err, "broker reconcilation failed")
+		return ctrl.Result{}, err
 	}
 
 	// Check if Broker controller started
@@ -79,18 +82,24 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// Get broker endpoint
 	err = brokerpackage.GetEndpoint(ctx, baseResource, r.Clientset, r.KubeConfig.Host)
 	if err != nil {
-		return ctrl.Result{}, ErrGetEndpoint(err)
+		err = ErrGetEndpoint(err)
+		r.Log.Error(err, "unable to get the broker endpoint")
+		return ctrl.Result{}, err
 	}
 
 	// Patch the broker resource
 	patch, err := utils.Marshal(baseResource)
 	if err != nil {
-		return ctrl.Result{}, ErrUpdateResource(err)
+		err = ErrUpdateResource(err)
+		r.Log.Error(err, "unable to update broker resource")
+		return ctrl.Result{}, err
 	}
 
 	err = r.Status().Patch(ctx, baseResource, client.RawPatch(types.MergePatchType, []byte(patch)))
 	if err != nil {
-		return ctrl.Result{}, ErrUpdateResource(err)
+		err = ErrUpdateResource(err)
+		r.Log.Error(err, "unable to update broker resource")
+		return ctrl.Result{}, err
 	}
 
 	return result, nil
@@ -99,6 +108,7 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.Broker{}).
+		Owns(&appsv1.StatefulSet{}).
 		Complete(r)
 }
 

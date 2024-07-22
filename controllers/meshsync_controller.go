@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -68,24 +69,31 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// Get broker configuration
 	err = r.reconcileBrokerConfig(ctx, baseResource)
 	if err != nil {
+		r.Log.Error(err, "meshsync reconcilation failed")
 		return ctrl.Result{}, ErrReconcileMeshsync(err)
 	}
 
 	// Check if Meshsync controller running
 	result, err := r.reconcileMeshsync(ctx, true, baseResource, req)
 	if err != nil {
+		err = ErrReconcileMeshsync(err)
+		r.Log.Error(err, "meshsync reconcilation failed")
 		return ctrl.Result{}, ErrReconcileMeshsync(err)
 	}
 
 	// Patch the meshsync resource
 	patch, err := utils.Marshal(baseResource)
 	if err != nil {
-		return ctrl.Result{}, ErrUpdateResource(err)
+		err = ErrUpdateResource(err)
+		r.Log.Error(err, "unable to update meshsync resource")
+		return ctrl.Result{}, err
 	}
 
 	err = r.Status().Patch(ctx, baseResource, client.RawPatch(types.MergePatchType, []byte(patch)))
 	if err != nil {
-		return ctrl.Result{}, ErrUpdateResource(err)
+		err = ErrUpdateResource(err)
+		r.Log.Error(err, "unable to update meshsync resource")
+		return ctrl.Result{}, err
 	}
 
 	return result, nil
@@ -94,6 +102,7 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.MeshSync{}).
+		Owns(&appsv1.Deployment{}).
 		Complete(r)
 }
 
