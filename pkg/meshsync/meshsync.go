@@ -56,18 +56,18 @@ func getServerObject(namespace, name string, replicas int32, url string) Object 
 func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, client *kubernetes.Clientset) error {
 	obj, err := client.AppsV1().Deployments(m.ObjectMeta.Namespace).Get(ctx, m.ObjectMeta.Name, metav1.GetOptions{})
 	if err != nil {
-		return err
+		return ErrGettingResource(err)
 	}
 
 	if obj.Status.Replicas != obj.Status.ReadyReplicas {
 		if len(obj.Status.Conditions) > 0 {
-			return err
+			return ErrReplicasNotReady(obj.Status.Conditions[0].Reason)
 		}
-		return err
+		return ErrReplicasNotReady("Condition Unknown")
 	}
 
 	if len(obj.Status.Conditions) > 0 && (obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown) {
-		return err
+		return ErrConditionFalse(obj.Status.Conditions[0].Reason)
 	}
 
 	return nil

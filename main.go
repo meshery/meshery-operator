@@ -68,14 +68,12 @@ func main() {
 		LeaderElectionNamespace: namespace,
 	})
 	if err != nil {
-		fmt.Println("RERER")
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
 	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
-		fmt.Println("RERER-222")
 		setupLog.Error(err, "unable to initialize clientset")
 		os.Exit(1)
 	}

@@ -20,8 +20,8 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -31,6 +31,7 @@ import (
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
+	"github.com/layer5io/meshery-operator/pkg/meshsync"
 	meshsyncpackage "github.com/layer5io/meshery-operator/pkg/meshsync"
 	"github.com/layer5io/meshery-operator/pkg/utils"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
@@ -79,6 +80,11 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		err = ErrReconcileMeshsync(err)
 		r.Log.Error(err, "meshsync reconcilation failed")
 		return ctrl.Result{}, ErrReconcileMeshsync(err)
+	}
+
+	err = meshsync.CheckHealth(ctx, baseResource, r.Clientset)
+	if err != nil {
+		return ctrl.Result{Requeue: true}, ErrCheckHealth(err)
 	}
 
 	// Patch the meshsync resource
