@@ -163,7 +163,7 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 		if !utils.TcpCheck(endpoint.External, &utils.MockOptions{}) && endpoint.External.Address != "localhost" {
 			endpoint.External.Port = nodePort
 			if !utils.TcpCheck(endpoint.External, &utils.MockOptions{}) {
-				return ErrGettingEndpoint(err)
+				return ErrGettingEndpoint(fmt.Errorf("unable to connect to endpoint at %v", endpoint.External))
 			}
 		}
 	}
