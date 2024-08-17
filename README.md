@@ -43,7 +43,7 @@ MeshSync (Service Mesh Synchronization), an event-driven, continuous synchroniza
 
 <a href="https://docs.meshery.io/assets/img/architecture/meshery-operator-and-meshsync.svg"><img src="./img/readme/meshery-broker.png" style="margin:10px;" width="165px" align="left" /></a>
 # Meshery Broker
-Meshery Broker is a custom Kubernetes controller that provides data streaming across independent components of Meshery whether those components are running inside or outside of the Kubernetes cluster.
+<a href="https://docs.google.com/presentation/d/1SQMfyu5shjpGKlYONdVzOtd7UYTgLWBcgUvHMLCZ2tY/edit#slide=id.g10af036b3dd_0_0">Meshery Broker</a> is a custom Kubernetes controller that provides data streaming across independent components of Meshery whether those components are running inside or outside of the Kubernetes cluster.
 <br />
 <br />
 <br />
