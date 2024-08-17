@@ -39,6 +39,7 @@ Meshery Operator is the multi-service mesh operator and implementation of MeshSy
 MeshSync (Service Mesh Synchronization), an event-driven, continuous synchronization routine performs the task of ensuring that the state of configuration and status of operation of any service mesh and of the Kubernetes environment are known to Meshery. MeshSync runs as a Kubernetes custom controller under the control of Meshery Operator.
 <br />
 <br />
+<br />
 
 <a href="https://docs.meshery.io/assets/img/architecture/meshery-operator-and-meshsync.svg"><img src="./img/readme/meshery-broker.png" style="margin:10px;" width="165px" align="left" /></a>
 # Meshery Broker
