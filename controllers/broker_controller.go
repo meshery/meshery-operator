@@ -44,8 +44,8 @@ type BrokerReconciler struct {
 	Scheme     *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=meshery.layer5.io,resources=brokers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=meshery.layer5.io,resources=brokers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cloud.layer5.io,resources=brokers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cloud.layer5.io,resources=brokers/status,verbs=get;update;patch
 
 func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log

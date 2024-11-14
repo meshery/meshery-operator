@@ -4,9 +4,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: brokers.meshery.layer5.io
+  name: brokers.cloud.layer5.io
 spec:
-  group: meshery.layer5.io
+  group: cloud.layer5.io
   names:
     kind: Broker
     listKind: BrokerList
@@ -95,9 +95,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: meshsyncs.meshery.layer5.io
+  name: meshsyncs.cloud.layer5.io
 spec:
-  group: meshery.layer5.io
+  group: cloud.layer5.io
   names:
     kind: MeshSync
     listKind: MeshSyncList
@@ -268,7 +268,7 @@ metadata:
   name: meshery-operator-role
 rules:
 - apiGroups:
-  - meshery.layer5.io
+  - cloud.layer5.io
   resources:
   - brokers
   verbs:
@@ -280,7 +280,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - meshery.layer5.io
+  - cloud.layer5.io
   resources:
   - brokers/status
   verbs:

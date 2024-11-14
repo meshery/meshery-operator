@@ -2,8 +2,8 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/meshery.layer5.io_meshsyncs.yaml
-- bases/meshery.layer5.io_brokers.yaml
+- bases/cloud.layer5.io_meshsyncs.yaml
+- bases/cloud.layer5.io_brokers.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

@@ -5,7 +5,7 @@ metadata:
   name: meshsync-viewer-role
 rules:
 - apiGroups:
-  - meshery.layer5.io
+  - cloud.layer5.io
   resources:
   - meshsyncs
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - meshery.layer5.io
+  - cloud.layer5.io
   resources:
   - meshsyncs/status
   verbs:

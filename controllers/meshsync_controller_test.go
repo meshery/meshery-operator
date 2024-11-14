@@ -50,7 +50,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 		namespace = "default"
 		meshSync := &v1alpha1.MeshSync{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "meshery.layer5.io/v1alpha1",
+				APIVersion: "cloud.layer5.io/v1alpha1",
 				Kind:       "MeshSync",
 			},
 			ObjectMeta: metav1.ObjectMeta{

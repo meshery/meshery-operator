@@ -3,7 +3,7 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: meshsyncs.meshery.layer5.io
+  name: meshsyncs.cloud.layer5.io
 spec:
   conversion:
     strategy: Webhook

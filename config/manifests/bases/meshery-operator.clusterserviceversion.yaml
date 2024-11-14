@@ -13,7 +13,7 @@ spec:
     - description: MeshSync is the Schema for the meshsyncs API
       displayName: Mesh Sync
       kind: MeshSync
-      name: meshsyncs.meshery.layer5.io
+      name: meshsyncs.cloud.layer5.io
       version: v1alpha1
   description: Meshery Operator is the multi-service mesh operator and implementation
     of MeshSync.
