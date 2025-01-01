@@ -1,6 +1,6 @@
 module github.com/layer5io/meshery-operator
 
-go 1.21
+go 1.23
 
 replace (
 	k8s.io/api => k8s.io/api v0.25.3
