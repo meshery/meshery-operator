@@ -25,33 +25,33 @@ A self-service engineering platform, <a href="https://meshery.io">Meshery</a>, i
 </p>
 <br />
 
+## Meshery Operator
 <a href="https://meshery.io/community"><img alt="Layer5 Community" src="./img/readme/meshery-operator-dark.svg" style="margin:10px;" width="165px" align="left" /></a>
-# Meshery Operator
 Meshery Operator ([docs](https://docs.meshery.io/concepts/architecture/operator)) is a Kubernetes Operator that deploys and manages the lifecycle of two Meshery components critical to Meshery’s operations of Kubernetes clusters. Deploy one Meshery Operator per Kubernetes cluster under management - whether Meshery Server is deploy inside or outside of the clusters under management.
 
-
-<div>&nbsp;</div>
-<div>&nbsp;</div>
 <br />
 <br />
 <br />
 
+## MeshSync
 <a href="https://github.com/meshery/meshsync"><img align="left" src="https://raw.githubusercontent.com/layer5io/meshsync/master/.github/readme/images/meshsync.svg"  width="165px" /></a>
-# MeshSync
 MeshSync ([docs](https://docs.meshery.io/concepts/architecture/meshsync)) is an event-driven, continuous synchronization controller responsibe for the task of ensuring that the state of configuration and status of operation of any infrastructure under management are known to Meshery. MeshSync runs as a Kubernetes custom controller under the control of Meshery Operator.
-<br />
-<br />
 
-# Meshery Broker
-<a href="https://docs.google.com/presentation/d/1SQMfyu5shjpGKlYONdVzOtd7UYTgLWBcgUvHMLCZ2tY/edit#slide=id.g10af036b3dd_0_0">Meshery Broker</a> ([docs](https://docs.meshery.io/concepts/architecture/broker))is a custom Kubernetes controller that provides data streaming across independent components of Meshery whether those components are running inside or outside of the Kubernetes cluster.
 <br />
 <br />
 <br />
 
+## Meshery Broker
+<a href="https://github.com/meshery/meshsync"><img align="left" src="https://raw.githubusercontent.com/meshery/meshery-operator/refs/heads/master/.github/assets/images/readme/meshery-light-icon.svg"  width="165px" /></a>
+Meshery Broker ([docs](https://docs.meshery.io/concepts/architecture/broker)) is a custom Kubernetes controller that provides data streaming across independent components of Meshery whether those components are running inside or outside of the Kubernetes cluster.
+
+<br />
+<br />
+<br />
+<br />
 
 
-
-## Contributing
+# Contributing
 
 Please do! We're a warm and welcoming community of open source contributors. Please join. All types of contributions are welcome. Be sure to read the [Contributor Guides](https://docs.meshery.io/project/contributing) for a tour of resources available to you and how to get started.
 
