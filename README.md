@@ -25,9 +25,11 @@ A self-service engineering platform, <a href="https://meshery.io">Meshery</a>, i
 </p>
 <br />
 
-<a href="https://meshery.io/community"><img alt="Layer5 Service Mesh Community" src="./img/readme/meshery-operator-dark.svg" style="margin:10px;" width="165px" align="left" /></a>
+<a href="https://meshery.io/community"><img alt="Layer5 Community" src="./img/readme/meshery-operator-dark.svg" style="margin:10px;" width="165px" align="left" /></a>
 # Meshery Operator
-Meshery Operator is the multi-service mesh operator and implementation of MeshSync.
+Meshery Operator is a Kubernetes Operator that deploys and manages the lifecycle of two Meshery components critical to Meshery’s operations of Kubernetes clusters. Deploy one Meshery Operator per Kubernetes cluster under management - whether Meshery Server is deploy inside or outside of the clusters under management.
+
+
 <div>&nbsp;</div>
 <div>&nbsp;</div>
 <br />
