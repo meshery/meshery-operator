@@ -120,6 +120,7 @@ test: manifests generate fmt vet ## Run tests.
 	go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
 
 ##@ Build
+
 .PHONY: build
 build: generate fmt vet manifests ## Build manager binary.
 	go build -o bin/manager main.go
