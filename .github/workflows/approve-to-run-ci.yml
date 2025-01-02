@@ -11,7 +11,7 @@ jobs:
         strategy:
           matrix:
             platform: [ubuntu-22.04]
-            go-version: [1.21.x]
+            go-version: [1.23.x]
         runs-on: ${{ matrix.platform }}
         steps:
           - uses: actions/setup-go@v4
@@ -37,7 +37,7 @@ jobs:
           - name: Set up Go
             uses: actions/setup-go@v4
             with:
-              go-version: 1.21.x
+              go-version: 1.23.x
               cache: true
               cache-dependency-path: go.sum
           - name: Run go mod tidy
@@ -54,7 +54,7 @@ jobs:
           - name: Set up Go
             uses: actions/setup-go@v4
             with:
-              go-version: 1.21.x
+              go-version: 1.23.x
               cache: true
               cache-dependency-path: go.sum
           - name: Set up test-env
@@ -80,7 +80,7 @@ jobs:
           - name: Set up Go
             uses: actions/setup-go@v4
             with:
-              go-version: 1.21.x
+              go-version: 1.23.x
               cache: true
               cache-dependency-path: go.sum
           - name: Build

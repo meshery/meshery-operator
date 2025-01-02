@@ -121,6 +121,8 @@ test: manifests generate fmt vet ## Run tests.
 
 ##@ Build
 
++GO_VERSION ?= 1.23
++export GO_VERSION 
 .PHONY: build
 build: generate fmt vet manifests ## Build manager binary.
 	go build -o bin/manager main.go
