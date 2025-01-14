@@ -8,14 +8,14 @@
 <div align="center">
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/layer5/meshery-operator.svg)](https://hub.docker.com/r/layer5/meshery-operator)
-[![Go Report Card](https://goreportcard.com/badge/github.com/layer5io/meshery-operator)](https://goreportcard.com/report/github.com/layer5io/meshery-operator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/meshery/meshery-operator)](https://goreportcard.com/report/github.com/meshery/meshery-operator)
 [![Build Status](https://github.com/meshery/meshery-operator/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/meshery/meshery-operator/actions)
-[![GitHub](https://img.shields.io/github/license/layer5io/meshery-operator.svg)](LICENSE)
+[![GitHub](https://img.shields.io/github/license/meshery/meshery-operator.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/meshery/meshery-operator/branch/master/graph/badge.svg?token=TJZ2L4JHSA)](https://codecov.io/gh/meshery/meshery-operator)
-[![Website](https://img.shields.io/website/https/layer5.io/meshery.svg)](https://layer5.io/meshery/)
+[![Website](https://img.shields.io/website/https/layer5.io/meshery.svg)](https://meshery.io)
 [![Twitter Follow](https://img.shields.io/twitter/follow/layer5.svg?label=Follow&style=social)](https://twitter.com/intent/follow?screen_name=mesheryio)
-[![Discuss Users](https://img.shields.io/discourse/users?server=https%3A%2F%2Fdiscuss.layer5.io)](https://discuss.layer5.io)
-[![Slack](https://img.shields.io/badge/Slack-@layer5.svg?logo=slack)](http://slack.layer5.io)
+[![Discuss Users](https://img.shields.io/discourse/users?server=https%3A%2F%2Fdiscuss.meshery.io)](http://discuss.meshery.io)
+[![Slack](https://img.shields.io/badge/Slack-@layer5.svg?logo=slack)](http://slack.meshery.io)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3564/badge)](https://bestpractices.coreinfrastructure.org/projects/3564)
 
 </div>
@@ -34,7 +34,7 @@ Meshery Operator ([docs](https://docs.meshery.io/concepts/architecture/operator)
 <br />
 
 ## MeshSync
-<a href="https://github.com/meshery/meshsync"><img align="left" src="https://raw.githubusercontent.com/layer5io/meshsync/master/.github/readme/images/meshsync.svg"  width="165px" /></a>
+<a href="https://github.com/meshery/meshsync"><img align="left" src="https://raw.githubusercontent.com/meshery/meshsync/master/.github/readme/images/meshsync.svg"  width="165px" /></a>
 MeshSync ([docs](https://docs.meshery.io/concepts/architecture/meshsync)) is an event-driven, continuous synchronization controller responsibe for the task of ensuring that the state of configuration and status of operation of any infrastructure under management are known to Meshery. MeshSync runs as a Kubernetes custom controller under the control of Meshery Operator.
 
 <br />
@@ -64,15 +64,15 @@ Our projects are community-built and welcome collaboration. 👍 Be sure to see 
 <a href ="https://layer5.io/community"><img alt="MeshMates" src=".github/assets/images/readme/layer5-community-sign.png" style="margin-right:36px; margin-bottom:7px;" width="140px" align="left" /></a>
 <h3>Find your MeshMate</h3>
 
-<p>MeshMates are experienced Layer5 community members, who will help you learn your way around, discover live projects, and expand your community network. Conneect with a Meshmate today!</p>
+<p>MeshMates are experienced Meshery community members, who will help you learn your way around, discover live projects, and expand your community network. Conneect with a Meshmate today!</p>
 
-Find out more on the <a href="https://layer5.io/community#meshmate">Layer5 community</a>. <br />
+Find out more on the <a href="https://layer5.io/community/meshmates">Layer5 community</a>. <br />
 
 </p>
 <br /><br />
 <div style="display: flex; justify-content: center; align-items:center;">
 <div>
-<a href="https://meshery.io/community"><img alt="Layer5 Cloud Native Community" src="https://docs.meshery.io/assets/img/readme/community.png" width="140px" style="margin-right:36px; margin-bottom:7px;" width="140px" align="left"/></a>
+<a href="https://meshery.io/community"><img alt="Meshery Cloud Native Community" src="https://docs.meshery.io/assets/img/readme/community.png" width="140px" style="margin-right:36px; margin-bottom:7px;" width="140px" align="left"/></a>
 </div>
 <div style="width:60%; padding-left: 16px; padding-right: 16px">
 <p>
@@ -80,12 +80,12 @@ Find out more on the <a href="https://layer5.io/community#meshmate">Layer5 commu
 ✔️ <em><strong>Watch</strong></em> community <a href="https://www.youtube.com/playlist?list=PL3A-A6hPO2IMPPqVjuzgqNU5xwnFFn3n0">meeting recordings</a>.<br />
 ✔️ <em><strong>Fill-in</strong></em> a <a href="https://layer5.io/newcomers">community member form</a> to gain access to community resources.
 <br />
-✔️ <em><strong>Discuss</strong></em> in the <a href="https://discuss.layer5.io">Community Forum</a>.<br />
+✔️ <em><strong>Discuss</strong></em> in the <a href="http://discuss.meshery.io">Community Forum</a>.<br />
 ✔️ <em><strong>Explore more</strong></em> in the <a href="https://layer5.io/community/handbook">Community Handbook</a>.<br />
 </p>
 </div><br /><br />
 <div>
-<a href="http://slack.layer5.io">
+<a href="http://slack.meshery.io">
 <picture style="text-align:left;" align="left">
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/slack.svg"  width="110px" />
   <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/slack.svg" width="110px" />
