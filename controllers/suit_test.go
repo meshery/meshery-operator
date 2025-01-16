@@ -35,6 +35,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
 )
@@ -93,10 +95,15 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(k8sClient).NotTo(BeNil())
 
 	mgr, err = ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: "0",
-		LeaderElection:     false,
-		Port:               8443,
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: "0",
+		},
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port: 8443,
+			Host: "", // isten on all interfaces
+		}),
+		LeaderElection: false,
 	})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(mgr).ToNot(BeNil())

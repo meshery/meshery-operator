@@ -3,8 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.9.2
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.17.1
   name: meshsyncs.meshery.layer5.io
 spec:
   group: meshery.layer5.io
@@ -21,14 +20,19 @@ spec:
         description: MeshSync is the Schema for the meshsyncs API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -59,45 +63,54 @@ spec:
                 description: ConfigMap holds configuration data for pods to consume.
                 properties:
                   apiVersion:
-                    description: 'APIVersion defines the versioned schema of this
-                      representation of an object. Servers should convert recognized
-                      schemas to the latest internal value, and may reject unrecognized
-                      values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+                    description: |-
+                      APIVersion defines the versioned schema of this representation of an object.
+                      Servers should convert recognized schemas to the latest internal value, and
+                      may reject unrecognized values.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
                     type: string
                   binaryData:
                     additionalProperties:
                       format: byte
                       type: string
-                    description: BinaryData contains the binary data. Each key must
-                      consist of alphanumeric characters, '-', '_' or '.'. BinaryData
-                      can contain byte sequences that are not in the UTF-8 range.
-                      The keys stored in BinaryData must not overlap with the ones
-                      in the Data field, this is enforced during validation process.
-                      Using this field will require 1.10+ apiserver and kubelet.
+                    description: |-
+                      BinaryData contains the binary data.
+                      Each key must consist of alphanumeric characters, '-', '_' or '.'.
+                      BinaryData can contain byte sequences that are not in the UTF-8 range.
+                      The keys stored in BinaryData must not overlap with the ones in
+                      the Data field, this is enforced during validation process.
+                      Using this field will require 1.10+ apiserver and
+                      kubelet.
                     type: object
                   data:
                     additionalProperties:
                       type: string
-                    description: Data contains the configuration data. Each key must
-                      consist of alphanumeric characters, '-', '_' or '.'. Values
-                      with non-UTF-8 byte sequences must use the BinaryData field.
-                      The keys stored in Data must not overlap with the keys in the
-                      BinaryData field, this is enforced during validation process.
+                    description: |-
+                      Data contains the configuration data.
+                      Each key must consist of alphanumeric characters, '-', '_' or '.'.
+                      Values with non-UTF-8 byte sequences must use the BinaryData field.
+                      The keys stored in Data must not overlap with the keys in
+                      the BinaryData field, this is enforced during validation process.
                     type: object
                   immutable:
-                    description: Immutable, if set to true, ensures that data stored
-                      in the ConfigMap cannot be updated (only object metadata can
-                      be modified). If not set to true, the field can be modified
-                      at any time. Defaulted to nil.
+                    description: |-
+                      Immutable, if set to true, ensures that data stored in the ConfigMap cannot
+                      be updated (only object metadata can be modified).
+                      If not set to true, the field can be modified at any time.
+                      Defaulted to nil.
                     type: boolean
                   kind:
-                    description: 'Kind is a string value representing the REST resource
-                      this object represents. Servers may infer this from the endpoint
-                      the client submits requests to. Cannot be updated. In CamelCase.
-                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                    description: |-
+                      Kind is a string value representing the REST resource this object represents.
+                      Servers may infer this from the endpoint the client submits requests to.
+                      Cannot be updated.
+                      In CamelCase.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
                     type: string
                   metadata:
-                    description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata'
+                    description: |-
+                      Standard object's metadata.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
                     type: object
                 type: object
             type: object

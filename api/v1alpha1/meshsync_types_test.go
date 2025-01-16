@@ -143,7 +143,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 				},
 			}
 			By("Update the status of the meshsync CRDs")
-			err := fakeClient.Status().Update(context, meshSync, &client.UpdateOptions{FieldManager: FileManager})
+			err := fakeClient.Status().Update(context, meshSync)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(meshSync.Status.PublishingTo == PublishingTo).Should(BeTrue())
