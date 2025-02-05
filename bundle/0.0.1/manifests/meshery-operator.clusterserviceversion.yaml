@@ -5,7 +5,7 @@ metadata:
     alm-examples: |-
       [
         {
-          "apiVersion": "meshery.layer5.io/v1alpha1",
+          "apiVersion": "meshery.io/v1alpha1",
           "kind": "Broker",
           "metadata": {
             "annotations": {
@@ -24,7 +24,7 @@ metadata:
           }
         },
         {
-          "apiVersion": "meshery.layer5.io/v1alpha1",
+          "apiVersion": "meshery.io/v1alpha1",
           "kind": "MeshSync",
           "metadata": {
             "annotations": {
@@ -65,12 +65,12 @@ spec:
   customresourcedefinitions:
     owned:
     - kind: Broker
-      name: brokers.meshery.layer5.io
+      name: brokers.meshery.io
       version: v1alpha1
     - description: MeshSync is the Schema for the meshsyncs API
       displayName: Mesh Sync
       kind: MeshSync
-      name: meshsyncs.meshery.layer5.io
+      name: meshsyncs.meshery.io
       version: v1alpha1
   description: Meshery Operator is the multi-service mesh operator and implementation
     of MeshSync.
@@ -451,7 +451,7 @@ FnZVJlYWR5ccllPAAAAABJRU5ErkJggg=="
           - update
           - watch
         - apiGroups:
-          - meshery.layer5.io
+          - meshery.io
           resources:
           - brokers
           verbs:
@@ -463,7 +463,7 @@ FnZVJlYWR5ccllPAAAAABJRU5ErkJggg=="
           - update
           - watch
         - apiGroups:
-          - meshery.layer5.io
+          - meshery.io
           resources:
           - brokers/status
           verbs:
