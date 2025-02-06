@@ -4,20 +4,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: meshsyncs.meshery.layer5.io
+  name: brokers.meshery.io
 spec:
-  group: meshery.layer5.io
+  group: meshery.io
   names:
-    kind: MeshSync
-    listKind: MeshSyncList
-    plural: meshsyncs
-    singular: meshsync
+    kind: Broker
+    listKind: BrokerList
+    plural: brokers
+    singular: broker
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: MeshSync is the Schema for the meshsyncs API
+        description: Broker is the Schema for the brokers API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,29 +32,14 @@ spec:
           metadata:
             type: object
           spec:
-            description: MeshSyncSpec defines the desired state of MeshSync
+            description: BrokerSpec defines the desired state of Broker
             properties:
-              broker:
-                properties:
-                  custom:
-                    properties:
-                      url:
-                        type: string
-                    type: object
-                  native:
-                    properties:
-                      name:
-                        type: string
-                      namespace:
-                        type: string
-                    type: object
-                type: object
               size:
                 format: int32
                 type: integer
             type: object
           status:
-            description: MeshSyncStatus defines the observed state of MeshSync
+            description: BrokerStatus defines the observed state of Broker
             properties:
               conditions:
                 items:
@@ -84,8 +69,13 @@ spec:
                   - type
                   type: object
                 type: array
-              publishing-to:
-                type: string
+              endpoint:
+                properties:
+                  external:
+                    type: string
+                  internal:
+                    type: string
+                type: object
             type: object
         type: object
     served: true

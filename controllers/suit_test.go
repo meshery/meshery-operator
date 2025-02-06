@@ -147,9 +147,9 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 	crd := &apiv1.CustomResourceDefinition{}
 
-	err = k8sClient.Get(ctx, types.NamespacedName{Name: "meshsyncs.meshery.layer5.io"}, crd)
+	err = k8sClient.Get(ctx, types.NamespacedName{Name: "meshsyncs.meshery.io"}, crd)
 	Expect(err).NotTo(HaveOccurred())
-	err = k8sClient.Get(ctx, types.NamespacedName{Name: "brokers.meshery.layer5.io"}, crd)
+	err = k8sClient.Get(ctx, types.NamespacedName{Name: "brokers.meshery.io"}, crd)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(crd.Spec.Names.Kind).To(Equal("Broker"))
 })

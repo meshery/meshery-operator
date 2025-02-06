@@ -4,20 +4,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: brokers.meshery.layer5.io
+  name: meshsyncs.meshery.io
 spec:
-  group: meshery.layer5.io
+  group: meshery.io
   names:
-    kind: Broker
-    listKind: BrokerList
-    plural: brokers
-    singular: broker
+    kind: MeshSync
+    listKind: MeshSyncList
+    plural: meshsyncs
+    singular: meshsync
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Broker is the Schema for the brokers API
+        description: MeshSync is the Schema for the meshsyncs API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,14 +32,29 @@ spec:
           metadata:
             type: object
           spec:
-            description: BrokerSpec defines the desired state of Broker
+            description: MeshSyncSpec defines the desired state of MeshSync
             properties:
+              broker:
+                properties:
+                  custom:
+                    properties:
+                      url:
+                        type: string
+                    type: object
+                  native:
+                    properties:
+                      name:
+                        type: string
+                      namespace:
+                        type: string
+                    type: object
+                type: object
               size:
                 format: int32
                 type: integer
             type: object
           status:
-            description: BrokerStatus defines the observed state of Broker
+            description: MeshSyncStatus defines the observed state of MeshSync
             properties:
               conditions:
                 items:
@@ -69,13 +84,8 @@ spec:
                   - type
                   type: object
                 type: array
-              endpoint:
-                properties:
-                  external:
-                    type: string
-                  internal:
-                    type: string
-                type: object
+              publishing-to:
+                type: string
             type: object
         type: object
     served: true

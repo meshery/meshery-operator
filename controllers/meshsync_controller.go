@@ -47,8 +47,8 @@ type MeshSyncReconciler struct {
 	Scheme     *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=meshery.layer5.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=meshery.layer5.io,resources=meshsyncs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/status,verbs=get;update;patch
 func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log
 	log = log.WithValues("controller", "MeshSync")

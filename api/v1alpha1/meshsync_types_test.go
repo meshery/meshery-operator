@@ -29,7 +29,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 		FileManager  string = "testcase-meshsync"
 
 		Kind       string = "MeshSync"
-		APIVersion string = "meshery.layer5.io/v1alpha1"
+		APIVersion string = "meshery.io/v1alpha1"
 	)
 
 	meshSync := &MeshSync{

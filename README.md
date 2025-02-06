@@ -1,4 +1,4 @@
-<p style="text-align:center;" align="center"><a href="https://layer5.io/meshery">
+<p style="text-align:center;" align="center"><a href="https://meshery.io">
 <picture align="center">
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/meshery-logo-light-text-side.svg"  width="70%" align="center" style="margin-bottom:20px;">
   <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/meshery/meshery/master/.github/assets/images/readme/meshery-logo-dark-text-side.svg" width="70%" align="center" style="margin-bottom:20px;">
@@ -97,7 +97,7 @@ Find out more on the <a href="https://layer5.io/community/meshmates">Layer5 comm
 <i>Not sure where to start?</i> Grab an open issue with the <a href="https://github.com/issues?q=is%3Aopen+is%3Aissue+archived%3Afalse+org%3Alayer5io+org%3Ameshery+org%3Aservice-mesh-performance+org%3Aservice-mesh-patterns+label%3A%22help+wanted%22+">help-wanted label</a>.
 </p>
 </div><br /><br />
-  
+
 <div>&nbsp;</div>
 
 

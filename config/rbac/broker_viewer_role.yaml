@@ -5,7 +5,7 @@ metadata:
   name: broker-viewer-role
 rules:
 - apiGroups:
-  - meshery.layer5.io
+  - meshery.io
   resources:
   - brokers
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - meshery.layer5.io
+  - meshery.io
   resources:
   - brokers/status
   verbs:

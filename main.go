@@ -70,7 +70,7 @@ func main() {
 			Port: 9443,
 		}),
 		LeaderElection:          enableLeaderElection,
-		LeaderElectionID:        fmt.Sprintf("operator-%s.meshery.layer5.io", opID),
+		LeaderElectionID:        fmt.Sprintf("operator-%s.meshery.io", opID),
 		LeaderElectionNamespace: namespace,
 	})
 	if err != nil {

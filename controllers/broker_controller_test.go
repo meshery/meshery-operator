@@ -53,7 +53,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 		namespace = "default"
 		broker := &v1alpha1.Broker{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "meshery.layer5.io/v1alpha1",
+				APIVersion: "meshery.io/v1alpha1",
 				Kind:       "Broker",
 			},
 			ObjectMeta: metav1.ObjectMeta{
