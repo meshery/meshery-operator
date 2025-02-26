@@ -23,13 +23,16 @@ type MockOptions struct {
 }
 
 func TcpCheck(hp *HostPort, mock *MockOptions) bool {
-	timeout := 5 * time.Second
-
-	// For mocking output
 	if mock != nil {
 		return mock.DesiredEndpoint == fmt.Sprintf("%s:%d", hp.Address, hp.Port)
 	}
 
-	conn, _ := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", hp.Address, hp.Port), timeout)
-	return conn != nil
+	conn, err := net.DialTimeout("tcp",
+		net.JoinHostPort(hp.Address, fmt.Sprint(hp.Port)),
+		5*time.Second)
+	if err != nil {
+		return false
+	}
+	defer conn.Close()
+	return true
 }
