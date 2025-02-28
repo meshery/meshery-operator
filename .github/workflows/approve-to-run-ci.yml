@@ -10,7 +10,7 @@ jobs:
     golangci-lint:
         strategy:
           matrix:
-            platform: [ubuntu-22.04]
+            platform: [ubuntu-24.04]
             go-version: [1.23.x]
         runs-on: ${{ matrix.platform }}
         steps:
@@ -30,7 +30,7 @@ jobs:
     tidy:
         name: Go mod tidy
         needs: [golangci-lint]
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-24.04
         steps:
           - name: Checkout code
             uses: actions/checkout@master
@@ -47,7 +47,7 @@ jobs:
         needs: [golangci-lint, tidy]
         name: Code Coverage
         if: github.repository == 'meshery/meshery-operator'
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-24.04
         steps:
           - name: Checkout code
             uses: actions/checkout@master
@@ -73,7 +73,7 @@ jobs:
     build:
         needs: [golangci-lint, tidy, codecov]
         name: Build
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-24.04
         steps:
           - name: Checkout code
             uses: actions/checkout@master
