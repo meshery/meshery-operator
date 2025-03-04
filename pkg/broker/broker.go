@@ -148,7 +148,7 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 		endpoint.Internal = &utils.HostPort{}
 	}
 	// If external endpoint not reachable
-	if !utils.TcpCheck(endpoint.External, &utils.MockOptions{}) && endpoint.External.Address != "localhost" {
+	if endpoint.External.Address != "localhost" && !utils.TcpCheck(endpoint.External, nil) {
 		newUrl, err = neturl.Parse(url)
 		if err != nil {
 			return nil
@@ -160,9 +160,9 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 		// Set to APIServer host (For minikube specific clusters)
 		endpoint.External.Address = host
 		// If still unable to reach, change to resolve to clusterPort
-		if !utils.TcpCheck(endpoint.External, &utils.MockOptions{}) && endpoint.External.Address != "localhost" {
+		if endpoint.External.Address != "localhost" && !utils.TcpCheck(endpoint.External, nil) {
 			endpoint.External.Port = nodePort
-			if !utils.TcpCheck(endpoint.External, &utils.MockOptions{}) {
+			if !utils.TcpCheck(endpoint.External, nil) {
 				return ErrGettingEndpoint(fmt.Errorf("unable to connect to endpoint at %v", endpoint.External))
 			}
 		}
