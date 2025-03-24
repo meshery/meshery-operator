@@ -3,10 +3,11 @@ module github.com/layer5io/meshery-operator
 go 1.20
 
 replace (
-	k8s.io/api => k8s.io/api v0.27.0
-	k8s.io/apimachinery => k8s.io/apimachinery v0.27.0
-	k8s.io/cli-runtime@ => k8s.io/cli-runtime@ v0.27.0
-	k8s.io/client-go => k8s.io/client-go v0.27.0
+	k8s.io/api => k8s.io/api v0.27.3
+	k8s.io/apimachinery => k8s.io/apimachinery v0.27.3
+	k8s.io/cli-runtime@ => k8s.io/cli-runtime@ v0.27.3
+	k8s.io/client-go => k8s.io/client-go v0.27.3
+	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.15.0
 )
 
 require (
@@ -15,9 +16,9 @@ require (
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.7
 	k8s.io/api v0.27.3
-	k8s.io/apiextensions-apiserver v0.27.2
+	k8s.io/apiextensions-apiserver v0.27.3
 	k8s.io/apimachinery v0.27.3
-	k8s.io/client-go v0.27.2
+	k8s.io/client-go v0.27.3
 	sigs.k8s.io/controller-runtime v0.15.0
 )
 
