@@ -1,18 +1,18 @@
 apiVersion: v1
 kind: Service
 metadata:
-  creationTimestamp: null
+  creationTimestamp: null # This can usually be removed, it's added by the API server
   labels:
     app: meshery
     component: operator
   name: meshery-operator-metrics-service
 spec:
   ports:
-  - name: https
-    port: 8443
-    targetPort: https
+    - name: https
+      port: 8443
+      targetPort: 8443 # <-- CHANGE THIS from 'https' to '8443'
   selector:
     app: meshery
     component: operator
 status:
-  loadBalancer: {}
+  loadBalancer: {} # This can usually be removed from YAML definition

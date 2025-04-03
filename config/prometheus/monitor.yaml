@@ -1,4 +1,3 @@
-
 # Prometheus Monitor Service (Metrics)
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -12,6 +11,15 @@ spec:
   endpoints:
     - path: /metrics
       port: https
+      scheme: https # <-- ADDED: Specify HTTPS scheme
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token # <-- ADDED: Use pod's default SA token
+      tlsConfig: # <-- ADDED: Configure TLS handling
+        # For testing with default self-signed certs:
+        insecureSkipVerify: true
+        # For production with proper certs (e.g., from cert-manager via service CA):
+        # ca: {} # Use cluster CA
+        # serverName: meshery-operator-metrics-service.meshery.svc # Verify server name matches cert
+        # insecureSkipVerify: false # Ensure verification is enabled
   selector:
     matchLabels:
       app: meshery

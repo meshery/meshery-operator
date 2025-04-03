@@ -7,10 +7,14 @@ resources:
   - controller_role_binding.yaml
   - leader_election_role.yaml
   - leader_election_role_binding.yaml
-# Comment the following 4 lines if you want to disable
-# the auth proxy (https://github.com/brancz/kube-rbac-proxy)
-# which protects your /metrics endpoint.
+  - metrics_reader_role.yaml # Renamed and moved - This role is needed for metrics scraping
+
+# The following resources were related to the deprecated kube-rbac-proxy sidecar and have been removed:
 # - auth_proxy_service.yaml
 # - auth_proxy_role.yaml
 # - auth_proxy_role_binding.yaml
-# - auth_proxy_client_clusterrole.yaml
+# - auth_proxy_client_clusterrole.yaml (renamed to metrics_reader_role.yaml above)
+
+# --- Additions needed for built-in auth ---
+# You still need to add bindings for the metrics_reader_role (e.g., for Prometheus)
+# and ensure controller_role.yaml has tokenreviews/subjectaccessreviews permissions.

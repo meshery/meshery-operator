@@ -30,24 +30,24 @@ spec:
       terminationGracePeriodSeconds: 10
       serviceAccountName: meshery-operator
       containers:
-      - name: manager
-        image: layer5/meshery-operator:stable-latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 9443
-          name: server
-          hostPort: 9443
-        - containerPort: 8080
-          name: metrics
-          hostPort: 8080
-        command:
-        - /manager
-        args:
-        - --enable-leader-election
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
+        - name: manager
+          image: layer5/meshery-operator:stable-latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9443
+              name: server
+              # hostPort: 9443
+            - containerPort: 8443
+              name: https
+              # hostPort: 8080
+          command:
+            - /manager
+          args:
+            - --enable-leader-election
+          resources:
+            limits:
+              cpu: 100m
+              memory: 30Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi

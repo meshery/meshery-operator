@@ -500,25 +500,12 @@ FnZVJlYWR5ccllPAAAAABJRU5ErkJggg=="
             spec:
               containers:
               - args:
-                - --secure-listen-address=0.0.0.0:8443
-                - --upstream=http://127.0.0.1:8080/
-                - --logtostderr=true
-                - --v=10
-                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
-                name: kube-rbac-proxy
-                ports:
-                - containerPort: 8443
-                  name: https
-                resources:
-                  limits:
-                    cpu: 100m
-                    memory: 30Mi
-                  requests:
-                    cpu: 100m
-                    memory: 20Mi
-              - args:
-                - --metrics-addr=127.0.0.1:8080
                 - --enable-leader-election
+                # --- OPTIONAL BUT RECOMMENDED: Add new default args ---
+                # ---metrics-bind-address=:8443
+                # ---secure-metrics=true
+                # ---enable-http2=false
+                # --- End optional args ---
                 command:
                 - /manager
                 image: layer5/meshery-operator:stable-latest
@@ -526,10 +513,10 @@ FnZVJlYWR5ccllPAAAAABJRU5ErkJggg=="
                 name: manager
                 ports:
                 - containerPort: 9443
-                  hostPort: 9443
+                  # hostPort: 9443
                   name: server
-                - containerPort: 8080
-                  hostPort: 8080
+                - containerPort: 8443
+                  # hostPort: 8080
                   name: metrics
                 resources:
                   limits:
