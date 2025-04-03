@@ -52,20 +52,29 @@ func init() {
 func main() {
 	var metricsAddr, namespace string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	var secureMetrics bool
+
+	flag.StringVar(&metricsAddr, "metrics-addr", ":8443", "The address the metric endpoint binds to.")
 	flag.StringVar(&namespace, "namespace", "meshery", "The namespace operator is deployed to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&secureMetrics, "metrics-secure-serving", true, "Enable secure serving of the metrics endpoint")
 	flag.Parse()
+
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{})))
 
 	opID := uuid.NewUUID()
+
+	// Create metrics options with secure serving enabled
+	metricsOptions := server.Options{
+		BindAddress:   metricsAddr,
+		SecureServing: secureMetrics, // This is the simpler approach in newer versions
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme: scheme,
-		Metrics: server.Options{
-			BindAddress: metricsAddr,
-		},
+		Scheme:  scheme,
+		Metrics: metricsOptions,
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port: 9443,
 		}),
