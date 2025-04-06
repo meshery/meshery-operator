@@ -1,0 +1,229 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "meshery.io/v1alpha1",
+          "kind": "Broker",
+          "metadata": {
+            "annotations": {
+              "meshery/component-type": "management-plane"
+            },
+            "labels": {
+              "app": "meshery",
+              "component": "controller",
+              "version": "v0.1.15"
+            },
+            "name": "meshery-meshery-broker",
+            "namespace": "meshery"
+          },
+          "spec": {
+            "size": 1
+          }
+        },
+        {
+          "apiVersion": "meshery.io/v1alpha1",
+          "kind": "MeshSync",
+          "metadata": {
+            "annotations": {
+              "meshery/component-type": "management-plane"
+            },
+            "labels": {
+              "app": "meshery",
+              "component": "controller",
+              "version": "v0.1.15"
+            },
+            "name": "meshery-meshery-meshsync",
+            "namespace": "meshery"
+          },
+          "spec": {
+            "broker": {
+              "native": {
+                "name": "meshery-broker",
+                "namespace": "meshery"
+              }
+            },
+            "size": 1,
+            "watch-list": {
+              "apiVersion": "v1",
+              "data": {
+                "whitelist": "[{\"Resource\":\"namespaces.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"configmaps.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"nodes.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"secrets.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"persistentvolumes.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"persistentvolumeclaims.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"services.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"deployments.v1.apps\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"statefulsets.v1.apps\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"daemonsets.v1.apps\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"ingresses.v1.networking.k8s.io\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"endpoints.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"endpointslices.v1.discovery.k8s.io\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"cronjobs.v1.batch\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"replicationcontrollers.v1.\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"storageclasses.v1.storage.k8s.io\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"clusterroles.v1.rbac.authorization.k8s.io\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"volumeattachments.v1.storage.k8s.io\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]},{\"Resource\":\"apiservices.v1.apiregistration.k8s.io\",\"Events\":[\"ADDED\",\"MODIFIED\",\"DELETED\"]}]"
+              }
+            }
+          }
+        }
+      ]
+    capabilities: Basic Install
+    createdAt: "2025-04-06T19:51:04Z"
+    operators.operatorframework.io/builder: operator-sdk-v1.39.2
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+  name: meshery-operator.v0.0.2
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - kind: Broker
+      name: brokers.meshery.io
+      version: v1alpha1
+    - description: MeshSync is the Schema for the meshsyncs API
+      displayName: Mesh Sync
+      kind: MeshSync
+      name: meshsyncs.meshery.io
+      version: v1alpha1
+  description: Meshery Operator is the multi-service mesh operator and implementation
+    of MeshSync.
+  displayName: meshery-operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        - apiGroups:
+          - meshery.io
+          resources:
+          - brokers
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - meshery.io
+          resources:
+          - brokers/status
+          verbs:
+          - get
+          - patch
+          - update
+        serviceAccountName: meshery-operator
+      deployments:
+      - label:
+          app: meshery
+          component: operator
+        name: meshery-operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: meshery
+              component: operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                app: meshery
+                component: operator
+            spec:
+              containers:
+              - args:
+                - --enable-leader-election
+                # Default Args
+                # ---metrics-bind-address=:8443
+                # ---secure-metrics=true
+                command:
+                - /manager
+                image: layer5/meshery-operator:stable-latest
+                imagePullPolicy: Always
+                name: manager
+                ports:
+                - containerPort: 9443
+                  hostPort: 9443
+                  name: server
+                - containerPort: 8443
+                  hostPort: 8443
+                  name: metrics
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 30Mi
+                  requests:
+                    cpu: 100m
+                    memory: 20Mi
+              serviceAccountName: meshery-operator
+              terminationGracePeriodSeconds: 10
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps/status
+          verbs:
+          - get
+          - update
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        serviceAccountName: meshery-operator
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - servicemesh
+  - meshSync
+  links:
+  - name: Meshery Operator
+    url: https://meshery-operator.domain
+  maintainers:
+  - email: urakiny@gmai.com1
+    name: aisuko
+  maturity: alpha
+  provider:
+    name: meshery
+    url: https://github.com/meshery
+  version: 0.0.2
