@@ -2,7 +2,7 @@ header:
   schema-version: 2.0.0
   last-updated: "2025-01-01"
   last-reviewed: "2025-01-01"
-  url: https://github.com/meshery/meshery-operator/.github/security-insights.yml
+  url: https://github.com/meshery/meshery-operator/blob/master/.github/security-insights.yml
   comment: |
     This file contains the security insights information for the Meshery-Operator project.
 
