@@ -80,7 +80,7 @@ var (
 						},
 					},
 					Command: []string{
-						"./meshery-meshsync", "--broker-url", "$(BROKER_URL)",
+						"./meshery-meshsync",
 					},
 					Env: []corev1.EnvVar{
 						{
