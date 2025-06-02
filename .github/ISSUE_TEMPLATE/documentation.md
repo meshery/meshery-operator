@@ -18,4 +18,4 @@ assignees: ''
    - Meshery documentation [site](https://docs.meshery.io/) and [source](https://github.com/meshery/meshery/tree/master/docs)
 - 🛠 [Meshery Build & Release Strategy](https://docs.meshery.io/project/build-and-release)
 - 🎨 Wireframes and [designs for Meshery UI](https://www.figma.com/file/SMP3zxOjZztdOLtgN4dS2W/Meshery-UI) in Figma [(open invite)](https://www.figma.com/team_invite/redeem/qJy1c95qirjgWQODApilR9)
-- 🙋🏾🙋🏼 Questions: [Discussion Forum](https://discuss.layer5.io) and [Community Slack](http://slack.meshery.io)
+- 🙋🏾🙋🏼 Questions: [Discussion Forum](https://meshery.io/community/#discussion-forums) and [Community Slack](http://slack.meshery.io)
