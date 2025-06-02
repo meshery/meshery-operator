@@ -51,7 +51,7 @@ metadata:
       ]
     capabilities: Basic Install
     categories: Monitoring
-    containerImage: layer5/meshery-operator:stable-latest
+    containerImage: meshery/meshery-operator:stable-latest
     createdAt: "2022-05-12T19:42:22Z"
     support: Layer5.io
     description: |-
@@ -521,7 +521,7 @@ FnZVJlYWR5ccllPAAAAABJRU5ErkJggg=="
                 - --enable-leader-election
                 command:
                 - /manager
-                image: layer5/meshery-operator:stable-latest
+                image: meshery/meshery-operator:stable-latest
                 imagePullPolicy: Always
                 name: manager
                 ports:

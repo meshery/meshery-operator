@@ -419,7 +419,7 @@ spec:
         - --enable-leader-election
         command:
         - /manager
-        image: layer5/meshery-operator:stable-latest
+        image: meshery/meshery-operator:stable-latest
         imagePullPolicy: Always
         name: manager
         ports:
