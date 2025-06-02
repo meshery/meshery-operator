@@ -31,8 +31,8 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# layer5/meshery-operator-bundle:$VERSION and layer5/meshery-operator-catalog:$VERSION.
-IMAGE_TAG_BASE ?= layer5/meshery-operator
+# meshery/meshery-operator-bundle:$VERSION and meshery/meshery-operator-catalog:$VERSION.
+IMAGE_TAG_BASE ?= meshery/meshery-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
@@ -50,7 +50,7 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 endif
 
 # Image URL to use all building/pushing image targets
-IMG ?= layer5/meshery-operator:stable-latest
+IMG ?= meshery/meshery-operator:stable-latest
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
