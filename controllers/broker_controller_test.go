@@ -19,8 +19,8 @@ package controllers
 import (
 	"context"
 
-	"github.com/layer5io/meshery-operator/api/v1alpha1"
-	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
+	"github.com/meshery/meshery-operator/api/v1alpha1"
+	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/apps/v1"

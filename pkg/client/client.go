@@ -1,8 +1,8 @@
 package client
 
 import (
-	apiv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	v1alpha1 "github.com/layer5io/meshery-operator/pkg/client/v1alpha1"
+	apiv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	v1alpha1 "github.com/meshery/meshery-operator/pkg/client/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

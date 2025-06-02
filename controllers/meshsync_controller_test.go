@@ -19,7 +19,7 @@ package controllers
 import (
 	"context"
 
-	"github.com/layer5io/meshery-operator/api/v1alpha1"
+	"github.com/meshery/meshery-operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

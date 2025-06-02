@@ -19,7 +19,7 @@ package meshsync
 import (
 	"context"
 
-	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
+	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 
