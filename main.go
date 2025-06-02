@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	"github.com/layer5io/meshery-operator/controllers"
+	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	"github.com/meshery/meshery-operator/controllers"
 
 	"k8s.io/client-go/kubernetes"
 	// +kubebuilder:scaffold:imports

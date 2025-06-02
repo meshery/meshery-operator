@@ -29,11 +29,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	util "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	mesheryv1alpha1 "github.com/layer5io/meshery-operator/api/v1alpha1"
-	brokerpackage "github.com/layer5io/meshery-operator/pkg/broker"
-	"github.com/layer5io/meshery-operator/pkg/meshsync"
-	meshsyncpackage "github.com/layer5io/meshery-operator/pkg/meshsync"
-	"github.com/layer5io/meshery-operator/pkg/utils"
+	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
+	"github.com/meshery/meshery-operator/pkg/meshsync"
+	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
+	"github.com/meshery/meshery-operator/pkg/utils"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	types "k8s.io/apimachinery/pkg/types"
 )
