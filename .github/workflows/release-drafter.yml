@@ -5,8 +5,8 @@ on:
   push:
     branches:
       - master
-    paths-ignore:
-      - '.github/**'
+    # paths-ignore:
+    #   - '.github/**'
 
 permissions:
   contents: read
