@@ -122,7 +122,7 @@ func (r *BrokerReconciler) Cleanup() error {
 	for _, object := range objects {
 		err := r.Delete(context.TODO(), object)
 		if err != nil {
-			return ErrDeleteMeshsync(err)
+			return ErrDeleteBroker(err)
 		}
 	}
 	return nil
@@ -143,15 +143,15 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, bas
 			_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
 			er := r.Create(ctx, object)
 			if er != nil {
-				return ctrl.Result{}, ErrCreateMeshsync(er)
+				return ctrl.Result{}, ErrCreateBroker(er)
 			}
 			return ctrl.Result{Requeue: true}, nil
 		} else if err != nil && enable {
-			return ctrl.Result{}, ErrGetMeshsync(err)
+			return ctrl.Result{}, ErrGetBroker(err)
 		} else if err == nil && !kubeerror.IsNotFound(err) && !enable {
 			er := r.Delete(ctx, object)
 			if er != nil {
-				return ctrl.Result{}, ErrDeleteMeshsync(er)
+				return ctrl.Result{}, ErrDeleteBroker(er)
 			}
 			return ctrl.Result{Requeue: true}, nil
 		}
