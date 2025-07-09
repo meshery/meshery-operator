@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"os"
@@ -28,7 +29,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
@@ -52,23 +54,76 @@ func init() {
 func main() {
 	var metricsAddr, namespace string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&namespace, "namespace", "meshery", "The namespace operator is deployed to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
+	var secureMetrics bool
+
+	flag.StringVar(
+		&metricsAddr,
+		"metrics-bind-address",
+		":8443",
+		"The address the metric endpoint binds to.",
+	)
+
+	flag.BoolVar(
+		&secureMetrics,
+		"secure-metrics",
+		true,
+		"Enable secure serving for metrics.",
+	)
+
+	flag.StringVar(
+		&namespace,
+		"namespace",
+		"meshery",
+		"The namespace operator is deployed to.",
+	)
+	flag.BoolVar(
+		&enableLeaderElection,
+		"enable-leader-election",
+		false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{})))
 
+	tlsOpts := []func(*tls.Config){}
+
+	metricsServerOptions := metricsserver.Options{
+		BindAddress:   metricsAddr,
+		SecureServing: secureMetrics,
+		TLSOpts:       tlsOpts,
+	}
+
+	webhookServer := webhook.NewServer(webhook.Options{
+		Port:    9443, // Default webhook port
+		TLSOpts: tlsOpts,
+	})
+
+	if secureMetrics {
+		// Add the auth filter *only* if secure serving is enabled
+		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
+		setupLog.Info(
+			"Metrics endpoint protection enabled using controller-runtime filters",
+			"address",
+			metricsAddr,
+		)
+	} else {
+		// Log if metrics are insecure (should be rare if default is true)
+		setupLog.Info(
+			"Metrics endpoint is serving insecurely",
+			"address",
+			metricsAddr,
+		)
+	}
+
 	opID := uuid.NewUUID()
+
+	cfg := ctrl.GetConfigOrDie()
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme: scheme,
-		Metrics: server.Options{
-			BindAddress: metricsAddr,
-		},
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Port: 9443,
-		}),
+		Scheme:                  scheme,
+		Metrics:                 metricsServerOptions,
+		WebhookServer:           webhookServer,
 		LeaderElection:          enableLeaderElection,
 		LeaderElectionID:        fmt.Sprintf("operator-%s.meshery.io", opID),
 		LeaderElectionNamespace: namespace,
@@ -78,14 +133,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
+	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		setupLog.Error(err, "unable to initialize clientset")
 		os.Exit(1)
 	}
 
 	mReconciler := &controllers.MeshSyncReconciler{
-		KubeConfig: mgr.GetConfig(),
+		KubeConfig: cfg,
 		Client:     mgr.GetClient(),
 		Clientset:  clientset,
 		Log:        ctrl.Log.WithName("MeshSync"),
@@ -93,7 +148,7 @@ func main() {
 	}
 
 	bReconciler := &controllers.BrokerReconciler{
-		KubeConfig: mgr.GetConfig(),
+		KubeConfig: cfg,
 		Client:     mgr.GetClient(),
 		Clientset:  clientset,
 		Log:        ctrl.Log.WithName("Broker"),
