@@ -19,6 +19,7 @@ package meshsync
 import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,6 +42,12 @@ var (
 	MesheryAnnotation = map[string]string{
 		"meshery/component-type": "management-plane",
 	}
+
+	// Resource limits and requests
+	CPURequest    = resource.MustParse("500m")
+	CPULimit      = resource.MustParse("4")
+	MemoryRequest = resource.MustParse("512Mi")
+	MemoryLimit   = resource.MustParse("4Gi")
 
 	Deployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -86,6 +93,16 @@ var (
 						{
 							Name:  "BROKER_URL",
 							Value: "http://localhost:4222",
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    CPURequest,
+							corev1.ResourceMemory: MemoryRequest,
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    CPULimit,
+							corev1.ResourceMemory: MemoryLimit,
 						},
 					},
 				},
