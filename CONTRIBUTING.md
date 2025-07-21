@@ -124,6 +124,8 @@ To deploy the Meshery Operator to your Kubernetes cluster, use:
 kubectl apply -f https://raw.githubusercontent.com/meshery/meshery/master/install/deployment_yamls/k8s/meshery-operator-deployment.yaml
 ```
 
+Another method for deploying the operator is through [helm](https://artifacthub.io/packages/helm/meshery/meshery-operator?modal=install).
+
 ### Verify Deployment
 
 To verify that the operator is running:
