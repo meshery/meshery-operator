@@ -2,7 +2,6 @@ package v1alpha1
 
 import (
 	"context"
-	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -79,36 +78,31 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 			Namespace: "default",
 			Name:      "default",
 		}
-
-		err := fakeClient.Create(ctx, meshSync)
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		existing := &MeshSync{}
-		err := fakeClient.Get(ctx, typeNamespace, existing)
-		if err == nil {
-			err = fakeClient.Delete(ctx, existing)
-			if !apierrors.IsNotFound(err) {
-				Expect(err).NotTo(HaveOccurred())
-			}
+		err := fakeClient.Delete(ctx, meshSync)
+		if !apierrors.IsNotFound(err) {
+			Expect(err).NotTo(HaveOccurred())
 		}
 	})
 
 	Context("The CURD case for the meshsync CRDs", func() {
 
 		It("The meshsync CRDs create acticity should be succeed", func() {
-			By("Confirm the meshsync CRDs was created")
-			meshSyncGet := &MeshSync{}
-			err := fakeClient.Get(ctx, typeNamespace, meshSyncGet)
+			By("Create the meshsync CRDs")
+			err := fakeClient.Create(ctx, meshSync)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(meshSyncGet.Name).To(Equal("default"))
 		})
 
 		It("The meshsync CRDs get should be succeed", func() {
+			By("Create the meshsync CRDs first")
+			err := fakeClient.Create(ctx, meshSync)
+			Expect(err).NotTo(HaveOccurred())
+
 			By("Get the meshsync CRDs")
 			mesheSyncGet := &MeshSync{}
-			err := fakeClient.Get(ctx, typeNamespace, mesheSyncGet)
+			err = fakeClient.Get(ctx, typeNamespace, mesheSyncGet)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Confirm the URL equal to https://layer5.io")
@@ -136,9 +130,13 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 		})
 
 		It("The meshsync CRDs update the spec of the resources", func() {
+			By("Create the meshsync CRDs first")
+			err := fakeClient.Create(ctx, meshSync)
+			Expect(err).NotTo(HaveOccurred())
+
 			By("Get the latest version of the resource")
 			existing := &MeshSync{}
-			err := fakeClient.Get(ctx, typeNamespace, existing)
+			err = fakeClient.Get(ctx, typeNamespace, existing)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Update the size of the meshsync CRDs")
@@ -156,13 +154,14 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 		})
 
 		It("The meshsync CRDs update the status of the resources", func() {
-			By("Get the latest version of the resource")
-			existing := &MeshSync{}
-			err := fakeClient.Get(ctx, typeNamespace, existing)
+			By("Create the meshsync CRDs first")
+			err := fakeClient.Create(ctx, meshSync)
 			Expect(err).NotTo(HaveOccurred())
 
-			fmt.Printf("Resource found: %s/%s, UID: %s, ResourceVersion: %s\n",
-				existing.Namespace, existing.Name, existing.UID, existing.ResourceVersion)
+			By("Get the latest version of the resource")
+			existing := &MeshSync{}
+			err = fakeClient.Get(ctx, typeNamespace, existing)
+			Expect(err).NotTo(HaveOccurred())
 
 			existing.Status = MeshSyncStatus{
 				PublishingTo: PublishingTo,
@@ -181,23 +180,18 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 
 			By("Update the status of the meshsync CRDs")
 			err = fakeClient.Status().Update(ctx, existing)
-
-			if err != nil {
-				fmt.Printf("Status update failed: %v\n", err)
-				// Try regular Get to see if resource still exists
-				check := &MeshSync{}
-				getErr := fakeClient.Get(ctx, typeNamespace, check)
-				fmt.Printf("Resource still exists? %v\n", getErr == nil)
-			}
-
 			Expect(err).NotTo(HaveOccurred())
 			Expect(existing.Status.PublishingTo == PublishingTo).Should(BeTrue())
 		})
 
 		It("The meshsyncList CRDs should be support by the kubernetes server", func() {
+			By("Create the meshsync CRDs first")
+			err := fakeClient.Create(ctx, meshSync)
+			Expect(err).NotTo(HaveOccurred())
+
 			By("Confirm the meshsync CRDs support by the kubernetes server")
 			meshSyncList := &MeshSyncList{}
-			err := fakeClient.List(ctx, meshSyncList, &client.ListOptions{})
+			err = fakeClient.List(ctx, meshSyncList, &client.ListOptions{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(meshSyncList.Items) > 0).Should(BeTrue())
 		})
@@ -206,8 +200,12 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 
 	Context("The test coverage for delete the meshsync CRDs", func() {
 		It("The meshsync CRDs remove the resources", func() {
+			By("Create the meshsync CRDs first")
+			err := fakeClient.Create(ctx, meshSync)
+			Expect(err).NotTo(HaveOccurred())
+
 			By("Delete the meshsync CRDs")
-			err := fakeClient.Delete(ctx, meshSync)
+			err = fakeClient.Delete(ctx, meshSync)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Confirm deletion")
