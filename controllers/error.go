@@ -16,7 +16,7 @@ limitations under the License.
 package controllers
 
 import (
-	"errors"
+	"fmt"
 )
 
 // Error codes
@@ -39,53 +39,53 @@ const (
 
 // Error definitions
 func ErrGetMeshsync(err error) error {
-	return errors.New(ErrGetMeshsyncCode + ":" + "Unable to get meshsync resource" + err.Error())
+	return fmt.Errorf("%s: Unable to get meshsync resource: %w", ErrGetMeshsyncCode, err)
 }
 
 func ErrCreateMeshsync(err error) error {
-	return errors.New(ErrCreateMeshsyncCode + ":" + "Unable to create meshsync controller" + err.Error())
+	return fmt.Errorf("%s: Unable to create meshsync controller: %w", ErrCreateMeshsyncCode, err)
 }
 
 func ErrDeleteMeshsync(err error) error {
-	return errors.New(ErrDeleteMeshsyncCode + ":" + "Unable to delete meshsync controller" + err.Error())
+	return fmt.Errorf("%s: Unable to delete meshsync controller: %w", ErrDeleteMeshsyncCode, err)
 }
 
 func ErrReconcileMeshsync(err error) error {
-	return errors.New(ErrReconcileMeshsyncCode + ":" + "Error during meshsync resource reconciliation" + err.Error())
+	return fmt.Errorf("%s: Error during meshsync resource reconciliation: %w", ErrReconcileMeshsyncCode, err)
 }
 
 func ErrGetBroker(err error) error {
-	return errors.New(ErrGetBrokerCode + ":" + "Broker resource not found" + err.Error())
+	return fmt.Errorf("%s: Broker resource not found: %w", ErrGetBrokerCode, err)
 }
 
 func ErrCreateBroker(err error) error {
-	return errors.New(ErrCreateBrokerCode + ":" + "Unable to create broker controller" + err.Error())
+	return fmt.Errorf("%s: Unable to create broker controller: %w", ErrCreateBrokerCode, err)
 }
 
 func ErrDeleteBroker(err error) error {
-	return errors.New(ErrDeleteBrokerCode + ":" + "Unable to delete broker controller" + err.Error())
+	return fmt.Errorf("%s: Unable to delete broker controller: %w", ErrDeleteBrokerCode, err)
 }
 
 func ErrReconcileBroker(err error) error {
-	return errors.New(ErrReconcileBrokerCode + ":" + "Error during broker resource reconciliation" + err.Error())
+	return fmt.Errorf("%s: Error during broker resource reconciliation: %w", ErrReconcileBrokerCode, err)
 }
 
 func ErrReconcileCR(err error) error {
-	return errors.New(ErrReconcileCRCode + ":" + "Error during custom resource reconciliation" + err.Error())
+	return fmt.Errorf("%s: Error during custom resource reconciliation: %w", ErrReconcileCRCode, err)
 }
 
 func ErrCheckHealth(err error) error {
-	return errors.New(ErrCheckHealthCode + ":" + "Error during health check" + err.Error())
+	return fmt.Errorf("%s: Error during health check: %w", ErrCheckHealthCode, err)
 }
 
 func ErrGetEndpoint(err error) error {
-	return errors.New(ErrGetEndpointCode + ":" + "Unable to get endpoint" + err.Error())
+	return fmt.Errorf("%s: Unable to get endpoint: %w", ErrGetEndpointCode, err)
 }
 
 func ErrUpdateResource(err error) error {
-	return errors.New(ErrUpdateResourceCode + ":" + "Unable to update resource" + err.Error())
+	return fmt.Errorf("%s: Unable to update resource: %w", ErrUpdateResourceCode, err)
 }
 
 func ErrMarshal(err error) error {
-	return errors.New(ErrMarshalCode + ":" + "Error during marshaling" + err.Error())
+	return fmt.Errorf("%s: Error during marshaling: %w", ErrMarshalCode, err)
 }

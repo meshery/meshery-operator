@@ -50,6 +50,6 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	// initial fake client
-	fakeClient = fake.NewClientBuilder().WithScheme(scheme).Build()
+	fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&MeshSync{}).Build()
 
 })

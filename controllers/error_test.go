@@ -17,104 +17,194 @@ package controllers
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
 func TestErrGetMeshsync(t *testing.T) {
-	err := errors.New("test error")
-	if ErrGetMeshsync(err).Error() != "1001:Unable to get meshsync resource" {
-		t.Error("ErrGetMeshsync error")
+	testErr := errors.New("test error")
+	err := ErrGetMeshsync(testErr)
+
+	expectedPrefix := "1001: Unable to get meshsync resource:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	// Test error unwrapping
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
+
 func TestErrCreateMeshsync(t *testing.T) {
-	err := errors.New("test error")
-	if ErrCreateMeshsync(err).Error() != "1002:Unable to create meshsync controller" {
-		t.Error("ErrCreateMeshsync error")
+	testErr := errors.New("test error")
+	err := ErrCreateMeshsync(testErr)
+
+	expectedPrefix := "1002: Unable to create meshsync controller:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 func TestErrDeleteMeshsync(t *testing.T) {
-	err := errors.New("test error")
-	if ErrDeleteMeshsync(err).Error() != "1008:Unable to delete meshsync controller" {
-		t.Error("ErrDeleteMeshsync error")
+	testErr := errors.New("test error")
+	err := ErrDeleteMeshsync(testErr)
+
+	expectedPrefix := "1008: Unable to delete meshsync controller:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 func TestErrReconcileMeshsync(t *testing.T) {
-	err := errors.New("test error")
-	if ErrReconcileMeshsync(err).Error() != "1003:Error during meshsync resource reconciliation" {
-		t.Error("ErrReconcileMeshsync error")
+	testErr := errors.New("test error")
+	err := ErrReconcileMeshsync(testErr)
+
+	expectedPrefix := "1003: Error during meshsync resource reconciliation:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
 	}
 }
 
 // Test case for ErrGetBroker
 func TestErrGetBroker(t *testing.T) {
-	err := errors.New("test error")
-	if ErrGetBroker(err).Error() != "1004:Broker resource not found" {
-		t.Error("ErrGetBroker error")
+	testErr := errors.New("test error")
+	err := ErrGetBroker(testErr)
+
+	expectedPrefix := "1004: Broker resource not found:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 // Test case for ErrCreateBroker
 func TestErrCreateBroker(t *testing.T) {
-	err := errors.New("test error")
-	if ErrCreateBroker(err).Error() != "1005:Unable to create broker controller" {
-		t.Error("ErrCreateBroker error")
+	testErr := errors.New("test error")
+	err := ErrCreateBroker(testErr)
+
+	expectedPrefix := "1005: Unable to create broker controller:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 // Test case for ErrDeleteBroker
 func TestErrDeleteBroker(t *testing.T) {
-	err := errors.New("test error")
-	if ErrDeleteBroker(err).Error() != "1009:Unable to delete broker controller" {
-		t.Error("ErrDeleteBroker error")
+	testErr := errors.New("test error")
+	err := ErrDeleteBroker(testErr)
+
+	expectedPrefix := "1009: Unable to delete broker controller:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 // Test case for ErrReconcileBroker
 func TestErrReconcileBroker(t *testing.T) {
-	err := errors.New("test error")
-	if ErrReconcileBroker(err).Error() != "1006:Error during broker resource reconciliation" {
-		t.Error("ErrReconcileBroker error")
+	testErr := errors.New("test error")
+	err := ErrReconcileBroker(testErr)
+
+	expectedPrefix := "1006: Error during broker resource reconciliation:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 // Test case for ErrReconcileCR
 func TestErrReconcileCR(t *testing.T) {
-	err := errors.New("test error")
-	if ErrReconcileCR(err).Error() != "1007:Error during custom resource reconciliation" {
-		t.Error("ErrReconcileCR error")
+	testErr := errors.New("test error")
+	err := ErrReconcileCR(testErr)
+
+	expectedPrefix := "1007: Error during custom resource reconciliation:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 // Test case for ErrCheckHealth
 func TestErrCheckHealth(t *testing.T) {
-	err := errors.New("test error")
-	if ErrCheckHealth(err).Error() != "1010:Error during health check" {
-		t.Error("ErrCheckHealth error")
+	testErr := errors.New("test error")
+	err := ErrCheckHealth(testErr)
+
+	expectedPrefix := "1010: Error during health check:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 // Test case for ErrGetEndpoint
 func TestErrGetEndpoint(t *testing.T) {
-	err := errors.New("test error")
-	if ErrGetEndpoint(err).Error() != "1011:Unable to get endpoint" {
-		t.Error("ErrGetEndpoint error")
+	testErr := errors.New("test error")
+	err := ErrGetEndpoint(testErr)
+
+	expectedPrefix := "1011: Unable to get endpoint:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 // Test case for ErrUpdateResource
 func TestErrUpdateResource(t *testing.T) {
-	err := errors.New("test error")
-	if ErrUpdateResource(err).Error() != "1012:Unable to update resource" {
-		t.Error("ErrUpdateResource error")
+	testErr := errors.New("test error")
+	err := ErrUpdateResource(testErr)
+
+	expectedPrefix := "1012: Unable to update resource:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
 
 // Test case for ErrMarshal
 func TestErrMarshal(t *testing.T) {
-	err := errors.New("test error")
-	if ErrMarshal(err).Error() != "11049:Error during marshaling" {
-		t.Error("ErrMarshal error")
+	testErr := errors.New("test error")
+	err := ErrMarshal(testErr)
+
+	expectedPrefix := "11049: Error during marshaling:"
+	if !strings.Contains(err.Error(), expectedPrefix) {
+		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Error("Expected error to wrap the original error")
 	}
 }
