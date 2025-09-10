@@ -227,8 +227,8 @@ github.com/mattn/go-runewidth v0.0.16/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh
 github.com/mattn/go-sqlite3 v1.14.22/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 github.com/mattn/go-sqlite3 v1.14.24 h1:tpSp2G2KyMnnQu99ngJ47EIkWVmliIizyZBfPrBWDRM=
 github.com/mattn/go-sqlite3 v1.14.24/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
-github.com/meshery/meshkit v0.8.41 h1:kgKPH7AGtArTe0BAEhHqsNplOyD3ZbjkpK02ky0ExqI=
-github.com/meshery/meshkit v0.8.41/go.mod h1:QqknWr6NQBh4o2JvBccXh0a4cZzty7/QvK35yMWVgxE=
+github.com/meshery/meshkit v0.8.43 h1:dO0P9gRIYey/fgH/D5hWnMMUZ0YMP2BDZV96m9SghXY=
+github.com/meshery/meshkit v0.8.43/go.mod h1:QqknWr6NQBh4o2JvBccXh0a4cZzty7/QvK35yMWVgxE=
 github.com/miekg/dns v1.1.57 h1:Jzi7ApEIzwEPLHWRcafCN9LZSBbqQpxjt/wpgvg7wcM=
 github.com/miekg/dns v1.1.57/go.mod h1:uqRjCRUuEAA6qsOiJvDd+CFo/vW+y5WR6SNmHE55hZk=
 github.com/mitchellh/copystructure v1.2.0 h1:vpKXTN4ewci03Vljg/q9QvCGUDttBOGBIa15WveJJGw=
