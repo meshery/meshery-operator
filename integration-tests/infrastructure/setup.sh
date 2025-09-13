@@ -68,7 +68,9 @@ setup() {
   cp -r config/* "$TEMP_CONFIG_DIR/"
   
   # Set the image in temporary config
-  cd "$TEMP_CONFIG_DIR/manager" && "$PROJECT_ROOT/bin/kustomize" edit set image controller="$OPERATOR_IMAGE"
+  echo "Setting operator image to: $OPERATOR_IMAGE"
+  cd "$TEMP_CONFIG_DIR/manager" 
+  "$PROJECT_ROOT/bin/kustomize" edit set image meshery/meshery-operator="$OPERATOR_IMAGE"
   cd "$PROJECT_ROOT"
   
   # Build and deploy using temporary config
