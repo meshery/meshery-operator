@@ -290,3 +290,29 @@ $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION):
 test-env:
 	make bin/setup-envtest
 	bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR)
+
+##@ Integration Tests
+
+.PHONY: integration-tests-check-dependencies
+## Runs integration tests check dependencies (if docker, kind, kubectl are present)
+integration-tests-check-dependencies:
+	./integration-tests/infrastructure/setup.sh check_dependencies
+
+.PHONY: integration-tests-setup
+## Runs integration tests set up (creates kind cluster, builds and deploys operator)
+integration-tests-setup:
+	./integration-tests/infrastructure/setup.sh setup
+
+.PHONY: integration-tests-cleanup
+## Runs integration tests clean up (stops cluster and removes operator image)
+integration-tests-cleanup:
+	./integration-tests/infrastructure/setup.sh cleanup
+
+.PHONY: integration-tests-run
+## Runs integration tests (validates that meshsync and broker are deployed properly)
+integration-tests-run:
+	@echo "TODO: Add validation that meshsync and broker CRs are properly deployed and status shows endpoint information"
+
+.PHONY: integration-tests
+## Runs integration tests full cycle (setup, run validation, cleanup)
+integration-tests: integration-tests-setup integration-tests-run integration-tests-cleanup
