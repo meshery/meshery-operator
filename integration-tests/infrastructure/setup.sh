@@ -61,9 +61,22 @@ setup() {
   make install
 
   echo "Deploying operator to cluster..."
-  cd config/manager && "$PROJECT_ROOT/bin/kustomize" edit set image controller="$OPERATOR_IMAGE"
   cd "$PROJECT_ROOT"
-  "$PROJECT_ROOT/bin/kustomize" build config/default | kubectl apply -f -
+  
+  # Create temporary config directory
+  TEMP_CONFIG_DIR=$(mktemp -d)
+  cp -r config/* "$TEMP_CONFIG_DIR/"
+  
+  # Set the image in temporary config
+  cd "$TEMP_CONFIG_DIR/manager" && "$PROJECT_ROOT/bin/kustomize" edit set image controller="$OPERATOR_IMAGE"
+  cd "$PROJECT_ROOT"
+  
+  # Build and deploy using temporary config
+  make manifests kustomize
+  "$PROJECT_ROOT/bin/kustomize" build "$TEMP_CONFIG_DIR/default" | kubectl apply -f -
+  
+  # Clean up temporary directory
+  rm -rf "$TEMP_CONFIG_DIR"
 
   echo "Creating $TEST_NAMESPACE namespace..."
   kubectl create namespace "$TEST_NAMESPACE" || true
@@ -73,7 +86,7 @@ setup() {
   kubectl --namespace "$OPERATOR_NAMESPACE" apply -f "$PROJECT_ROOT/config/samples/meshery_v1alpha1_meshsync.yaml"
 
   echo "Waiting for operator to be ready..."
-  kubectl --namespace "$OPERATOR_NAMESPACE" rollout status deployment/meshery-operator-controller-manager --timeout=300s
+  kubectl --namespace "$OPERATOR_NAMESPACE" rollout status deployment/meshery-operator --timeout=300s
 
   echo "Outputting cluster resources..."
   echo "--- Operator namespace resources ---"
