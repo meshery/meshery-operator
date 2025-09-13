@@ -36,8 +36,8 @@ build_operator_image() {
   echo "🔨 Building operator image..."
   cd "$PROJECT_ROOT"
   
-  # Build the operator image
-  make docker-build IMG="$OPERATOR_IMAGE"
+  # Build the operator image (bypassing tests for integration testing)
+  DOCKER_BUILDKIT=1 docker build --no-cache -t "$OPERATOR_IMAGE" .
   
   echo "✅ Operator image built: $OPERATOR_IMAGE"
 }
