@@ -1,0 +1,63 @@
+name: Integration Tests
+on:
+  push:
+    branches:
+      - "master"
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+      - "Makefile"
+      - "config/**"
+      - "integration-tests/**"
+      - ".github/workflows/integration-tests-ci.yml"
+  pull_request:
+    branches:
+      - "master"
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+      - "Makefile"
+      - "config/**"
+      - "integration-tests/**"
+      - ".github/workflows/integration-tests-ci.yml"
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: "Log level"
+        required: true
+        default: "info"
+
+jobs:
+  integration-tests:
+    name: Integration tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3 
+      - name: Install Kind and kubectl
+        uses: helm/kind-action@v1.10.0
+      - name: Check integration tests dependencies
+        run: make integration-tests-check-dependencies
+      - name: Integration tests set up
+        run: make integration-tests-setup
+      - name: Integration tests run
+        run: make integration-tests-run
+      - name: Integration tests clean up
+        run: make integration-tests-cleanup
+        if: always()
+      - name: Upload operator logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: operator-logs
+          path: integration-tests/*.log
+          if-no-files-found: warn
