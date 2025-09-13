@@ -90,6 +90,9 @@ setup() {
   echo "Waiting for operator to be ready..."
   kubectl --namespace "$OPERATOR_NAMESPACE" rollout status deployment/meshery-operator --timeout=300s
 
+  echo "Describing operator pod to verify image..."
+  kubectl --namespace "$OPERATOR_NAMESPACE" describe pod -l app=meshery,component=operator
+
   echo "Outputting cluster resources..."
   echo "--- Operator namespace resources ---"
   kubectl --namespace "$OPERATOR_NAMESPACE" get all
