@@ -57,7 +57,7 @@ jobs:
       - name: Integration tests clean up
         run: make integration-tests-cleanup
         if: always()
-      - name: Upload operator logs
+      - name: Upload integration test logs (if any)
         uses: actions/upload-artifact@v4
         if: always()
         with:
