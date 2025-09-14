@@ -49,7 +49,7 @@ jobs:
         run: make integration-tests-check-dependencies
       - name: Integration tests set up
         run: make integration-tests-setup
-      - name: Integration tests print setup debug output
+      - name: Integration tests set up - print debug output
         run: |
           make integration-tests-setup-debug-output
           echo "Integration tests setup failed - stopping workflow"
