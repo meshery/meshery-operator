@@ -71,6 +71,10 @@ setup() {
   echo "Setting operator image to: $OPERATOR_IMAGE"
   cd "$TEMP_CONFIG_DIR/manager" 
   "$PROJECT_ROOT/bin/kustomize" edit set image meshery/meshery-operator="$OPERATOR_IMAGE"
+  
+  # Set imagePullPolicy to Never for integration tests (image is loaded into kind cluster)
+  sed -i 's/imagePullPolicy: Always/imagePullPolicy: Never/' manager.yaml
+  
   cd "$PROJECT_ROOT"
   
   # Build and deploy using temporary config
