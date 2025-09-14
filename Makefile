@@ -311,7 +311,7 @@ integration-tests-cleanup:
 .PHONY: integration-tests-run
 ## Runs integration tests (validates that meshsync and broker are deployed properly)
 integration-tests-run:
-	@echo "TODO: Add validation that meshsync and broker CRs are properly deployed and status shows endpoint information"
+	./integration-tests/infrastructure/setup.sh assert
 
 .PHONY: integration-tests-setup-debug-output
 ## Debug integration tests by outputting cluster state

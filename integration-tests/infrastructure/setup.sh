@@ -42,6 +42,62 @@ build_operator_image() {
   echo "✅ Operator image built: $OPERATOR_IMAGE"
 }
 
+assert_resources() {
+  echo "🔍 Validating operator functionality..."
+  
+  echo "Waiting for meshsync deployment to be created by operator..."
+  timeout=300
+  while [ $timeout -gt 0 ]; do
+    if kubectl --namespace "$OPERATOR_NAMESPACE" get deployment/meshery-meshsync >/dev/null 2>&1; then
+      echo "✅ meshsync deployment found"
+      break
+    fi
+    echo "Waiting for meshsync deployment... ($timeout seconds remaining)"
+    sleep 5
+    timeout=$((timeout - 5))
+  done
+  
+  if [ $timeout -le 0 ]; then
+    echo "❌ meshsync deployment was not created within timeout"
+    exit 1
+  fi
+  
+  echo "Waiting for broker statefulset to be created by operator..."
+  timeout=300
+  while [ $timeout -gt 0 ]; do
+    if kubectl --namespace "$OPERATOR_NAMESPACE" get statefulset/meshery-broker >/dev/null 2>&1; then
+      echo "✅ broker statefulset found"
+      break
+    fi
+    echo "Waiting for broker statefulset... ($timeout seconds remaining)"
+    sleep 5
+    timeout=$((timeout - 5))
+  done
+  
+  if [ $timeout -le 0 ]; then
+    echo "❌ broker statefulset was not created within timeout"
+    exit 1
+  fi
+  
+  echo "Now waiting for deployments to be ready..."
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=condition=available --timeout=300s deployment/meshery-meshsync || {
+    echo "❌ meshsync deployment failed to become ready"
+    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=meshsync
+    kubectl --namespace "$OPERATOR_NAMESPACE" describe deployment/meshery-meshsync
+    exit 1
+  }
+  
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=300s statefulset/meshery-broker || {
+    echo "❌ broker statefulset failed to become ready"
+    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=broker
+    kubectl --namespace "$OPERATOR_NAMESPACE" describe statefulset/meshery-broker
+    exit 1
+  }
+  
+  echo "✅ All components (operator, meshsync, broker) are deployed and ready!"
+  echo "✅ Operator functionality validation completed successfully!"
+}
+
 setup() {
   check_dependencies
   echo "🔧 Setting up..."
@@ -97,58 +153,7 @@ setup() {
   echo "Describing operator pod to verify image..."
   kubectl --namespace "$OPERATOR_NAMESPACE" describe pod -l app=meshery,component=operator
   
-  echo "Waiting for meshsync and broker to be deployed..."
-  
-  echo "Waiting for meshsync deployment to be created by operator..."
-  timeout=300
-  while [ $timeout -gt 0 ]; do
-    if kubectl --namespace "$OPERATOR_NAMESPACE" get deployment/meshery-meshsync >/dev/null 2>&1; then
-      echo "✅ meshsync deployment found"
-      break
-    fi
-    echo "Waiting for meshsync deployment... ($timeout seconds remaining)"
-    sleep 5
-    timeout=$((timeout - 5))
-  done
-  
-  if [ $timeout -le 0 ]; then
-    echo "❌ meshsync deployment was not created within timeout"
-    exit 1
-  fi
-  
-  echo "Waiting for broker statefulset to be created by operator..."
-  timeout=300
-  while [ $timeout -gt 0 ]; do
-    if kubectl --namespace "$OPERATOR_NAMESPACE" get statefulset/meshery-broker >/dev/null 2>&1; then
-      echo "✅ broker statefulset found"
-      break
-    fi
-    echo "Waiting for broker statefulset... ($timeout seconds remaining)"
-    sleep 5
-    timeout=$((timeout - 5))
-  done
-  
-  if [ $timeout -le 0 ]; then
-    echo "❌ broker statefulset was not created within timeout"
-    exit 1
-  fi
-  
-  echo "Now waiting for deployments to be ready..."
-  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=condition=available --timeout=300s deployment/meshery-meshsync || {
-    echo "❌ meshsync deployment failed to become ready"
-    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=meshsync
-    kubectl --namespace "$OPERATOR_NAMESPACE" describe deployment/meshery-meshsync
-    exit 1
-  }
-  
-  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=300s statefulset/meshery-broker || {
-    echo "❌ broker statefulset failed to become ready"
-    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=broker
-    kubectl --namespace "$OPERATOR_NAMESPACE" describe statefulset/meshery-broker
-    exit 1
-  }
-  
-  echo "✅ All components (operator, meshsync, broker) are deployed and ready!"
+  echo "✅ Setup completed - operator deployed and CRs applied"
 
   echo "Outputting cluster resources..."
   echo "--- Operator namespace resources ---"
@@ -170,7 +175,7 @@ cleanup() {
 }
 
 print_help() {
-  echo "Usage: $0 {check_dependencies|setup|cleanup|help}"
+  echo "Usage: $0 {check_dependencies|setup|assert|cleanup|help}"
 }
 
 # Main dispatcher
@@ -180,6 +185,9 @@ case "$1" in
     ;;
   setup)
     setup
+    ;;
+  assert)
+    assert_resources
     ;;
   cleanup)
     cleanup
