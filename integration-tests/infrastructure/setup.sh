@@ -96,6 +96,25 @@ setup() {
 
   echo "Describing operator pod to verify image..."
   kubectl --namespace "$OPERATOR_NAMESPACE" describe pod -l app=meshery,component=operator
+  
+  echo "Waiting for meshsync and broker to be deployed..."
+  echo "Checking meshsync deployment..."
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=condition=available --timeout=300s deployment/meshery-meshsync || {
+    echo "❌ meshsync deployment failed or timed out"
+    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=meshsync
+    kubectl --namespace "$OPERATOR_NAMESPACE" describe deployment/meshery-meshsync
+    exit 1
+  }
+  
+  echo "Checking broker statefulset..."
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=300s statefulset/meshery-broker || {
+    echo "❌ broker statefulset failed or timed out"
+    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=broker
+    kubectl --namespace "$OPERATOR_NAMESPACE" describe statefulset/meshery-broker
+    exit 1
+  }
+  
+  echo "✅ All components (operator, meshsync, broker) are deployed and ready!"
 
   echo "Outputting cluster resources..."
   echo "--- Operator namespace resources ---"
