@@ -51,6 +51,9 @@ jobs:
         run: make integration-tests-setup
       - name: Integration tests run
         run: make integration-tests-run
+      - name: Integration tests print debug output
+        run: make integration-tests-debug-output
+        if: failure()
       - name: Integration tests clean up
         run: make integration-tests-cleanup
         if: always()

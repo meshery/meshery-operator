@@ -313,6 +313,18 @@ integration-tests-cleanup:
 integration-tests-run:
 	@echo "TODO: Add validation that meshsync and broker CRs are properly deployed and status shows endpoint information"
 
+.PHONY: integration-tests-debug-output
+## Debug integration tests by outputting cluster state
+integration-tests-debug-output:
+	@echo "=== Pods in meshery namespace ==="
+	kubectl get pods -n meshery || true
+	@echo "=== Deployment status ==="
+	kubectl get deployment meshery-operator -n meshery || true
+	@echo "=== ReplicaSet status ==="
+	kubectl get replicaset -n meshery || true
+	@echo "=== Pod logs ==="
+	kubectl logs -l app.kubernetes.io/name=meshery-operator -n meshery --tail=100 || true
+
 .PHONY: integration-tests
 ## Runs integration tests full cycle (setup, run validation, cleanup)
 integration-tests: integration-tests-setup integration-tests-run integration-tests-cleanup
