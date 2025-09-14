@@ -50,7 +50,10 @@ jobs:
       - name: Integration tests set up
         run: make integration-tests-setup
       - name: Integration tests print setup debug output
-        run: make integration-tests-setup-debug-output
+        run: |
+          make integration-tests-setup-debug-output
+          echo "Integration tests setup failed - stopping workflow"
+          exit 1
         if: failure()
       - name: Integration tests run
         run: make integration-tests-run

@@ -322,6 +322,8 @@ integration-tests-setup-debug-output:
 	kubectl get deployment meshery-operator -n meshery || true
 	@echo "=== ReplicaSet status ==="
 	kubectl get replicaset -n meshery || true
+	@echo "=== Pod describe ==="
+	kubectl describe pods -l app.kubernetes.io/name=meshery-operator -n meshery || true
 	@echo "=== Pod logs ==="
 	kubectl logs -l app.kubernetes.io/name=meshery-operator -n meshery --tail=100 || true
 
