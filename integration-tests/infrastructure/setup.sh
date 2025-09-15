@@ -42,8 +42,8 @@ build_operator_image() {
   echo "✅ Operator image built: $OPERATOR_IMAGE"
 }
 
-assert_resources() {
-  echo "🔍 Validating operator functionality..."
+assert_resources_meshsync() {
+  echo "🔍 Asserting meshsync deployment..."
   
   echo "Waiting for meshsync deployment to be created by operator..."
   timeout=300
@@ -62,6 +62,20 @@ assert_resources() {
     exit 1
   fi
   
+  echo "Now waiting for meshsync deployment to be ready..."
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=condition=available --timeout=300s deployment/meshery-meshsync || {
+    echo "❌ meshsync deployment failed to become ready"
+    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=meshsync
+    kubectl --namespace "$OPERATOR_NAMESPACE" describe deployment/meshery-meshsync
+    exit 1
+  }
+  
+  echo "✅ Meshsync deployment is ready!"
+}
+
+assert_resources_broker() {
+  echo "🔍 Asserting broker statefulset..."
+  
   echo "Waiting for broker statefulset to be created by operator..."
   timeout=300
   while [ $timeout -gt 0 ]; do
@@ -79,14 +93,7 @@ assert_resources() {
     exit 1
   fi
   
-  echo "Now waiting for deployments to be ready..."
-  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=condition=available --timeout=300s deployment/meshery-meshsync || {
-    echo "❌ meshsync deployment failed to become ready"
-    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=meshsync
-    kubectl --namespace "$OPERATOR_NAMESPACE" describe deployment/meshery-meshsync
-    exit 1
-  }
-  
+  echo "Now waiting for broker statefulset to be ready..."
   kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=300s statefulset/meshery-broker || {
     echo "❌ broker statefulset failed to become ready"
     kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=broker
@@ -94,8 +101,46 @@ assert_resources() {
     exit 1
   }
   
+  echo "✅ Broker statefulset is ready!"
+}
+
+assert_resources_cr_broker_status() {
+  echo "🔍 Asserting broker CR status property..."
+  
+  echo "Waiting for broker CR to have endpoints in status..."
+  timeout=300
+  while [ $timeout -gt 0 ]; do
+    external_endpoint=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o jsonpath='{.status.endpoint.external}' 2>/dev/null)
+    internal_endpoint=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o jsonpath='{.status.endpoint.internal}' 2>/dev/null)
+    
+    if [ -n "$external_endpoint" ] && [ -n "$internal_endpoint" ]; then
+      echo "✅ broker CR has external endpoint in status: $external_endpoint"
+      echo "✅ broker CR has internal endpoint in status: $internal_endpoint"
+      break
+    fi
+    echo "Waiting for broker CR endpoints... ($timeout seconds remaining)"
+    sleep 5
+    timeout=$((timeout - 5))
+  done
+  
+  if [ $timeout -le 0 ]; then
+    echo "❌ broker CR endpoints were not populated within timeout"
+    kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o yaml
+    exit 1
+  fi
+  
+  echo "✅ Broker CR endpoint validation completed!"
+}
+
+assert_resources() {
+  echo "🔍 Asserting operator functionality..."
+  
+  assert_resources_meshsync
+  assert_resources_broker
+  assert_resources_cr_broker_status
+  
   echo "✅ All components (operator, meshsync, broker) are deployed and ready!"
-  echo "✅ Operator functionality validation completed successfully!"
+  echo "✅ Operator functionality assertion completed successfully!"
 }
 
 setup() {
