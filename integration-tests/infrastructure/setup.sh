@@ -114,8 +114,8 @@ assert_resources_cr_broker_status() {
     internal_endpoint=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o jsonpath='{.status.endpoint.internal}' 2>/dev/null)
     
     if [ -n "$external_endpoint" ] && [ -n "$internal_endpoint" ]; then
-      echo "✅ broker CR has external endpoint in status: $external_endpoint"
-      echo "✅ broker CR has internal endpoint in status: $internal_endpoint"
+      echo "✅ broker CR status has external endpoint: $external_endpoint"
+      echo "✅ broker CR status has internal endpoint: $internal_endpoint"
       break
     fi
     echo "Waiting for broker CR endpoints... ($timeout seconds remaining)"
