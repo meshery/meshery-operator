@@ -316,16 +316,7 @@ integration-tests-run:
 .PHONY: integration-tests-setup-debug-output
 ## Debug integration tests by outputting cluster state
 integration-tests-setup-debug-output:
-	@echo "=== Pods in meshery namespace ==="
-	kubectl get pods -n meshery || true
-	@echo "=== Deployment status ==="
-	kubectl get deployment meshery-operator -n meshery || true
-	@echo "=== ReplicaSet status ==="
-	kubectl get replicaset -n meshery || true
-	@echo "=== Pod describe ==="
-	kubectl describe pods -n meshery || true
-	@echo "=== Pod logs ==="
-	kubectl logs deployment/meshery-operator -n meshery --tail=100 || true
+	./integration-tests/infrastructure/setup.sh debug
 
 .PHONY: integration-tests
 ## Runs integration tests full cycle (setup, run validation, cleanup)

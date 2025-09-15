@@ -174,8 +174,21 @@ cleanup() {
   docker rmi "$OPERATOR_IMAGE" || true
 }
 
+debug_output() {
+  echo "=== Pods in $OPERATOR_NAMESPACE namespace ==="
+  kubectl get pods -n "$OPERATOR_NAMESPACE" || true
+  echo "=== Deployment status ==="
+  kubectl get deployment meshery-operator -n "$OPERATOR_NAMESPACE" || true
+  echo "=== ReplicaSet status ==="
+  kubectl get replicaset -n "$OPERATOR_NAMESPACE" || true
+  echo "=== Pod describe ==="
+  kubectl describe pods -n "$OPERATOR_NAMESPACE" || true
+  echo "=== Pod logs ==="
+  kubectl logs deployment/meshery-operator -n "$OPERATOR_NAMESPACE" --tail=100 || true
+}
+
 print_help() {
-  echo "Usage: $0 {check_dependencies|setup|assert|cleanup|help}"
+  echo "Usage: $0 {check_dependencies|setup|assert|cleanup|debug|help}"
 }
 
 # Main dispatcher
@@ -191,6 +204,9 @@ case "$1" in
     ;;
   cleanup)
     cleanup
+    ;;
+  debug)
+    debug_output
     ;;
   help)
     print_help
