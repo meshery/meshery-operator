@@ -296,27 +296,27 @@ test-env:
 .PHONY: integration-tests-check-dependencies
 ## Runs integration tests check dependencies (if docker, kind, kubectl are present)
 integration-tests-check-dependencies:
-	./integration-tests/infrastructure/setup.sh check_dependencies
+	./integration-tests/main.sh check_dependencies
 
 .PHONY: integration-tests-setup
 ## Runs integration tests set up (creates kind cluster, builds and deploys operator)
 integration-tests-setup:
-	./integration-tests/infrastructure/setup.sh setup
+	./integration-tests/main.sh setup
 
 .PHONY: integration-tests-cleanup
 ## Runs integration tests clean up (stops cluster and removes operator image)
 integration-tests-cleanup:
-	./integration-tests/infrastructure/setup.sh cleanup
+	./integration-tests/main.sh cleanup
 
 .PHONY: integration-tests-run
 ## Runs integration tests (validates that meshsync and broker are deployed properly)
 integration-tests-run:
-	./integration-tests/infrastructure/setup.sh assert
+	./integration-tests/main.sh assert
 
 .PHONY: integration-tests-setup-debug-output
 ## Debug integration tests by outputting cluster state
 integration-tests-setup-debug-output:
-	./integration-tests/infrastructure/setup.sh debug
+	./integration-tests/main.sh debug
 
 .PHONY: integration-tests
 ## Runs integration tests full cycle (setup, run validation, cleanup)
