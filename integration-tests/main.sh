@@ -6,7 +6,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLUSTER_NAME="operator-integration-test-cluster"
 OPERATOR_NAMESPACE="meshery"
-TEST_NAMESPACE="meshery-test"
 OPERATOR_IMAGE="meshery/meshery-operator:integration-test"
 
 check_dependencies() {
@@ -185,9 +184,6 @@ setup() {
   # Clean up temporary directory
   rm -rf "$TEMP_CONFIG_DIR"
 
-  echo "Creating $TEST_NAMESPACE namespace..."
-  kubectl create namespace "$TEST_NAMESPACE" || true
-
   echo "Applying test resources using existing samples..."
   kubectl --namespace "$OPERATOR_NAMESPACE" apply -f "$PROJECT_ROOT/config/samples/meshery_v1alpha1_broker.yaml"
   kubectl --namespace "$OPERATOR_NAMESPACE" apply -f "$PROJECT_ROOT/config/samples/meshery_v1alpha1_meshsync.yaml"
@@ -203,8 +199,6 @@ setup() {
   echo "Outputting cluster resources..."
   echo "--- Operator namespace resources ---"
   kubectl --namespace "$OPERATOR_NAMESPACE" get all
-  echo "--- Test namespace resources ---"
-  kubectl --namespace "$TEST_NAMESPACE" get all
   echo "--- Custom Resources ---"
   kubectl --namespace "$OPERATOR_NAMESPACE" get brokers,meshsyncs
 }
