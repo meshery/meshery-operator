@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var (
@@ -103,6 +104,30 @@ var (
 						Limits: corev1.ResourceList{
 							corev1.ResourceCPU:    CPULimit,
 							corev1.ResourceMemory: MemoryLimit,
+						},
+					},
+					LivenessProbe: &corev1.Probe{
+						InitialDelaySeconds: 60,
+						PeriodSeconds:       10,
+						TimeoutSeconds:      2,
+						FailureThreshold:    3,
+						ProbeHandler: corev1.ProbeHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/healthz/livenessz",
+								Port: intstr.FromInt(11000),
+							},
+						},
+					},
+					ReadinessProbe: &corev1.Probe{
+						InitialDelaySeconds: 5,
+						PeriodSeconds:       4,
+						TimeoutSeconds:      2,
+						FailureThreshold:    3,
+						ProbeHandler: corev1.ProbeHandler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Path: "/healthz/readinessz",
+								Port: intstr.FromInt(11000),
+							},
 						},
 					},
 				},
