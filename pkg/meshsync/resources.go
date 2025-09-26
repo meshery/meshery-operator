@@ -113,7 +113,7 @@ var (
 						FailureThreshold:    3,
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/healthz/livenessz",
+								Path: "/healthz/live",
 								Port: intstr.FromInt(11000),
 							},
 						},
@@ -125,7 +125,7 @@ var (
 						FailureThreshold:    3,
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/healthz/readinessz",
+								Path: "/healthz/ready",
 								Port: intstr.FromInt(11000),
 							},
 						},
