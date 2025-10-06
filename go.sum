@@ -239,8 +239,8 @@ github.com/mattn/go-runewidth v0.0.16/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh
 github.com/mattn/go-sqlite3 v1.14.22/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 github.com/mattn/go-sqlite3 v1.14.24 h1:tpSp2G2KyMnnQu99ngJ47EIkWVmliIizyZBfPrBWDRM=
 github.com/mattn/go-sqlite3 v1.14.24/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
-github.com/meshery/meshkit v0.8.43 h1:dO0P9gRIYey/fgH/D5hWnMMUZ0YMP2BDZV96m9SghXY=
-github.com/meshery/meshkit v0.8.43/go.mod h1:QqknWr6NQBh4o2JvBccXh0a4cZzty7/QvK35yMWVgxE=
+github.com/meshery/meshkit v0.8.44 h1:AwYfFISxpPZyB8p/HcT02OiHCTFj7mCujwgT+UP6R00=
+github.com/meshery/meshkit v0.8.44/go.mod h1:8CSz33Rziuzu29kZEScI9kwooNKDZo2XtM/3gvrP0tk=
 github.com/mfridman/tparse v0.18.0 h1:wh6dzOKaIwkUGyKgOntDW4liXSo37qg5AXbIhkMV3vE=
 github.com/mfridman/tparse v0.18.0/go.mod h1:gEvqZTuCgEhPbYk/2lS3Kcxg1GmTxxU7kTC8DvP0i/A=
 github.com/miekg/dns v1.1.57 h1:Jzi7ApEIzwEPLHWRcafCN9LZSBbqQpxjt/wpgvg7wcM=
