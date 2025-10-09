@@ -21,7 +21,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 var (
@@ -110,23 +109,27 @@ var (
 						InitialDelaySeconds: 60,
 						PeriodSeconds:       10,
 						TimeoutSeconds:      2,
-						FailureThreshold:    3,
+						FailureThreshold:    4,
 						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/healthz/live",
-								Port: intstr.FromInt(11000),
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"./meshery-meshsync",
+									"-h",
+								},
 							},
 						},
 					},
 					ReadinessProbe: &corev1.Probe{
-						InitialDelaySeconds: 5,
+						InitialDelaySeconds: 20,
 						PeriodSeconds:       4,
 						TimeoutSeconds:      2,
-						FailureThreshold:    3,
+						FailureThreshold:    4,
 						ProbeHandler: corev1.ProbeHandler{
-							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/healthz/ready",
-								Port: intstr.FromInt(11000),
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"./meshery-meshsync",
+									"-h",
+								},
 							},
 						},
 					},
