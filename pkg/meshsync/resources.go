@@ -105,6 +105,34 @@ var (
 							corev1.ResourceMemory: MemoryLimit,
 						},
 					},
+					LivenessProbe: &corev1.Probe{
+						InitialDelaySeconds: 60,
+						PeriodSeconds:       10,
+						TimeoutSeconds:      2,
+						FailureThreshold:    4,
+						ProbeHandler: corev1.ProbeHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"./meshery-meshsync",
+									"-h",
+								},
+							},
+						},
+					},
+					ReadinessProbe: &corev1.Probe{
+						InitialDelaySeconds: 20,
+						PeriodSeconds:       4,
+						TimeoutSeconds:      2,
+						FailureThreshold:    4,
+						ProbeHandler: corev1.ProbeHandler{
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"./meshery-meshsync",
+									"-h",
+								},
+							},
+						},
+					},
 				},
 			},
 		},
