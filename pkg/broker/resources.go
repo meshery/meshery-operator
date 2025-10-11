@@ -171,7 +171,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 			Containers: []corev1.Container{
 				{
 					Name:            "nats",
-					Image:           "nats:2.8.2-alpine3.15",
+					Image:           "nats:2.10.14-alpine3.19",
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Ports: []corev1.ContainerPort{
 						{
@@ -279,7 +279,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 				},
 				{
 					Name:            "reloader",
-					Image:           "connecteverything/nats-server-config-reloader:0.6.0",
+					Image:           "connecteverything/nats-server-config-reloader:0.7.0",
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Command: []string{
 						"nats-server-config-reloader", "-pid", "/var/run/nats/nats.pid", "-config", "/etc/nats-config/nats.conf",
