@@ -1,6 +1,6 @@
 module github.com/meshery/meshery-operator
 
-go 1.21
+go 1.24.0
 
 require (
 	github.com/go-logr/logr v1.4.3
