@@ -28,7 +28,6 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
@@ -63,9 +62,7 @@ func main() {
 	opID := uuid.NewUUID()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
-		Metrics: server.Options{
-			BindAddress: metricsAddr,
-		},
+		MetricsBindAddress: metricsAddr,
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port: 9443,
 		}),
