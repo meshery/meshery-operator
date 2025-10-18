@@ -3,6 +3,7 @@ package broker
 import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	intstr "k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -54,7 +55,10 @@ http: 8222
 server_name: $POD_NAME
 # Authorization 
 resolver: MEMORY
-include "accounts/resolver.conf"`,
+include "accounts/resolver.conf"
+# Health check endpoint
+http_port: 8222
+monitor_port: 8222`,
 		},
 	}
 
@@ -246,19 +250,21 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 					LivenessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/",
+								Path: "/varz",
 								Port: intstr.IntOrString{
 									IntVal: val8222,
 								},
 							},
 						},
-						InitialDelaySeconds: 10,
+						InitialDelaySeconds: 15,
 						TimeoutSeconds:      5,
+						PeriodSeconds:       10,
+						FailureThreshold:    3,
 					},
 					ReadinessProbe: &corev1.Probe{
 						ProbeHandler: corev1.ProbeHandler{
 							HTTPGet: &corev1.HTTPGetAction{
-								Path: "/",
+								Path: "/varz",
 								Port: intstr.IntOrString{
 									IntVal: val8222,
 								},
@@ -266,6 +272,8 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 						},
 						InitialDelaySeconds: 10,
 						TimeoutSeconds:      5,
+						PeriodSeconds:       5,
+						FailureThreshold:    3,
 					},
 					Lifecycle: &corev1.Lifecycle{
 						PreStop: &corev1.LifecycleHandler{
@@ -274,6 +282,16 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 									"/bin/sh", "-c", "nats-server -sl=ldm=/var/run/nats/nats.pid && /bin/sleep 60",
 								},
 							},
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("100m"),
+							corev1.ResourceMemory: resource.MustParse("128Mi"),
+						},
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("500m"),
+							corev1.ResourceMemory: resource.MustParse("512Mi"),
 						},
 					},
 				},
