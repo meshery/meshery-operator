@@ -63,7 +63,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		ControlPlaneStartTimeout: timeout,
 		ControlPlaneStopTimeout:  timeout,
 		AttachControlPlaneOutput: false,
-		BinaryAssetsDirectory:    filepath.Join("..", "..", "bin", "k8s", "1.29.0-linux-amd64"),
+		BinaryAssetsDirectory:    filepath.Join("..", "..", "bin", "k8s", "1.29.0-windows-amd64"),
 	}
 
 	var cfg *rest.Config
