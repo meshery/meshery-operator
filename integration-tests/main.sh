@@ -199,23 +199,23 @@ setup() {
     curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash -s -- 3.8.7 "$PROJECT_ROOT/bin"
   fi
 
-  # Create temporary config directory
+  # Create temporary config directory rooted at config
   TEMP_CONFIG_DIR=$(mktemp -d)
-  cp -r config/* "$TEMP_CONFIG_DIR/"
-  
+  cp -r config "$TEMP_CONFIG_DIR/"
+
   # Set the image in temporary config
   echo "Setting operator image to: $OPERATOR_IMAGE"
-  cd "$TEMP_CONFIG_DIR/manager" 
+  cd "$TEMP_CONFIG_DIR/config/manager"
   "$PROJECT_ROOT/bin/kustomize" edit set image meshery/meshery-operator="$OPERATOR_IMAGE"
-  
+
   # Set imagePullPolicy to Never for integration tests (image is loaded into kind cluster)
   sed -i 's/imagePullPolicy: Always/imagePullPolicy: Never/' manager.yaml
-  
-  cd "$PROJECT_ROOT"
-  
+
+  cd "$TEMP_CONFIG_DIR/config"
+
   # Build and deploy using temporary config without make
-  "$PROJECT_ROOT/bin/kustomize" build "$TEMP_CONFIG_DIR/default" | kubectl apply -f -
-  
+  "$PROJECT_ROOT/bin/kustomize" build default | kubectl apply -f -
+
   # Clean up temporary directory
   rm -rf "$TEMP_CONFIG_DIR"
 
