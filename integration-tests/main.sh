@@ -194,6 +194,11 @@ setup() {
   echo "Deploying operator to cluster..."
   cd "$PROJECT_ROOT"
   
+  # Ensure kustomize exists
+  if [ ! -x "$PROJECT_ROOT/bin/kustomize" ]; then
+    curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash -s -- 3.8.7 "$PROJECT_ROOT/bin"
+  fi
+
   # Create temporary config directory
   TEMP_CONFIG_DIR=$(mktemp -d)
   cp -r config/* "$TEMP_CONFIG_DIR/"
@@ -208,8 +213,7 @@ setup() {
   
   cd "$PROJECT_ROOT"
   
-  # Build and deploy using temporary config
-  make manifests kustomize
+  # Build and deploy using temporary config without make
   "$PROJECT_ROOT/bin/kustomize" build "$TEMP_CONFIG_DIR/default" | kubectl apply -f -
   
   # Clean up temporary directory
