@@ -97,6 +97,10 @@ assert_resources_broker() {
     echo "❌ broker statefulset failed to become ready"
     kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=broker
     kubectl --namespace "$OPERATOR_NAMESPACE" describe statefulset/meshery-broker
+    echo "--- Describing broker pods (to check image pull and probe failures) ---"
+    kubectl --namespace "$OPERATOR_NAMESPACE" describe pods -l app=meshery,component=broker || true
+    echo "--- Recent namespace events ---"
+    kubectl --namespace "$OPERATOR_NAMESPACE" get events --sort-by=.lastTimestamp | tail -n 200 || true
     exit 1
   }
   
@@ -152,6 +156,16 @@ setup() {
   echo "Loading operator image into KinD cluster..."
   build_operator_image
   kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER_NAME"
+
+  # Pre-pull and load dependent images to avoid Docker Hub rate limits and ImagePullBackOffs
+  NATS_IMAGE="nats:2.10.29-alpine3.22"
+  RELOADER_IMAGE="connecteverything/nats-server-config-reloader:0.7.0"
+  echo "Pulling dependent images: $NATS_IMAGE, $RELOADER_IMAGE"
+  docker pull "$NATS_IMAGE" || true
+  docker pull "$RELOADER_IMAGE" || true
+  echo "Loading dependent images into KinD cluster..."
+  kind load docker-image "$NATS_IMAGE" --name "$CLUSTER_NAME" || true
+  kind load docker-image "$RELOADER_IMAGE" --name "$CLUSTER_NAME" || true
 
   echo "Creating $OPERATOR_NAMESPACE namespace..."
   kubectl create namespace "$OPERATOR_NAMESPACE" || true
