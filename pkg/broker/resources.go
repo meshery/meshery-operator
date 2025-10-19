@@ -175,7 +175,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 			Containers: []corev1.Container{
 				{
 					Name:            "nats",
-					Image:           "nats:2.10.14-alpine",
+					Image:           "nats:2.10.17-alpine",
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Ports: []corev1.ContainerPort{
 						{
