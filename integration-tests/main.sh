@@ -6,7 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLUSTER_NAME="operator-integration-test-cluster"
 OPERATOR_NAMESPACE="meshery"
-OPERATOR_IMAGE="meshery/meshery-operator:integration-test"
+# Allow overriding operator image via env; default to integration-test tag
+OPERATOR_IMAGE="${OPERATOR_IMAGE:-meshery/meshery-operator:integration-test}"
 
 check_dependencies() {
   # Check for docker
@@ -154,8 +155,15 @@ setup() {
   kind create cluster --name "$CLUSTER_NAME"
 
   echo "Loading operator image into KinD cluster..."
-  build_operator_image
-  kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER_NAME"
+  if [ -n "$USE_STABLE_OPERATOR" ]; then
+    echo "USE_STABLE_OPERATOR is set; skipping local build and using meshery/meshery-operator:stable-latest"
+    OPERATOR_IMAGE="meshery/meshery-operator:stable-latest"
+    docker pull "$OPERATOR_IMAGE" || true
+    kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER_NAME"
+  else
+    build_operator_image
+    kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER_NAME"
+  fi
 
   # Pre-pull and load dependent images to avoid Docker Hub rate limits and ImagePullBackOffs
   NATS_IMAGE="nats:2.10.29-alpine3.22"
