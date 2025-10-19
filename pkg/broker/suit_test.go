@@ -39,6 +39,9 @@ import (
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 )
 
+// ENVTEST_K8S_VERSION should match Makefile's ENVTEST_K8S_VERSION
+const ENVTEST_K8S_VERSION = "1.29.3"
+
 // Initialize test suite entrypoint
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -64,7 +67,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		ControlPlaneStartTimeout: timeout,
 		ControlPlaneStopTimeout:  timeout,
 		AttachControlPlaneOutput: false,
-		BinaryAssetsDirectory:    filepath.Join("..", "..", "bin", "k8s", "1.29.3-"+runtime.GOOS+"-"+runtime.GOARCH),
+		BinaryAssetsDirectory:    filepath.Join("..", "..", "bin", "k8s", ENVTEST_K8S_VERSION+"-"+runtime.GOOS+"-"+runtime.GOARCH),
 	}
 
 	var cfg *rest.Config
