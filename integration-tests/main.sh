@@ -167,7 +167,7 @@ setup() {
 
   # Pre-pull and load dependent images to avoid Docker Hub rate limits and ImagePullBackOffs
   NATS_IMAGE="nats:2.10.29-alpine3.22"
-  RELOADER_IMAGE="connecteverything/nats-server-config-reloader:0.7.0"
+  RELOADER_IMAGE="natsio/nats-server-config-reloader:0.18.2"
   echo "Pulling dependent images: $NATS_IMAGE, $RELOADER_IMAGE"
   docker pull "$NATS_IMAGE" || true
   docker pull "$RELOADER_IMAGE" || true
@@ -180,7 +180,16 @@ setup() {
 
   echo "Installing operator CRDs..."
   cd "$PROJECT_ROOT"
-  make install
+  if command -v make >/dev/null 2>&1; then
+    make install
+  else
+    echo "make not found; downloading kustomize and applying CRDs directly"
+    mkdir -p "$PROJECT_ROOT/bin"
+    if [ ! -x "$PROJECT_ROOT/bin/kustomize" ]; then
+      curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash -s -- 3.8.7 "$PROJECT_ROOT/bin"
+    fi
+    "$PROJECT_ROOT/bin/kustomize" build config/crd | kubectl apply -f -
+  fi
 
   echo "Deploying operator to cluster..."
   cd "$PROJECT_ROOT"
