@@ -96,9 +96,21 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			broker := &v1alpha1.Broker{}
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, broker)
 			Expect(err).ToNot(HaveOccurred())
-			By("Checking if the broker is healthy, it should return an error")
+			
+			// First, ensure StatefulSet doesn't exist
+			statefulSet := &v1.StatefulSet{}
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, statefulSet)
+			if err == nil {
+				// If StatefulSet exists, delete it first
+				err = k8sClient.Delete(ctx, statefulSet)
+				Expect(err).ToNot(HaveOccurred())
+			}
+			
+			By("Checking if the broker is healthy, it should return an error when StatefulSet doesn't exist")
 			Expect(brokerpackage.CheckHealth(ctx, broker, clientSet)).To(HaveOccurred())
-			statefulSet := &v1.StatefulSet{
+			
+			// Now create the StatefulSet
+			statefulSet = &v1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "default",
@@ -124,6 +136,20 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			By("Creating statefulset resources for testing broker")
 			err = k8sClient.Create(ctx, statefulSet)
 			Expect(err).ToNot(HaveOccurred())
+			
+			// Update StatefulSet status to make it healthy
+			statefulSet.Status.Replicas = broker.Spec.Size
+			statefulSet.Status.ReadyReplicas = broker.Spec.Size
+			statefulSet.Status.Conditions = []v1.StatefulSetCondition{
+				{
+					Type:   v1.StatefulSetConditionType("Ready"),
+					Status: corev1.ConditionTrue,
+					Reason: "AllReplicasReady",
+				},
+			}
+			err = k8sClient.Status().Update(ctx, statefulSet)
+			Expect(err).ToNot(HaveOccurred())
+			
 			By("Checking if the broker is healthy, it should be successful")
 			Expect(brokerpackage.CheckHealth(ctx, broker, clientSet)).To(Succeed())
 		})
