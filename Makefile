@@ -8,7 +8,7 @@ VERSION ?= 0.0.1
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 BIN_DIR := $(PROJECT_DIR)/bin
 
-ENVTEST_K8S_VERSION = 1.24.2
+ENVTEST_K8S_VERSION = 1.30.0
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -290,3 +290,34 @@ $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION):
 test-env:
 	make bin/setup-envtest
 	bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR)
+
+##@ Integration Tests
+
+.PHONY: integration-tests-check-dependencies
+## Runs integration tests check dependencies (if docker, kind, kubectl are present)
+integration-tests-check-dependencies:
+	./integration-tests/main.sh check_dependencies
+
+.PHONY: integration-tests-setup
+## Runs integration tests set up (creates kind cluster, builds and deploys operator)
+integration-tests-setup:
+	./integration-tests/main.sh setup
+
+.PHONY: integration-tests-cleanup
+## Runs integration tests clean up (stops cluster and removes operator image)
+integration-tests-cleanup:
+	./integration-tests/main.sh cleanup
+
+.PHONY: integration-tests-run
+## Runs integration tests (validates that meshsync and broker are deployed properly)
+integration-tests-run:
+	./integration-tests/main.sh assert
+
+.PHONY: integration-tests-setup-debug-output
+## Debug integration tests by outputting cluster state
+integration-tests-setup-debug-output:
+	./integration-tests/main.sh debug
+
+.PHONY: integration-tests
+## Runs integration tests full cycle (setup, run validation, cleanup)
+integration-tests: integration-tests-setup integration-tests-run integration-tests-cleanup
