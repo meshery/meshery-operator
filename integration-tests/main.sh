@@ -6,8 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLUSTER_NAME="operator-integration-test-cluster"
 OPERATOR_NAMESPACE="meshery"
-# Allow overriding operator image via env; default to integration-test tag
-OPERATOR_IMAGE="${OPERATOR_IMAGE:-meshery/meshery-operator:integration-test}"
+OPERATOR_IMAGE="meshery/meshery-operator:integration-test"
 
 check_dependencies() {
   # Check for docker
@@ -98,10 +97,6 @@ assert_resources_broker() {
     echo "❌ broker statefulset failed to become ready"
     kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=broker
     kubectl --namespace "$OPERATOR_NAMESPACE" describe statefulset/meshery-broker
-    echo "--- Describing broker pods (to check image pull and probe failures) ---"
-    kubectl --namespace "$OPERATOR_NAMESPACE" describe pods -l app=meshery,component=broker || true
-    echo "--- Recent namespace events ---"
-    kubectl --namespace "$OPERATOR_NAMESPACE" get events --sort-by=.lastTimestamp | tail -n 200 || true
     exit 1
   }
   
@@ -155,67 +150,37 @@ setup() {
   kind create cluster --name "$CLUSTER_NAME"
 
   echo "Loading operator image into KinD cluster..."
-  if [ -n "$USE_STABLE_OPERATOR" ]; then
-    echo "USE_STABLE_OPERATOR is set; skipping local build and using meshery/meshery-operator:stable-latest"
-    OPERATOR_IMAGE="meshery/meshery-operator:stable-latest"
-    docker pull "$OPERATOR_IMAGE" || true
-    kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER_NAME"
-  else
-    build_operator_image
-    kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER_NAME"
-  fi
-
-  # Pre-pull and load dependent images to avoid Docker Hub rate limits and ImagePullBackOffs
-  NATS_IMAGE="nats:2.10.29-alpine3.22"
-  RELOADER_IMAGE="natsio/nats-server-config-reloader:0.18.2"
-  echo "Pulling dependent images: $NATS_IMAGE, $RELOADER_IMAGE"
-  docker pull "$NATS_IMAGE" || true
-  docker pull "$RELOADER_IMAGE" || true
-  echo "Loading dependent images into KinD cluster..."
-  kind load docker-image "$NATS_IMAGE" --name "$CLUSTER_NAME" || true
-  kind load docker-image "$RELOADER_IMAGE" --name "$CLUSTER_NAME" || true
+  build_operator_image
+  kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER_NAME"
 
   echo "Creating $OPERATOR_NAMESPACE namespace..."
   kubectl create namespace "$OPERATOR_NAMESPACE" || true
 
   echo "Installing operator CRDs..."
   cd "$PROJECT_ROOT"
-  if command -v make >/dev/null 2>&1; then
-    make install
-  else
-    echo "make not found; downloading kustomize and applying CRDs directly"
-    mkdir -p "$PROJECT_ROOT/bin"
-    if [ ! -x "$PROJECT_ROOT/bin/kustomize" ]; then
-      curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash -s -- 3.8.7 "$PROJECT_ROOT/bin"
-    fi
-    "$PROJECT_ROOT/bin/kustomize" build config/crd | kubectl apply -f -
-  fi
+  make install
 
   echo "Deploying operator to cluster..."
   cd "$PROJECT_ROOT"
   
-  # Ensure kustomize exists
-  if [ ! -x "$PROJECT_ROOT/bin/kustomize" ]; then
-    curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash -s -- 3.8.7 "$PROJECT_ROOT/bin"
-  fi
-
-  # Create temporary config directory rooted at config
+  # Create temporary config directory
   TEMP_CONFIG_DIR=$(mktemp -d)
-  cp -r config "$TEMP_CONFIG_DIR/"
-
+  cp -r config/* "$TEMP_CONFIG_DIR/"
+  
   # Set the image in temporary config
   echo "Setting operator image to: $OPERATOR_IMAGE"
-  cd "$TEMP_CONFIG_DIR/config/manager"
+  cd "$TEMP_CONFIG_DIR/manager" 
   "$PROJECT_ROOT/bin/kustomize" edit set image meshery/meshery-operator="$OPERATOR_IMAGE"
-
+  
   # Set imagePullPolicy to Never for integration tests (image is loaded into kind cluster)
   sed -i 's/imagePullPolicy: Always/imagePullPolicy: Never/' manager.yaml
-
-  cd "$TEMP_CONFIG_DIR/config"
-
-  # Build and deploy using temporary config without make
-  "$PROJECT_ROOT/bin/kustomize" build default | kubectl apply -f -
-
+  
+  cd "$PROJECT_ROOT"
+  
+  # Build and deploy using temporary config
+  make manifests kustomize
+  "$PROJECT_ROOT/bin/kustomize" build "$TEMP_CONFIG_DIR/default" | kubectl apply -f -
+  
   # Clean up temporary directory
   rm -rf "$TEMP_CONFIG_DIR"
 

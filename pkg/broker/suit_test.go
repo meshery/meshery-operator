@@ -19,14 +19,13 @@ package broker
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	apiv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
@@ -38,9 +37,6 @@ import (
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 )
-
-// ENVTEST_K8S_VERSION should match Makefile's ENVTEST_K8S_VERSION
-const ENVTEST_K8S_VERSION = "1.29.3"
 
 // Initialize test suite entrypoint
 func TestAPIs(t *testing.T) {
@@ -67,7 +63,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		ControlPlaneStartTimeout: timeout,
 		ControlPlaneStopTimeout:  timeout,
 		AttachControlPlaneOutput: false,
-		BinaryAssetsDirectory:    filepath.Join("..", "..", "bin", "k8s", ENVTEST_K8S_VERSION+"-"+runtime.GOOS+"-"+runtime.GOARCH),
+		BinaryAssetsDirectory:    filepath.Join("..", "..", "bin", "k8s", "1.24.2-linux-amd64"),
 	}
 
 	var cfg *rest.Config
@@ -82,7 +78,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	scheme := k8sruntime.NewScheme()
+	scheme := runtime.NewScheme()
 
 	Expect(mesheryv1alpha1.AddToScheme(scheme)).To(Succeed())
 	Expect(k8sscheme.AddToScheme(scheme)).To(Succeed())
