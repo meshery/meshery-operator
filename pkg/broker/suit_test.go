@@ -19,13 +19,14 @@ package broker
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	apiv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	runtime "k8s.io/apimachinery/pkg/runtime"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
@@ -55,6 +56,12 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 
 	By("bootstrapping test environment")
 	timeout := 3 * time.Minute
+	// Get K8s version from environment variable, default to 1.29.3
+	k8sVersion := os.Getenv("ENVTEST_K8S_VERSION")
+	if k8sVersion == "" {
+		k8sVersion = "1.29.3"
+	}
+	binaryAssetsDir := filepath.Join("..", "..", "bin", "k8s", k8sVersion+"-"+runtime.GOOS+"-"+runtime.GOARCH)
 	testEnv = &envtest.Environment{
 		ErrorIfCRDPathMissing: true,
 		CRDDirectoryPaths: []string{
@@ -63,7 +70,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		ControlPlaneStartTimeout: timeout,
 		ControlPlaneStopTimeout:  timeout,
 		AttachControlPlaneOutput: false,
-		BinaryAssetsDirectory:    filepath.Join("..", "..", "bin", "k8s", "1.24.2-linux-amd64"),
+		BinaryAssetsDirectory:    binaryAssetsDir,
 	}
 
 	var cfg *rest.Config
@@ -78,7 +85,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	scheme := runtime.NewScheme()
+	scheme := k8sruntime.NewScheme()
 
 	Expect(mesheryv1alpha1.AddToScheme(scheme)).To(Succeed())
 	Expect(k8sscheme.AddToScheme(scheme)).To(Succeed())

@@ -8,7 +8,7 @@ VERSION ?= 0.0.1
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 BIN_DIR := $(PROJECT_DIR)/bin
 
-ENVTEST_K8S_VERSION = 1.29.3
+ENVTEST_K8S_VERSION ?= 1.29.3
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -116,8 +116,8 @@ tidy: ## Run go mod tidy against code.
 	go mod tidy
 
 .PHONY: test
-test: manifests generate fmt vet ## Run tests.
-	go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
+test: test-env manifests generate fmt vet ## Run tests.
+	ENVTEST_K8S_VERSION=$(ENVTEST_K8S_VERSION) go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
 
 ##@ Build
 
