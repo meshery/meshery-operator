@@ -1,4 +1,6 @@
 name: Meshery-Operator Build and Releaser
+permissions: read-all
+
 on:
   push:
     branches:
