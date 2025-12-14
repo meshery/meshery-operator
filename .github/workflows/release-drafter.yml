@@ -1,4 +1,5 @@
 name: Release Drafter
+permissions: read-all
 
 on:
   workflow_dispatch:
@@ -8,12 +9,11 @@ on:
     # paths-ignore:
     #   - '.github/**'
 
-permissions:
-  contents: read
-  pull-requests: write
-
 jobs:
   update_release_draft:
+    permissions:
+      contents: read
+      pull-requests: write
     if: github.repository == 'meshery/meshery-operator'
     runs-on: ubuntu-24.04
     steps:
