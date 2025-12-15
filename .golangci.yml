@@ -44,7 +44,6 @@ linters:
   enable-all: false
   disable-all: false
   linters:
-    - gci
     - goconst
     - gocritic
     - govet
@@ -56,6 +55,14 @@ linters:
   exclude-rules:
     - testpackage
 
+formatters:
+  enable:
+    - gci
+
+run:
+  timeout: 5m
+  enable-cache: true
+  skip-dirs:
 issues:
   exclude-dirs:
     - vendor
