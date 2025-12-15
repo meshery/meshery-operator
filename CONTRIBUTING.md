@@ -64,7 +64,7 @@ Ensure the following are installed on your local machine:
 - Docker  
 - kubectl  
 - Kubernetes (e.g., Minikube or Kind)  
-- Golang (v1.24 or later)  
+- Golang (v1.25 or later)  
 - Make  
 - Git  
 
