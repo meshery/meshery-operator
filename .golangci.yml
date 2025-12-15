@@ -43,7 +43,6 @@ linters:
   enable-all: false
   disable-all: false
   linters:
-    - gci
     - goconst
     - gocritic
     - govet
@@ -53,6 +52,10 @@ linters:
     - scopelint
   exclude-rules:
     - testpackage
+
+formatters:
+  enable:
+    - gci
 
 run:
   timeout: 5m
