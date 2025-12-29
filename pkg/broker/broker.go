@@ -9,7 +9,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -62,8 +63,9 @@ func getAccountConfig() Object {
 	return obj
 }
 
-func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset) error {
-	obj, err := client.AppsV1().StatefulSets(m.ObjectMeta.Namespace).Get(ctx, m.Name, metav1.GetOptions{})
+func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client client.Client) error {
+	obj := &v1.StatefulSet{}
+	err := client.Get(ctx, types.NamespacedName{Name: m.ObjectMeta.Name, Namespace: m.ObjectMeta.Namespace}, obj)
 	if err != nil {
 		return ErrGettingResource(err)
 	}
@@ -83,8 +85,9 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client *kuberne
 }
 
 // GetEndpoint returns those endpoints in the given service which match the selector.
-func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client *kubernetes.Clientset, url string) error {
-	serviceObj, err := client.CoreV1().Services(m.ObjectMeta.Namespace).Get(ctx, m.Name, metav1.GetOptions{})
+func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client client.Client, url string) error {
+	serviceObj := &corev1.Service{}
+	err := client.Get(ctx, types.NamespacedName{Name: m.ObjectMeta.Name, Namespace: m.ObjectMeta.Namespace}, serviceObj)
 	if err != nil {
 		return ErrGettingResource(err)
 	}
