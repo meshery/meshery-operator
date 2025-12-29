@@ -97,7 +97,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, broker)
 			Expect(err).ToNot(HaveOccurred())
 			By("Checking if the broker is healthy, it should return an error")
-			Expect(brokerpackage.CheckHealth(ctx, broker, clientSet)).To(HaveOccurred())
+			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(HaveOccurred())
 			statefulSet := &v1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -125,7 +125,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			err = k8sClient.Create(ctx, statefulSet)
 			Expect(err).ToNot(HaveOccurred())
 			By("Checking if the broker is healthy, it should be successful")
-			Expect(brokerpackage.CheckHealth(ctx, broker, clientSet)).To(Succeed())
+			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(Succeed())
 		})
 
 	})

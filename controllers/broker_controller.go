@@ -74,13 +74,13 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// Check if Broker controller started
-	err = brokerpackage.CheckHealth(ctx, baseResource, r.Clientset)
+	err = brokerpackage.CheckHealth(ctx, baseResource, r.Client)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, ErrCheckHealth(err)
 	}
 
 	// Get broker endpoint
-	err = brokerpackage.GetEndpoint(ctx, baseResource, r.Clientset, r.KubeConfig.Host)
+	err = brokerpackage.GetEndpoint(ctx, baseResource, r.Client, r.KubeConfig.Host)
 	if err != nil {
 		err = ErrGetEndpoint(err)
 		r.Log.Error(err, "unable to get the broker endpoint")

@@ -106,7 +106,7 @@ var _ = Describe("Broker funtions test cases", func() {
 			err := k8sClient.Create(ctx, s)
 			Expect(err).ToNot(HaveOccurred())
 			By("Checking if the broker is healthy, it should be successful")
-			Expect(CheckHealth(ctx, m, clientSet)).To(Succeed())
+			Expect(CheckHealth(ctx, m, k8sClient)).To(Succeed())
 
 		})
 	})
@@ -151,7 +151,7 @@ var _ = Describe("Broker funtions test cases", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			url := "http://localhost:8080"
-			Expect(GetEndpoint(ctx, m, clientSet, url)).ShouldNot(HaveOccurred())
+			Expect(GetEndpoint(ctx, m, k8sClient, url)).ShouldNot(HaveOccurred())
 
 			By("checking m.status.endpoint")
 			Expect(m.Status.Endpoint.External).To(Equal("localhost:30002"))
