@@ -65,7 +65,7 @@ func getAccountConfig() Object {
 
 func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client client.Client) error {
 	obj := &v1.StatefulSet{}
-	err := client.Get(ctx, types.NamespacedName{Name: m.ObjectMeta.Name, Namespace: m.ObjectMeta.Namespace}, obj)
+	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj)
 	if err != nil {
 		return ErrGettingResource(err)
 	}
@@ -87,7 +87,7 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client client.C
 // GetEndpoint returns those endpoints in the given service which match the selector.
 func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client client.Client, url string) error {
 	serviceObj := &corev1.Service{}
-	err := client.Get(ctx, types.NamespacedName{Name: m.ObjectMeta.Name, Namespace: m.ObjectMeta.Namespace}, serviceObj)
+	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, serviceObj)
 	if err != nil {
 		return ErrGettingResource(err)
 	}

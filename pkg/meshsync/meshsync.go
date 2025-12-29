@@ -22,11 +22,10 @@ import (
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -56,7 +55,7 @@ func getServerObject(namespace, name string, replicas int32, url string) Object 
 
 func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, client client.Client) error {
 	obj := &v1.Deployment{}
-	err := client.Get(ctx, types.NamespacedName{Name: m.ObjectMeta.Name, Namespace: m.ObjectMeta.Namespace}, obj)
+	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj)
 	if err != nil {
 		return ErrGettingResource(err)
 	}

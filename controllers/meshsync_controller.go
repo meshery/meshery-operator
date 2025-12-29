@@ -132,8 +132,8 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 	brokerresource := &mesheryv1alpha1.Broker{}
 	nullNativeResource := mesheryv1alpha1.NativeMeshsyncBroker{}
 	if baseResource.Spec.Broker.Native != nullNativeResource {
-		brokerresource.ObjectMeta.Namespace = baseResource.Spec.Broker.Native.Namespace
-		brokerresource.ObjectMeta.Name = baseResource.Spec.Broker.Native.Name
+		brokerresource.Namespace = baseResource.Spec.Broker.Native.Namespace
+		brokerresource.Name = baseResource.Spec.Broker.Native.Name
 		err := brokerpackage.GetEndpoint(ctx, brokerresource, r.Client, r.KubeConfig.Host)
 		if err != nil {
 			return ErrGetEndpoint(err)
