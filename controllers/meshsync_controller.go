@@ -20,22 +20,20 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
+	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
+	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
+	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	util "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
-	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
-	"github.com/meshery/meshery-operator/pkg/meshsync"
-	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
-	"github.com/meshery/meshery-operator/pkg/utils"
-	kubeerror "k8s.io/apimachinery/pkg/api/errors"
-	types "k8s.io/apimachinery/pkg/types"
 )
 
 // MeshSyncReconciler reconciles a MeshSync object
@@ -82,7 +80,7 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, ErrReconcileMeshsync(err)
 	}
 
-	err = meshsync.CheckHealth(ctx, baseResource, r.Client)
+	err = meshsyncpackage.CheckHealth(ctx, baseResource, r.Client)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, ErrCheckHealth(err)
 	}
@@ -132,8 +130,8 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 	brokerresource := &mesheryv1alpha1.Broker{}
 	nullNativeResource := mesheryv1alpha1.NativeMeshsyncBroker{}
 	if baseResource.Spec.Broker.Native != nullNativeResource {
-		brokerresource.ObjectMeta.Namespace = baseResource.Spec.Broker.Native.Namespace
-		brokerresource.ObjectMeta.Name = baseResource.Spec.Broker.Native.Name
+		brokerresource.Namespace = baseResource.Spec.Broker.Native.Namespace
+		brokerresource.Name = baseResource.Spec.Broker.Native.Name
 		err := brokerpackage.GetEndpoint(ctx, brokerresource, r.Client, r.KubeConfig.Host)
 		if err != nil {
 			return ErrGetEndpoint(err)

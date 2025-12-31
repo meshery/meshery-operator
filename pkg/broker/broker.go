@@ -29,16 +29,16 @@ func GetObjects(m *mesheryv1alpha1.Broker) map[string]Object {
 	return map[string]Object{
 		ServerConfig:  getServerConfig(),
 		AccountConfig: getAccountConfig(),
-		ServerObject:  getServerObject(m.ObjectMeta.Namespace, m.ObjectMeta.Name, m.Spec.Size),
-		ServiceObject: getServiceObject(m.ObjectMeta.Namespace, m.ObjectMeta.Name),
+		ServerObject:  getServerObject(m.Namespace, m.Name, m.Spec.Size),
+		ServiceObject: getServiceObject(m.Namespace, m.Name),
 	}
 }
 
 func getServerObject(namespace, name string, replicas int32) Object {
 	var obj = &v1.StatefulSet{}
 	StatefulSet.DeepCopyInto(obj)
-	obj.ObjectMeta.Namespace = namespace
-	obj.ObjectMeta.Name = name
+	obj.Namespace = namespace
+	obj.Name = name
 	obj.Spec.Replicas = &replicas
 	return obj
 }
@@ -46,8 +46,8 @@ func getServerObject(namespace, name string, replicas int32) Object {
 func getServiceObject(namespace, name string) Object {
 	var obj = &corev1.Service{}
 	Service.DeepCopyInto(obj)
-	obj.ObjectMeta.Name = name
-	obj.ObjectMeta.Namespace = namespace
+	obj.Name = name
+	obj.Namespace = namespace
 	return obj
 }
 
@@ -65,7 +65,7 @@ func getAccountConfig() Object {
 
 func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client client.Client) error {
 	obj := &v1.StatefulSet{}
-	err := client.Get(ctx, types.NamespacedName{Name: m.ObjectMeta.Name, Namespace: m.ObjectMeta.Namespace}, obj)
+	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj)
 	if err != nil {
 		return ErrGettingResource(err)
 	}
@@ -87,14 +87,14 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client client.C
 // GetEndpoint returns those endpoints in the given service which match the selector.
 func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client client.Client, url string) error {
 	serviceObj := &corev1.Service{}
-	err := client.Get(ctx, types.NamespacedName{Name: m.ObjectMeta.Name, Namespace: m.ObjectMeta.Namespace}, serviceObj)
+	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, serviceObj)
 	if err != nil {
 		return ErrGettingResource(err)
 	}
 
 	opts := &meshkitkube.ServiceOptions{
-		Name:         m.ObjectMeta.Name,
-		Namespace:    m.ObjectMeta.Namespace,
+		Name:         m.Name,
+		Namespace:    m.Namespace,
 		PortSelector: "client",
 		APIServerURL: url,
 		WorkerNodeIP: "localhost",

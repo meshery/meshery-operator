@@ -72,6 +72,3 @@ issues:
     - helpers
     - img
 
-run:
-  timeout: 5m
-  enable-cache: true
