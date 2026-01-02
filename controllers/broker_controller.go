@@ -20,19 +20,18 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
+	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
+	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
-	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
-	"github.com/meshery/meshery-operator/pkg/utils"
-	kubeerror "k8s.io/apimachinery/pkg/api/errors"
-	types "k8s.io/apimachinery/pkg/types"
 )
 
 // BrokerReconciler reconciles a Broker object
@@ -74,13 +73,13 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// Check if Broker controller started
-	err = brokerpackage.CheckHealth(ctx, baseResource, r.Clientset)
+	err = brokerpackage.CheckHealth(ctx, baseResource, r.Client)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, ErrCheckHealth(err)
 	}
 
 	// Get broker endpoint
-	err = brokerpackage.GetEndpoint(ctx, baseResource, r.Clientset, r.KubeConfig.Host)
+	err = brokerpackage.GetEndpoint(ctx, baseResource, r.Client, r.KubeConfig.Host)
 	if err != nil {
 		err = ErrGetEndpoint(err)
 		r.Log.Error(err, "unable to get the broker endpoint")

@@ -21,21 +21,18 @@ import (
 	"fmt"
 	"os"
 
+	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	"github.com/meshery/meshery-operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
-	"github.com/meshery/meshery-operator/controllers"
-
-	"k8s.io/client-go/kubernetes"
-	// +kubebuilder:scaffold:imports
 )
 
 var (
