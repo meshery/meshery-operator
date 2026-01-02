@@ -1,77 +1,72 @@
-version: 2
+version: "2"
 
-linters-settings:
-  go-mod-tidy:
-    enabled: true
-  gci:
-    enabled: true
-    max-len: 120
-    line-length: 120
-  goconst:
-    enabled: true
-  gocritic:
-    enabled: true
-    disable:
-      - parallelize
-      - nesting
-      - hugeParam
-      - hugeStruct
-      - nestParam
-      - prealloc
-  govet:
-    enabled: true
-    tests: true
-  golint:
-    enabled: true
-    min-confidence: 0.8
-  unused:
-    enabled: true
-    check-exported: true
-    check-packages: true
-    check-generated: true
-    tests: true
-    allow-unused-type-export: true
-  cyclop:
-    enabled: true
-    average-strictness: 7
-  scopelint:
-    enabled: true
-    tests: true
-
-
-# Configuration for golangci-lint that is suitable for a Kubernetes operator project built with Golang
 linters:
-  enable-all: false
-  disable-all: false
-  linters:
+  
+  enable:
     - goconst
     - gocritic
     - govet
-    - golint
+    - staticcheck      
     - unused
     - cyclop
-    - scopelint
-    - shadow
-  exclude-rules:
-    - testpackage
+  
+  settings:
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    
+    govet:
+      enable-all: true
+    
+    staticcheck:
+      checks: ["all"]
+    
+    unused:
+      exported-fields-are-used: false
+    
+    cyclop:
+      max-complexity: 15
+  
+  exclusions:
+    warn-unused: true
+    
+    generated: 'disable'
+    
+    rules:
+      - path: "_test\\.go"
+        linters:
+          - testpackage
+      
+      - path: "(vendor|bundle|config|hack|helpers|img)/.*"
+        linters:
+          - gocritic
+          - goconst
+          - govet
+          - staticcheck
+          - unused
+          - cyclop
+          - exportloopref
+          - shadow
 
 formatters:
   enable:
     - gci
+    - gofmt
+    - goimports
+  
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+    
+    gofmt:
+      simplify: true
 
 run:
   timeout: 5m
-  enable-cache: true
-  skip-dirs:
+  tests: true
+
 issues:
-  exclude-dirs:
-    - vendor
-    - bundle
-    - config
-    - hack
-    - helpers
-    - img
-
-run:
-  timeout: 5m
-  enable-cache: true
+  max-issues-per-linter: 0
+  max-same-issues: 0
