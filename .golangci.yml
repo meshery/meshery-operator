@@ -52,6 +52,9 @@ linters:
     - cyclop
     - scopelint
     - shadow
+  settings:
+    staticcheck:
+      checks: ["all", "-ST1005"]
   exclude-rules:
     - testpackage
 
@@ -71,7 +74,3 @@ issues:
     - hack
     - helpers
     - img
-
-run:
-  timeout: 5m
-  enable-cache: true
