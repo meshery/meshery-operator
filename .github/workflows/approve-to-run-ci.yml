@@ -26,11 +26,6 @@ jobs:
             uses: golangci/golangci-lint-action@v9
             with:
               version: v2.8.0
-              verify: false
-          - name: Run golangci-lint version
-            run: make lintver
-          - name: Run golangci-lint
-            run: make lint
     tidy:
         name: Go mod tidy
         runs-on: ubuntu-24.04
@@ -46,7 +41,8 @@ jobs:
           - name: Run go mod tidy
             run: make tidy
     codecov:
-        needs: [tidy, golangci-lint]
+        # do not require golandci-lint before codecov, there are some issues there to address, we still want unit tests to run
+        needs: [tidy]
         name: Code Coverage
         if: github.repository == 'meshery/meshery-operator'
         runs-on: ubuntu-24.04
