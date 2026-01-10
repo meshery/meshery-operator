@@ -25,9 +25,7 @@ jobs:
           - name: golangci-lint
             uses: golangci/golangci-lint-action@v9
             with:
-              version: v2.7.2
-          - name: Run golangci-lint
-            run: make lint
+              version: v2.8.0
     tidy:
         name: Go mod tidy
         runs-on: ubuntu-24.04
