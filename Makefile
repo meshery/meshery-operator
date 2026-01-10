@@ -106,10 +106,6 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
-lintver:
-	golangci-lint --version
-
-
 # Run go lint against code
 .PHONY: lint
 lint:
