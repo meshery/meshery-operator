@@ -59,8 +59,8 @@ var _ = Describe("Broker funtions test cases", func() {
 
 			By("checking server object, namespace and name, replicas")
 			Expect(obj[ServerObject]).ToNot(BeNil())
-			Expect(obj[ServerObject].GetNamespace()).To(Equal(m.ObjectMeta.Namespace))
-			Expect(obj[ServerObject].GetName()).To(Equal(m.ObjectMeta.Name))
+			Expect(obj[ServerObject].GetNamespace()).To(Equal(m.Namespace))
+			Expect(obj[ServerObject].GetName()).To(Equal(m.Name))
 		})
 	})
 

@@ -20,22 +20,21 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	util "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
 	"github.com/meshery/meshery-operator/pkg/meshsync"
 	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
 	"github.com/meshery/meshery-operator/pkg/utils"
+	appsv1 "k8s.io/api/apps/v1"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	util "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // MeshSyncReconciler reconciles a MeshSync object
@@ -43,8 +42,8 @@ type MeshSyncReconciler struct {
 	client.Client
 	KubeConfig *rest.Config
 	Clientset  *kubernetes.Clientset
-	Log        logr.Logger
 	Scheme     *runtime.Scheme
+	Log        logr.Logger
 }
 
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
@@ -132,8 +131,8 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 	brokerresource := &mesheryv1alpha1.Broker{}
 	nullNativeResource := mesheryv1alpha1.NativeMeshsyncBroker{}
 	if baseResource.Spec.Broker.Native != nullNativeResource {
-		brokerresource.ObjectMeta.Namespace = baseResource.Spec.Broker.Native.Namespace
-		brokerresource.ObjectMeta.Name = baseResource.Spec.Broker.Native.Name
+		brokerresource.Namespace = baseResource.Spec.Broker.Native.Namespace
+		brokerresource.Name = baseResource.Spec.Broker.Native.Name
 		err := brokerpackage.GetEndpoint(ctx, brokerresource, r.Clientset, r.KubeConfig.Host)
 		if err != nil {
 			return ErrGetEndpoint(err)
