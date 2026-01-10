@@ -52,6 +52,9 @@ linters:
     - cyclop
     - scopelint
     - shadow
+  settings:
+    staticcheck:
+      checks: ["all", "-ST1005"]
   exclude-rules:
     - testpackage
 
@@ -61,8 +64,7 @@ formatters:
 
 run:
   timeout: 5m
-  enable-cache: true
-  skip-dirs:
+
 issues:
   exclude-dirs:
     - vendor
@@ -71,7 +73,3 @@ issues:
     - hack
     - helpers
     - img
-
-run:
-  timeout: 5m
-  enable-cache: true
