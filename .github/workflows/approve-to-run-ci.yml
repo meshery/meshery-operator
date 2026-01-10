@@ -45,8 +45,7 @@ jobs:
           - name: Run go mod tidy
             run: make tidy
     codecov:
-        # do not require golandci-lint before codecov, there are some issues there to address, we still want unit tests to run
-        needs: [tidy]
+        needs: [tidy, golangci-lint]
         name: Code Coverage
         if: github.repository == 'meshery/meshery-operator'
         runs-on: ubuntu-24.04
