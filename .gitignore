@@ -6,6 +6,8 @@
 *.dylib
 /bin
 
+#coverage file 
+coverage.txt
 # Test binary, built with `go test -c`
 *.test
 

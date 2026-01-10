@@ -45,8 +45,8 @@ type MeshSyncSpec struct {
 
 // MeshSyncStatus defines the observed state of MeshSync
 type MeshSyncStatus struct {
-	PublishingTo string      `json:"publishing-to,omitempty" yaml:"publishing-to,omitempty"`
-	Conditions   []Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	PublishingTo string             `json:"publishing-to,omitempty" yaml:"publishing-to,omitempty"`
+	Conditions   []metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // MeshSync is the Schema for the meshsyncs API
