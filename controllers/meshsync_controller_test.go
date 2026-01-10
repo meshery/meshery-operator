@@ -39,7 +39,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 
 	Context("Testing meshSync's nothing found logic", func() {
 		It("Getting meshSync resource should be failing", func() {
-			namespace = "default"
+			namespace = defaultNamespace
 			meshSync := &v1alpha1.MeshSync{}
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, meshSync)
 			Expect(err).To(HaveOccurred())
@@ -47,7 +47,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 	})
 
 	It("Creating a meshSync resource", func() {
-		namespace = "default"
+		namespace = defaultNamespace
 		meshSync := &v1alpha1.MeshSync{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "meshery.io/v1alpha1",
@@ -65,7 +65,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 	})
 
 	It("Getting meshSync resource should be successful", func() {
-		namespace = "default"
+		namespace = defaultNamespace
 		meshSync := &v1alpha1.MeshSync{}
 		err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, meshSync)
 		Expect(err).ToNot(HaveOccurred())
@@ -73,7 +73,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 	})
 
 	It("Updating meshSync resource should be successful", func() {
-		namespace = "default"
+		namespace = defaultNamespace
 		meshSync := &v1alpha1.MeshSync{}
 		err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, meshSync)
 		Expect(err).ToNot(HaveOccurred())
@@ -89,7 +89,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 
 	Context("Testing MeshSync's Cleanup logic", func() {
 		It("Deleting meshSync resource should be succeeding", func() {
-			namespace = "default"
+			namespace = defaultNamespace
 			meshSync := &v1alpha1.MeshSync{}
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, meshSync)
 			Expect(err).ToNot(HaveOccurred())

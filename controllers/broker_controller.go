@@ -138,16 +138,17 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, bas
 			},
 			object,
 		)
-		if err != nil && kubeerror.IsNotFound(err) && enable {
+		switch {
+		case err != nil && kubeerror.IsNotFound(err) && enable:
 			_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
 			er := r.Create(ctx, object)
 			if er != nil {
 				return ctrl.Result{}, ErrCreateBroker(er)
 			}
 			return ctrl.Result{Requeue: true}, nil
-		} else if err != nil && enable {
+		case err != nil && enable:
 			return ctrl.Result{}, ErrGetBroker(err)
-		} else if err == nil && !kubeerror.IsNotFound(err) && !enable {
+		case err == nil && !kubeerror.IsNotFound(err) && !enable:
 			er := r.Delete(ctx, object)
 			if er != nil {
 				return ctrl.Result{}, ErrDeleteBroker(er)
