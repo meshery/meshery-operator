@@ -37,7 +37,7 @@ const (
 	ErrMarshalCode           = "11049"
 )
 
-// Error definitions
+// ErrGetMeshsync returns an error when unable to get meshsync resource
 func ErrGetMeshsync(err error) error {
 	return fmt.Errorf("%s: Unable to get meshsync resource: %w", ErrGetMeshsyncCode, err)
 }
