@@ -26,6 +26,7 @@ jobs:
             uses: golangci/golangci-lint-action@v9
             with:
               version: v2.8.0
+              verify: false
           - name: Run golangci-lint version
             run: make lintver
           - name: Run golangci-lint
