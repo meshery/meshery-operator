@@ -22,7 +22,6 @@ import (
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -39,22 +38,22 @@ type Object interface {
 
 func GetObjects(m *mesheryv1alpha1.MeshSync) map[string]Object {
 	return map[string]Object{
-		ServerObject: getServerObject(m.ObjectMeta.Namespace, m.ObjectMeta.Name, m.Spec.Size, m.Status.PublishingTo),
+		ServerObject: getServerObject(m.Namespace, m.Name, m.Spec.Size, m.Status.PublishingTo),
 	}
 }
 
 func getServerObject(namespace, name string, replicas int32, url string) Object {
 	var obj = &v1.Deployment{}
 	Deployment.DeepCopyInto(obj)
-	obj.ObjectMeta.Namespace = namespace
-	obj.ObjectMeta.Name = name
+	obj.Namespace = namespace
+	obj.Name = name
 	obj.Spec.Replicas = &replicas
 	obj.Spec.Template.Spec.Containers[0].Env[0].Value = url // Set broker endpoint
 	return obj
 }
 
 func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, client *kubernetes.Clientset) error {
-	obj, err := client.AppsV1().Deployments(m.ObjectMeta.Namespace).Get(ctx, m.ObjectMeta.Name, metav1.GetOptions{})
+	obj, err := client.AppsV1().Deployments(m.ObjectMeta.Namespace).Get(ctx, m.Name, metav1.GetOptions{})
 	if err != nil {
 		return ErrGettingResource(err)
 	}

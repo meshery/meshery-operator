@@ -20,19 +20,18 @@ import (
 	"context"
 
 	"github.com/go-logr/logr"
+	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
+	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
+	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
-	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
-	"github.com/meshery/meshery-operator/pkg/utils"
-	kubeerror "k8s.io/apimachinery/pkg/api/errors"
-	types "k8s.io/apimachinery/pkg/types"
 )
 
 // BrokerReconciler reconciles a Broker object
@@ -40,8 +39,8 @@ type BrokerReconciler struct {
 	client.Client
 	KubeConfig *rest.Config
 	Clientset  *kubernetes.Clientset
-	Log        logr.Logger
 	Scheme     *runtime.Scheme
+	Log        logr.Logger
 }
 
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch;create;update;patch;delete

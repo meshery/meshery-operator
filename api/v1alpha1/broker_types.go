@@ -40,9 +40,8 @@ type BrokerStatus struct {
 type Broker struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-
-	Spec   BrokerSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
-	Status BrokerStatus `json:"status,omitempty" yaml:"status,omitempty"`
+	Status            BrokerStatus `json:"status,omitempty" yaml:"status,omitempty"`
+	Spec              BrokerSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
 }
 
 // +kubebuilder:object:root=true

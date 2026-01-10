@@ -8,9 +8,9 @@ import (
 
 // Endpoint represents the structure for an endpoint
 type Endpoint struct {
-	Name     string
 	Internal *HostPort
 	External *HostPort
+	Name     string
 }
 
 type HostPort struct {
