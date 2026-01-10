@@ -27,6 +27,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const defaultNamespace = "default"
+
 var _ = Describe("Broker funtions test cases", func() {
 
 	var (
@@ -67,8 +69,8 @@ var _ = Describe("Broker funtions test cases", func() {
 	Context("Test for CheckHealth function", func() {
 		It("should return nil", func() {
 
-			namespace := "default"
-			name := "default"
+			namespace := defaultNamespace
+			name := defaultNamespace
 			m := &mesheryv1alpha1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -114,8 +116,8 @@ var _ = Describe("Broker funtions test cases", func() {
 	Context("Test for GetEndpoint function", func() {
 		It("should return the endpoint", func() {
 
-			name := "default"
-			namespace := "default"
+			name := defaultNamespace
+			namespace := defaultNamespace
 			m := &mesheryv1alpha1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,

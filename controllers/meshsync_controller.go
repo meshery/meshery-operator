@@ -154,16 +154,17 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool,
 		},
 		object,
 	)
-	if err != nil && kubeerror.IsNotFound(err) && enable {
+	switch {
+	case err != nil && kubeerror.IsNotFound(err) && enable:
 		_ = util.SetControllerReference(baseResource, object, r.Scheme)
 		er := r.Create(ctx, object)
 		if er != nil {
 			return ctrl.Result{}, ErrCreateMeshsync(er)
 		}
 		return ctrl.Result{Requeue: true}, nil
-	} else if err != nil && enable {
+	case err != nil && enable:
 		return ctrl.Result{}, ErrGetMeshsync(err)
-	} else if err == nil && !kubeerror.IsNotFound(err) && !enable {
+	case err == nil && !kubeerror.IsNotFound(err) && !enable:
 		er := r.Delete(ctx, object)
 		if er != nil {
 			return ctrl.Result{}, ErrDeleteMeshsync(er)
