@@ -30,8 +30,8 @@ type Endpoint struct {
 
 // BrokerStatus defines the observed state of Broker
 type BrokerStatus struct {
-	Endpoint   Endpoint    `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	Conditions []Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	Endpoint   Endpoint           `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // Broker is the Schema for the brokers API
