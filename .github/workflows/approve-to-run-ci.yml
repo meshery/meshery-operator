@@ -40,10 +40,10 @@ jobs:
               cache-dependency-path: go.sum
           - name: Run go mod tidy
             run: make tidy
-    codecov:
+    test:
         # do not require golandci-lint before codecov, there are some issues there to address, we still want unit tests to run
         needs: [tidy]
-        name: Code Coverage
+        name: Unit tests
         if: github.repository == 'meshery/meshery-operator'
         runs-on: ubuntu-24.04
         steps:
@@ -59,17 +59,12 @@ jobs:
             run: make test-env
           - name: Run unit tests
             run: make test
-          - name: Upload coverage to Codecov
-            if: github.repository == 'meshery/meshery-operator'
-            uses: codecov/codecov-action@v3
-            with:
-              files: ./coverage.txt
-              flags: unittests
+         
     # if review comment includes approved or LGTM, run the tests
     # if review comment includes changes requested, do not run the tests
     # if review comment includes approved or LGTM, run the tests
     build:
-        needs: [golangci-lint, tidy, codecov]
+        needs: [golangci-lint, tidy, test]
         name: Build
         runs-on: ubuntu-24.04
         steps:
