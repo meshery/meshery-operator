@@ -22,7 +22,6 @@ import (
 	"github.com/go-logr/logr"
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
-	"github.com/meshery/meshery-operator/pkg/meshsync"
 	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,6 +47,8 @@ type MeshSyncReconciler struct {
 
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/status,verbs=get;update;patch
+
+// Reconcile reconciles the MeshSync resource
 func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log
 	log = log.WithValues("controller", "MeshSync")
@@ -81,7 +82,7 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, ErrReconcileMeshsync(err)
 	}
 
-	err = meshsync.CheckHealth(ctx, baseResource, r.Clientset)
+	err = meshsyncpackage.CheckHealth(ctx, baseResource, r.Clientset)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, ErrCheckHealth(err)
 	}
@@ -154,16 +155,17 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool,
 		},
 		object,
 	)
-	if err != nil && kubeerror.IsNotFound(err) && enable {
+	switch {
+	case err != nil && kubeerror.IsNotFound(err) && enable:
 		_ = util.SetControllerReference(baseResource, object, r.Scheme)
 		er := r.Create(ctx, object)
 		if er != nil {
 			return ctrl.Result{}, ErrCreateMeshsync(er)
 		}
 		return ctrl.Result{Requeue: true}, nil
-	} else if err != nil && enable {
+	case err != nil && enable:
 		return ctrl.Result{}, ErrGetMeshsync(err)
-	} else if err == nil && !kubeerror.IsNotFound(err) && !enable {
+	case err == nil && !kubeerror.IsNotFound(err) && !enable:
 		er := r.Delete(ctx, object)
 		if er != nil {
 			return ctrl.Result{}, ErrDeleteMeshsync(er)

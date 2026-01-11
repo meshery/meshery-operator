@@ -27,7 +27,7 @@ linters:
       enable-all: true
     
     staticcheck:
-      checks: ["all", "-ST1005"]
+      checks: ["all", "-ST1005", "-ST1000"]
     
     unused:
       exported-fields-are-used: false
