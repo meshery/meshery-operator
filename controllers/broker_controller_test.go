@@ -98,8 +98,18 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			broker := &v1alpha1.Broker{}
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
 			Expect(err).ToNot(HaveOccurred())
+			By("Ensuring no StatefulSet exists before health check")
+			existingStatefulSet := &v1.StatefulSet{}
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, existingStatefulSet)
+			if err == nil {
+				Expect(k8sClient.Delete(ctx, existingStatefulSet)).Should(Succeed())
+				Eventually(func() bool {
+					err = k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, existingStatefulSet)
+					return err != nil
+				}).Should(BeTrue())
+			}
 			By("Checking if the broker is healthy, it should return an error")
-			Expect(brokerpackage.CheckHealth(ctx, broker, clientSet)).To(HaveOccurred())
+			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(HaveOccurred())
 			statefulSet := &v1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -127,7 +137,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			err = k8sClient.Create(ctx, statefulSet)
 			Expect(err).ToNot(HaveOccurred())
 			By("Checking if the broker is healthy, it should be successful")
-			Expect(brokerpackage.CheckHealth(ctx, broker, clientSet)).To(Succeed())
+			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(Succeed())
 		})
 
 	})

@@ -82,7 +82,7 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, ErrReconcileMeshsync(err)
 	}
 
-	err = meshsyncpackage.CheckHealth(ctx, baseResource, r.Clientset)
+	err = meshsyncpackage.CheckHealth(ctx, baseResource, r.Client)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, ErrCheckHealth(err)
 	}
@@ -134,7 +134,7 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 	if baseResource.Spec.Broker.Native != nullNativeResource {
 		brokerresource.Namespace = baseResource.Spec.Broker.Native.Namespace
 		brokerresource.Name = baseResource.Spec.Broker.Native.Name
-		err := brokerpackage.GetEndpoint(ctx, brokerresource, r.Clientset, r.KubeConfig.Host)
+		err := brokerpackage.GetEndpoint(ctx, brokerresource, r.Client, r.KubeConfig.Host)
 		if err != nil {
 			return ErrGetEndpoint(err)
 		}

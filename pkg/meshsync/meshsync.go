@@ -24,7 +24,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -52,8 +53,9 @@ func getServerObject(namespace, name string, replicas int32, url string) Object 
 	return obj
 }
 
-func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, client *kubernetes.Clientset) error {
-	obj, err := client.AppsV1().Deployments(m.ObjectMeta.Namespace).Get(ctx, m.Name, metav1.GetOptions{})
+func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, client client.Client) error {
+	obj := &v1.Deployment{}
+	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj)
 	if err != nil {
 		return ErrGettingResource(err)
 	}
