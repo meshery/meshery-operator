@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
@@ -113,13 +114,13 @@ func (r *BrokerReconciler) removeFinalizer(ctx context.Context, log logr.Logger,
 	if err := r.Update(ctx, baseResource); err != nil {
 		if kubeerror.IsConflict(err) {
 			log.Error(err, "Conflict while removing finalizer, requeuing to retry")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		log.Error(err, "Failed to remove finalizer")
 		return ctrl.Result{}, err
 	}
 	log.Info("Broker finalizers executed successfully, resource will be deleted")
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: 0}, nil
 }
 
 // ensureFinalizer adds the finalizer if it doesn't exist
@@ -133,7 +134,7 @@ func (r *BrokerReconciler) ensureFinalizer(ctx context.Context, log logr.Logger,
 	if err := r.Update(ctx, baseResource); err != nil {
 		if kubeerror.IsConflict(err) {
 			log.Error(err, "Conflict while adding finalizer, requeuing to retry")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		log.Error(err, "Failed to add finalizer")
 		return ctrl.Result{}, err
@@ -157,7 +158,8 @@ func (r *BrokerReconciler) performReconciliation(ctx context.Context, log logr.L
 
 	// Check broker health
 	if err := r.checkBrokerHealth(ctx, baseResource); err != nil {
-		return ctrl.Result{Requeue: true}, err
+		log.Info("Health check failed, will retry in 5 seconds", "error", err)
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
 	}
 
 	// Get broker endpoint
@@ -219,7 +221,7 @@ func (r *BrokerReconciler) patchBrokerStatus(ctx context.Context, log logr.Logge
 	if err != nil {
 		if kubeerror.IsConflict(err) {
 			log.Error(err, "Conflict while patching broker resource, requeuing to retry")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		err = ErrUpdateResource(err)
 		log.Error(err, "Unable to patch broker resource")
@@ -297,7 +299,8 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, bas
 			if er != nil {
 				return ctrl.Result{}, ErrCreateBroker(er)
 			}
-			return ctrl.Result{Requeue: true}, nil
+			// .Owns will trigger an even here
+			return ctrl.Result{}, nil
 		case err != nil && enable:
 			return ctrl.Result{}, ErrGetBroker(err)
 		case err == nil && !kubeerror.IsNotFound(err) && !enable:
@@ -305,7 +308,7 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, bas
 			if er != nil {
 				return ctrl.Result{}, ErrDeleteBroker(er)
 			}
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: time.Second}, nil
 		}
 	}
 

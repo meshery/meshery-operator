@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
@@ -105,7 +106,8 @@ func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr
 
 	// Check meshsync health
 	if err := r.checkMeshsyncHealth(ctx, baseResource); err != nil {
-		return ctrl.Result{Requeue: true}, err
+		log.Info("Health check failed, will retry in 5 seconds", "error", err)
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
 	}
 
 	// Update status to Ready
@@ -148,7 +150,7 @@ func (r *MeshSyncReconciler) patchMeshsyncStatus(ctx context.Context, log logr.L
 	if err != nil {
 		if kubeerror.IsConflict(err) {
 			log.Error(err, "conflict while patching meshsync resource, requeuing to retry")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		err = ErrUpdateResource(err)
 		log.Error(err, "unable to patch meshsync resource")
@@ -167,13 +169,13 @@ func (r *MeshSyncReconciler) ensureFinalizer(ctx context.Context, log logr.Logge
 	if err := r.Update(ctx, baseResource); err != nil {
 		if kubeerror.IsConflict(err) {
 			log.Error(err, "Conflict while adding finalizer, requeuing to retry")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		log.Error(err, "Failed to add finalizer")
 		return ctrl.Result{}, err
 	}
 	log.Info("Finalizer added successfully, requeuing for next reconcile")
-	return ctrl.Result{Requeue: true}, nil
+	return ctrl.Result{RequeueAfter: 0}, nil
 
 }
 
@@ -199,7 +201,7 @@ func (r *MeshSyncReconciler) removeFinalizer(ctx context.Context, log logr.Logge
 	if err := r.Update(ctx, baseResource); err != nil {
 		if kubeerror.IsConflict(err) {
 			log.Error(err, "Conflict while removing finalizer, requeuing to retry")
-			return ctrl.Result{Requeue: true}, nil
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 		}
 		log.Error(err, "Failed to remove finalizer")
 		return ctrl.Result{}, err
@@ -293,7 +295,9 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool,
 		if er != nil {
 			return ctrl.Result{}, ErrCreateMeshsync(er)
 		}
-		return ctrl.Result{Requeue: true}, nil
+		r.Log.Info("Meshsync created successfully")
+		// .Owns will trigger a reconcile for the object
+		return ctrl.Result{}, nil
 	case err != nil && enable:
 		return ctrl.Result{}, ErrGetMeshsync(err)
 	case err == nil && !kubeerror.IsNotFound(err) && !enable:
@@ -301,7 +305,7 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool,
 		if er != nil {
 			return ctrl.Result{}, ErrDeleteMeshsync(er)
 		}
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	return ctrl.Result{}, nil
