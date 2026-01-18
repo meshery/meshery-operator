@@ -141,7 +141,7 @@ func (r *BrokerReconciler) ensureFinalizer(ctx context.Context, log logr.Logger,
 	}
 
 	log.Info("Finalizer added successfully, requeuing for next reconcile")
-	return ctrl.Result{Requeue: true}, nil
+	return ctrl.Result{RequeueAfter: 0}, nil
 }
 
 // performReconciliation performs the main broker reconciliation logic
