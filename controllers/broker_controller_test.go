@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/meshery/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
@@ -79,15 +80,20 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 
 	It("Updating broker resource should be successful", func() {
 		namespace = defaultNamespace
-		broker := &v1alpha1.Broker{}
-		err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
-		Expect(err).ToNot(HaveOccurred())
-		broker.Spec.Size = 2
-		Expect(k8sClient.Update(ctx, broker)).Should(Succeed())
+
+		Eventually(func() error {
+			broker := &v1alpha1.Broker{}
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
+			if err != nil {
+				return err
+			}
+			broker.Spec.Size = 2
+			return k8sClient.Update(ctx, broker)
+		}, 2*time.Second, 100*time.Millisecond).Should(Succeed())
 
 		By("Checking if the broker resource is updated")
-		broker = &v1alpha1.Broker{}
-		err = k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
+		broker := &v1alpha1.Broker{}
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(broker.Spec.Size).To(Equal(int32(2)))
 	})
