@@ -206,7 +206,7 @@ func (r *MeshSyncReconciler) removeFinalizer(ctx context.Context, log logr.Logge
 		log.Error(err, "Failed to remove finalizer")
 		return ctrl.Result{}, err
 	}
-	log.Info("Broker finalizers executed successfully, resource will be deleted")
+	log.Info("MeshSync finalizers executed successfully, resource will be deleted")
 	return ctrl.Result{}, nil
 }
 

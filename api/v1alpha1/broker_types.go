@@ -20,6 +20,8 @@ import (
 
 // BrokerSpec defines the desired state of Broker
 type BrokerSpec struct {
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=10
 	Size int32 `json:"size,omitempty" yaml:"size,omitempty"`
 }
 
