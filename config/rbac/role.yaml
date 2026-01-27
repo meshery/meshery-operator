@@ -8,6 +8,7 @@ rules:
   - meshery.io
   resources:
   - brokers
+  - meshsyncs
   verbs:
   - create
   - delete
@@ -20,6 +21,7 @@ rules:
   - meshery.io
   resources:
   - brokers/status
+  - meshsyncs/status
   verbs:
   - get
   - patch
