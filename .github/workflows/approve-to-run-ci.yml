@@ -1,4 +1,5 @@
 name: Meshery-Operator CI
+permissions: read-all
 
 on:
   pull_request:
@@ -11,7 +12,7 @@ jobs:
         strategy:
           matrix:
             platform: [ubuntu-24.04]
-            go-version: [1.24.x]
+            go-version: [1.25.x]
         runs-on: ${{ matrix.platform }}
         steps:
           - uses: actions/setup-go@v4
@@ -22,14 +23,11 @@ jobs:
           - name: Checkout code
             uses: actions/checkout@master
           - name: golangci-lint
-            uses: golangci/golangci-lint-action@v3
+            uses: golangci/golangci-lint-action@v9
             with:
-              version: latest
-          - name: Run golangci-lint
-            run: make lint
+              version: v2.8.0
     tidy:
         name: Go mod tidy
-        needs: [golangci-lint]
         runs-on: ubuntu-24.04
         steps:
           - name: Checkout code
@@ -37,15 +35,15 @@ jobs:
           - name: Set up Go
             uses: actions/setup-go@v4
             with:
-              go-version: 1.24.x
+              go-version: 1.25.x
               cache: true
               cache-dependency-path: go.sum
           - name: Run go mod tidy
             run: make tidy
-    codecov:
-        # golandci-lint need to be run before codecov and succeed
-        needs: [golangci-lint, tidy]
-        name: Code Coverage
+    test:
+        # do not require golandci-lint before codecov, there are some issues there to address, we still want unit tests to run
+        needs: [tidy]
+        name: Unit tests
         if: github.repository == 'meshery/meshery-operator'
         runs-on: ubuntu-24.04
         steps:
@@ -54,24 +52,19 @@ jobs:
           - name: Set up Go
             uses: actions/setup-go@v4
             with:
-              go-version: 1.24.x
+              go-version: 1.25.x
               cache: true
               cache-dependency-path: go.sum
           - name: Set up test-env
             run: make test-env
           - name: Run unit tests
             run: make test
-          - name: Upload coverage to Codecov
-            if: github.repository == 'meshery/meshery-operator'
-            uses: codecov/codecov-action@v3
-            with:
-              files: ./coverage.txt
-              flags: unittests
+         
     # if review comment includes approved or LGTM, run the tests
     # if review comment includes changes requested, do not run the tests
     # if review comment includes approved or LGTM, run the tests
     build:
-        needs: [golangci-lint, tidy, codecov]
+        needs: [golangci-lint, tidy, test]
         name: Build
         runs-on: ubuntu-24.04
         steps:
@@ -80,7 +73,7 @@ jobs:
           - name: Set up Go
             uses: actions/setup-go@v4
             with:
-              go-version: 1.24.x
+              go-version: 1.25.x
               cache: true
               cache-dependency-path: go.sum
           - name: Build

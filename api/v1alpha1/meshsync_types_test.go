@@ -165,15 +165,14 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 
 			existing.Status = MeshSyncStatus{
 				PublishingTo: PublishingTo,
-				Conditions: []Condition{
+				Conditions: []metav1.Condition{
 					{
-						Type:               ConditionType(str),
-						Status:             ConditionStatus(str),
+						Type:               str,
+						Status:             metav1.ConditionStatus(str),
 						ObservedGeneration: 1,
 						Reason:             Reason,
 						Message:            Message,
 						LastTransitionTime: metav1.Now(),
-						LastProbeTime:      metav1.Now(),
 					},
 				},
 			}

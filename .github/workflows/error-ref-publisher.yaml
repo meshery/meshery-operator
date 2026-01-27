@@ -1,4 +1,6 @@
 name: Meshkit Error Codes Utility Runner
+permissions: read-all
+
 on:
     push:
         branches:
@@ -9,6 +11,9 @@ on:
 jobs:
     Update-error-codes:
         name: Error codes utility
+        permissions:
+          contents: write
+
         if: github.repository == 'meshery/meshery-operator'
         runs-on: ubuntu-24.04
         steps:
@@ -21,7 +26,7 @@ jobs:
             - name: Setup Go
               uses: actions/setup-go@master
               with:
-                  go-version: 1.24
+                  go-version: 1.25
 
             - name: Run utility
               run: |

@@ -20,6 +20,8 @@ import (
 
 // BrokerSpec defines the desired state of Broker
 type BrokerSpec struct {
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=10
 	Size int32 `json:"size,omitempty" yaml:"size,omitempty"`
 }
 
@@ -30,8 +32,8 @@ type Endpoint struct {
 
 // BrokerStatus defines the observed state of Broker
 type BrokerStatus struct {
-	Endpoint   Endpoint    `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
-	Conditions []Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	Endpoint   Endpoint           `json:"endpoint,omitempty" yaml:"endpoint,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // Broker is the Schema for the brokers API
@@ -40,9 +42,8 @@ type BrokerStatus struct {
 type Broker struct {
 	metav1.TypeMeta   `json:",inline" yaml:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty" yaml:"metadata,omitempty"`
-
-	Spec   BrokerSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
-	Status BrokerStatus `json:"status,omitempty" yaml:"status,omitempty"`
+	Status            BrokerStatus `json:"status,omitempty" yaml:"status,omitempty"`
+	Spec              BrokerSpec   `json:"spec,omitempty" yaml:"spec,omitempty"`
 }
 
 // +kubebuilder:object:root=true

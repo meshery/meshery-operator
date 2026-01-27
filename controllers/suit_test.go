@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	apiv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -37,8 +38,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 )
 
 // Initialize test suite entrypoint

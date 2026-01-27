@@ -27,6 +27,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const defaultNamespace = "default"
+
 var _ = Describe("Broker funtions test cases", func() {
 
 	var (
@@ -59,16 +61,16 @@ var _ = Describe("Broker funtions test cases", func() {
 
 			By("checking server object, namespace and name, replicas")
 			Expect(obj[ServerObject]).ToNot(BeNil())
-			Expect(obj[ServerObject].GetNamespace()).To(Equal(m.ObjectMeta.Namespace))
-			Expect(obj[ServerObject].GetName()).To(Equal(m.ObjectMeta.Name))
+			Expect(obj[ServerObject].GetNamespace()).To(Equal(m.Namespace))
+			Expect(obj[ServerObject].GetName()).To(Equal(m.Name))
 		})
 	})
 
 	Context("Test for CheckHealth function", func() {
 		It("should return nil", func() {
 
-			namespace := "default"
-			name := "default"
+			namespace := defaultNamespace
+			name := defaultNamespace
 			m := &mesheryv1alpha1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -106,7 +108,7 @@ var _ = Describe("Broker funtions test cases", func() {
 			err := k8sClient.Create(ctx, s)
 			Expect(err).ToNot(HaveOccurred())
 			By("Checking if the broker is healthy, it should be successful")
-			Expect(CheckHealth(ctx, m, clientSet)).To(Succeed())
+			Expect(CheckHealth(ctx, m, k8sClient)).To(Succeed())
 
 		})
 	})
@@ -114,8 +116,8 @@ var _ = Describe("Broker funtions test cases", func() {
 	Context("Test for GetEndpoint function", func() {
 		It("should return the endpoint", func() {
 
-			name := "default"
-			namespace := "default"
+			name := defaultNamespace
+			namespace := defaultNamespace
 			m := &mesheryv1alpha1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -151,7 +153,7 @@ var _ = Describe("Broker funtions test cases", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			url := "http://localhost:8080"
-			Expect(GetEndpoint(ctx, m, clientSet, url)).ShouldNot(HaveOccurred())
+			Expect(GetEndpoint(ctx, m, k8sClient, url)).ShouldNot(HaveOccurred())
 
 			By("checking m.status.endpoint")
 			Expect(m.Status.Endpoint.External).To(Equal("localhost:30002"))

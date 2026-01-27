@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/meshery/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
@@ -28,6 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 )
+
+const defaultNamespace = "default"
 
 var _ = Describe("The test cases for customize resource: Broker's controller ", func() {
 
@@ -42,22 +45,22 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 
 	Context("Testing Broker's nothing found logic", func() {
 		It("Getting broker resource should be failing", func() {
-			namespace = "default"
+			namespace = defaultNamespace
 			broker := &v1alpha1.Broker{}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, broker)
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
 			Expect(err).To(HaveOccurred())
 		})
 	})
 
 	It("Creating a broker resource", func() {
-		namespace = "default"
+		namespace = defaultNamespace
 		broker := &v1alpha1.Broker{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "meshery.io/v1alpha1",
 				Kind:       "Broker",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "default",
+				Name:      defaultNamespace,
 				Namespace: namespace,
 			},
 			Spec: v1alpha1.BrokerSpec{
@@ -68,40 +71,55 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 	})
 
 	It("Getting broker resource should be successful", func() {
-		namespace = "default"
+		namespace = defaultNamespace
 		broker := &v1alpha1.Broker{}
-		err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, broker)
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(broker.Spec.Size).To(Equal(int32(1)))
 	})
 
 	It("Updating broker resource should be successful", func() {
-		namespace = "default"
-		broker := &v1alpha1.Broker{}
-		err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, broker)
-		Expect(err).ToNot(HaveOccurred())
-		broker.Spec.Size = 2
-		Expect(k8sClient.Update(ctx, broker)).Should(Succeed())
+		namespace = defaultNamespace
+
+		Eventually(func() error {
+			broker := &v1alpha1.Broker{}
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
+			if err != nil {
+				return err
+			}
+			broker.Spec.Size = 2
+			return k8sClient.Update(ctx, broker)
+		}, 2*time.Second, 100*time.Millisecond).Should(Succeed())
 
 		By("Checking if the broker resource is updated")
-		broker = &v1alpha1.Broker{}
-		err = k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, broker)
+		broker := &v1alpha1.Broker{}
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(broker.Spec.Size).To(Equal(int32(2)))
 	})
 
 	Context("Testing Broker's brokerpackage.CheckHealth function", func() {
 		It("Checking broker health functions", func() {
-			namespace = "default"
+			namespace = defaultNamespace
 			broker := &v1alpha1.Broker{}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, broker)
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
 			Expect(err).ToNot(HaveOccurred())
+			By("Ensuring no StatefulSet exists before health check")
+			existingStatefulSet := &v1.StatefulSet{}
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, existingStatefulSet)
+			if err == nil {
+				Expect(k8sClient.Delete(ctx, existingStatefulSet)).Should(Succeed())
+				Eventually(func() bool {
+					err = k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, existingStatefulSet)
+					return err != nil
+				}).Should(BeTrue())
+			}
 			By("Checking if the broker is healthy, it should return an error")
-			Expect(brokerpackage.CheckHealth(ctx, broker, clientSet)).To(HaveOccurred())
+			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(HaveOccurred())
 			statefulSet := &v1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      "default",
+					Name:      defaultNamespace,
 				},
 				Spec: v1.StatefulSetSpec{
 					Replicas: &broker.Spec.Size,
@@ -112,7 +130,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "default",
+							Name: defaultNamespace,
 							Labels: map[string]string{
 								"app": "broker",
 							},
@@ -125,16 +143,16 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			err = k8sClient.Create(ctx, statefulSet)
 			Expect(err).ToNot(HaveOccurred())
 			By("Checking if the broker is healthy, it should be successful")
-			Expect(brokerpackage.CheckHealth(ctx, broker, clientSet)).To(Succeed())
+			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(Succeed())
 		})
 
 	})
 
 	Context("Testing Broker's Cleanup logic", func() {
 		It("Deleting broker resource should be succeeding", func() {
-			namespace = "default"
+			namespace = defaultNamespace
 			broker := &v1alpha1.Broker{}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, broker)
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, broker)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, broker)).Should(Succeed())
 		})

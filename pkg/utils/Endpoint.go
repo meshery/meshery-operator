@@ -8,9 +8,9 @@ import (
 
 // Endpoint represents the structure for an endpoint
 type Endpoint struct {
-	Name     string
 	Internal *HostPort
 	External *HostPort
+	Name     string
 }
 
 type HostPort struct {
@@ -22,7 +22,7 @@ type MockOptions struct {
 	DesiredEndpoint string
 }
 
-func TcpCheck(hp *HostPort, mock *MockOptions) bool {
+func TCPCheck(hp *HostPort, mock *MockOptions) bool {
 	timeout := 5 * time.Second
 
 	// For mocking output

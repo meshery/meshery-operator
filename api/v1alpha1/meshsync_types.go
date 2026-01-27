@@ -37,16 +37,18 @@ type MeshsyncBroker struct {
 
 // MeshSyncSpec defines the desired state of MeshSync
 type MeshSyncSpec struct {
-	Size      int32            `json:"size,omitempty" yaml:"size,omitempty"`
-	Broker    MeshsyncBroker   `json:"broker,omitempty" yaml:"broker,omitempty"`
 	WatchList corev1.ConfigMap `json:"watch-list,omitempty" yaml:"watch-list,omitempty"`
+	Broker    MeshsyncBroker   `json:"broker,omitempty" yaml:"broker,omitempty"`
 	Version   string           `json:"version,omitempty" yaml:"version,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=10
+	Size int32 `json:"size,omitempty" yaml:"size,omitempty"`
 }
 
 // MeshSyncStatus defines the observed state of MeshSync
 type MeshSyncStatus struct {
-	PublishingTo string      `json:"publishing-to,omitempty" yaml:"publishing-to,omitempty"`
-	Conditions   []Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
+	PublishingTo string             `json:"publishing-to,omitempty" yaml:"publishing-to,omitempty"`
+	Conditions   []metav1.Condition `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 }
 
 // MeshSync is the Schema for the meshsyncs API
