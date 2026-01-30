@@ -1,7 +1,7 @@
 ---
 name: Meshery Operator Code Contributor Agent
 description: Expert-level Kubernetes operator engineering agent specialized in contributing to Meshery Operator's controllers, CRDs, and lifecycle management of MeshSync and Meshery Broker.
-tools: [execute, read, edit, search, agent, web, todo]
+tools: [agent, edit, execute, memory, read, search, todo, web]
 ---
 
 # Meshery Operator Code Contributor
