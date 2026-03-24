@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -86,11 +87,55 @@ func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+// validateSpec validates the MeshSync spec before reconciliation
+func (r *MeshSyncReconciler) validateSpec(_ context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync) error {
+	spec := baseResource.Spec
+	nullNative := mesheryv1alpha1.NativeMeshsyncBroker{}
+
+	hasNative := spec.Broker.Native != nullNative
+	hasCustom := spec.Broker.Custom.URL != ""
+
+	// 1. Broker: at least one must be configured
+	if !hasNative && !hasCustom {
+		return ErrValidateMeshsync(errors.New("broker must be configured: set either spec.broker.native or spec.broker.custom.url"))
+	}
+
+	// 2. Broker: both cannot be set at the same time
+	if hasNative && hasCustom {
+		return ErrValidateMeshsync(errors.New("spec.broker.native and spec.broker.custom.url are mutually exclusive, set only one"))
+	}
+
+	// 3. Native broker: Name and Namespace are both required
+	if hasNative {
+		if spec.Broker.Native.Name == "" {
+			return ErrValidateMeshsync(errors.New("spec.broker.native.name is required when using native broker"))
+		}
+		if spec.Broker.Native.Namespace == "" {
+			return ErrValidateMeshsync(errors.New("spec.broker.native.namespace is required when using native broker"))
+		}
+	}
+
+	// 4. Size: default to 1 if not set
+	if spec.Size == 0 {
+		log.Info("spec.size not set, defaulting to 1")
+		baseResource.Spec.Size = 1
+	}
+
+	return nil
+}
+
 // performReconciliation performs the main meshsync reconciliation logic
 func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
 	// Set initial status to processing
 	if err := r.updateStatusCondition(ctx, baseResource, "Processing", v1.ConditionTrue, "Reconciling", "Reconciling meshsync"); err != nil {
 		log.Error(err, "Failed to update meshsync status to Processing")
+	}
+
+	// Validate spec before any side effects
+	if err := r.validateSpec(ctx, log, baseResource); err != nil {
+		log.Error(err, "MeshSync spec validation failed")
+		_ = r.updateStatusCondition(ctx, baseResource, "Failed", v1.ConditionFalse, "ValidationFailed", err.Error())
+		return ctrl.Result{}, err
 	}
 
 	// Get broker configuration
