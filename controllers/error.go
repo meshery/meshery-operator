@@ -35,6 +35,7 @@ const (
 	ErrGetEndpointCode       = "1011"
 	ErrUpdateResourceCode    = "1012"
 	ErrMarshalCode           = "11049"
+	ErrValidateMeshsyncCode  = "1013"
 )
 
 // ErrGetMeshsync returns an error when unable to get meshsync resource
@@ -88,4 +89,8 @@ func ErrUpdateResource(err error) error {
 
 func ErrMarshal(err error) error {
 	return fmt.Errorf("%s: Error during marshaling: %w", ErrMarshalCode, err)
+}
+
+func ErrValidateMeshsync(err error) error {
+	return fmt.Errorf("%s: Invalid MeshSync spec: %w", ErrValidateMeshsyncCode, err)
 }

@@ -18,6 +18,9 @@ package controllers
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -26,6 +29,7 @@ import (
 	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,11 +90,115 @@ func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+func (r *MeshSyncReconciler) validateBrokerConfig(Broker mesheryv1alpha1.MeshsyncBroker) error {
+	nullNative := mesheryv1alpha1.NativeMeshsyncBroker{}
+	hasNative := Broker.Native != nullNative
+	hasCustom := Broker.Custom.URL != ""
+
+	// 1. Broker: at least one must be configured
+	if !hasNative && !hasCustom {
+		return errors.New("broker must be configured: set either spec.broker.native or spec.broker.custom.url")
+	}
+
+	// 2. Broker: both cannot be set at the same time
+	if hasNative && hasCustom {
+		return errors.New("spec.broker.native and spec.broker.custom.url are mutually exclusive, set only one")
+	}
+
+	// 3. Native broker: Name and Namespace are both required
+	if hasNative {
+		if Broker.Native.Name == "" {
+			return errors.New("spec.broker.native.name is required when using native broker")
+		}
+		if Broker.Native.Namespace == "" {
+			return errors.New("spec.broker.native.namespace is required when using native broker")
+		}
+	}
+
+	return nil
+}
+
+func (r *MeshSyncReconciler) validateWatchList(watchList corev1.ConfigMap) error {
+	// 1. If WatchList is provided, it must have a name
+	// (so the operator can actually find it in the cluster)
+	if watchList.Name == "" && watchList.Data != nil {
+		return errors.New("spec.watch-list must have a name when data is provided")
+	}
+
+	// 2. If name is provided, namespace should also be provided
+	if watchList.Name != "" && watchList.Namespace == "" {
+		return errors.New("spec.watch-list.namespace is required when name is set")
+	}
+
+	// 3. Validate the actual watch-list data keys are known/valid
+	validKeys := map[string]bool{
+		"blacklist": true,
+		"whitelist": true,
+	}
+	for key := range watchList.Data {
+		if !validKeys[key] {
+			return fmt.Errorf("spec.watch-list contains unknown key: %s", key)
+		}
+	}
+
+	return nil
+}
+
+func (r *MeshSyncReconciler) validateVersion(version string) error {
+	// 1. If provided, must follow semver format vX.Y.Z
+	if version == "" {
+		// empty is fine — operator can default to latest
+		return nil
+	}
+
+	// 2. Must match semantic versioning pattern
+	semverPattern := regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
+	if !semverPattern.MatchString(version) {
+		return fmt.Errorf(
+			"spec.version '%s' is invalid, must follow semver format e.g. v0.1.0",
+			version,
+		)
+	}
+
+	return nil
+}
+
+// validateSpec validates the MeshSync spec before reconciliation
+func (r *MeshSyncReconciler) validateSpec(_ context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
+	spec := baseResource.Spec
+	// 1. Validate broker configuration
+	if err := r.validateBrokerConfig(spec.Broker); err != nil {
+		return ErrValidateMeshsync(err)
+	}
+	// 2. Validate watch list configuration
+	if err := r.validateWatchList(spec.WatchList); err != nil {
+		return ErrValidateMeshsync(err)
+	}
+	// 3. Validate version format
+	if err := r.validateVersion(spec.Version); err != nil {
+		return ErrValidateMeshsync(err)
+	}
+	// 4. Size: must be between 1 and 10 if provided
+	if spec.Size < 1 || spec.Size > 10 {
+		return ErrValidateMeshsync(errors.New("spec.size must be between 1 and 10"))
+	}
+
+	return nil
+}
+
 // performReconciliation performs the main meshsync reconciliation logic
 func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
 	// Set initial status to processing
 	if err := r.updateStatusCondition(ctx, baseResource, "Processing", v1.ConditionTrue, "Reconciling", "Reconciling meshsync"); err != nil {
 		log.Error(err, "Failed to update meshsync status to Processing")
+	}
+
+	// Validate spec before any side effects
+	if err := r.validateSpec(ctx, baseResource); err != nil {
+		log.Error(err, "MeshSync resource configuration invalid",
+			"name", baseResource.Name)
+		_ = r.updateStatusCondition(ctx, baseResource, "Failed", v1.ConditionFalse, "ValidationFailed", err.Error())
+		return ctrl.Result{}, err
 	}
 
 	// Get broker configuration
