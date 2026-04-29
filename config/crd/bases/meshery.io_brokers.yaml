@@ -41,6 +41,8 @@ spec:
             properties:
               size:
                 format: int32
+                maximum: 10
+                minimum: 1
                 type: integer
             type: object
           status:
