@@ -26,6 +26,7 @@ import (
 	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -227,8 +228,8 @@ func (r *MeshSyncReconciler) Cleanup(ctx context.Context, baseResource *mesheryv
 		log.Info("Deleting meshsync object", "kind", object.GetObjectKind().GroupVersionKind().Kind, "name", object.GetName())
 		err := r.Delete(ctx, object)
 		if err != nil {
-			if kubeerror.IsConflict(err) {
-				log.V(1).Error(err, "Object not found, skipping", "name", object.GetName())
+			if kubeerror.IsNotFound(err) {
+				log.V(1).Info("Object not found, skipping", "name", object.GetName())
 				// skip this is normal
 				continue
 			}
@@ -281,18 +282,18 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 }
 
 func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
-	object := meshsyncpackage.GetObjects(baseResource)[meshsyncpackage.ServerObject]
-	err := r.Get(ctx,
-		types.NamespacedName{
-			Name:      baseResource.Name,
-			Namespace: baseResource.Namespace,
-		},
-		object,
-	)
+	desired := meshsyncpackage.GetObjects(baseResource)[meshsyncpackage.ServerObject]
+	key := types.NamespacedName{
+		Name:      baseResource.Name,
+		Namespace: baseResource.Namespace,
+	}
+	existing := &appsv1.Deployment{}
+	err := r.Get(ctx, key, existing)
 	switch {
 	case err != nil && kubeerror.IsNotFound(err) && enable:
-		_ = util.SetControllerReference(baseResource, object, r.Scheme)
-		er := r.Create(ctx, object)
+		desiredDeployment := desired.(*appsv1.Deployment)
+		_ = util.SetControllerReference(baseResource, desiredDeployment, r.Scheme)
+		er := r.Create(ctx, desiredDeployment)
 		if er != nil {
 			return ctrl.Result{}, ErrCreateMeshsync(er)
 		}
@@ -301,13 +302,41 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool,
 		return ctrl.Result{}, nil
 	case err != nil && enable:
 		return ctrl.Result{}, ErrGetMeshsync(err)
-	case err == nil && !kubeerror.IsNotFound(err) && !enable:
-		er := r.Delete(ctx, object)
+	case err == nil && !enable:
+		er := r.Delete(ctx, existing)
 		if er != nil {
 			return ctrl.Result{}, ErrDeleteMeshsync(er)
 		}
 		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
+	if !enable {
+		return ctrl.Result{}, nil
+	}
+	desiredDeployment := desired.(*appsv1.Deployment)
+	if syncMeshsyncDeployment(existing, desiredDeployment) {
+		if err := r.Update(ctx, existing); err != nil {
+			return ctrl.Result{}, ErrUpdateResource(err)
+		}
+	}
 
 	return ctrl.Result{}, nil
+}
+
+func syncMeshsyncDeployment(existing, desired *appsv1.Deployment) bool {
+	changed := false
+
+	if !apiequality.Semantic.DeepEqual(existing.Labels, desired.Labels) {
+		existing.Labels = desired.Labels
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.Annotations, desired.Annotations) {
+		existing.Annotations = desired.Annotations
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.Spec, desired.Spec) {
+		existing.Spec = desired.Spec
+		changed = true
+	}
+
+	return changed
 }

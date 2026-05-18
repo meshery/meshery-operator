@@ -25,6 +25,8 @@ import (
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -285,6 +287,7 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, bas
 	objects := brokerpackage.GetObjects(baseResource)
 	for _, object := range objects {
 		object.SetNamespace(baseResource.Namespace)
+		desired := object.DeepCopyObject().(brokerpackage.Object)
 		err := r.Get(ctx,
 			types.NamespacedName{
 				Name:      object.GetName(),
@@ -294,8 +297,8 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, bas
 		)
 		switch {
 		case err != nil && kubeerror.IsNotFound(err) && enable:
-			_ = ctrl.SetControllerReference(baseResource, object, r.Scheme)
-			er := r.Create(ctx, object)
+			_ = ctrl.SetControllerReference(baseResource, desired, r.Scheme)
+			er := r.Create(ctx, desired)
 			if er != nil {
 				return ctrl.Result{}, ErrCreateBroker(er)
 			}
@@ -310,7 +313,110 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, bas
 			}
 			return ctrl.Result{RequeueAfter: time.Second}, nil
 		}
+
+		if !enable {
+			continue
+		}
+		if syncBrokerObject(object, desired) {
+			if err := r.Update(ctx, object); err != nil {
+				return ctrl.Result{}, ErrUpdateResource(err)
+			}
+		}
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func syncBrokerObject(existing, desired brokerpackage.Object) bool {
+	switch desiredObject := desired.(type) {
+	case *appsv1.StatefulSet:
+		existingObject, ok := existing.(*appsv1.StatefulSet)
+		if !ok {
+			return false
+		}
+		return syncBrokerStatefulSet(existingObject, desiredObject)
+	case *corev1.Service:
+		existingObject, ok := existing.(*corev1.Service)
+		if !ok {
+			return false
+		}
+		return syncBrokerService(existingObject, desiredObject)
+	case *corev1.ConfigMap:
+		existingObject, ok := existing.(*corev1.ConfigMap)
+		if !ok {
+			return false
+		}
+		return syncBrokerConfigMap(existingObject, desiredObject)
+	default:
+		return false
+	}
+}
+
+func syncBrokerStatefulSet(existing, desired *appsv1.StatefulSet) bool {
+	changed := false
+
+	if !apiequality.Semantic.DeepEqual(existing.Labels, desired.Labels) {
+		existing.Labels = desired.Labels
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.Annotations, desired.Annotations) {
+		existing.Annotations = desired.Annotations
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.Spec, desired.Spec) {
+		existing.Spec = desired.Spec
+		changed = true
+	}
+
+	return changed
+}
+
+func syncBrokerService(existing, desired *corev1.Service) bool {
+	changed := false
+
+	if !apiequality.Semantic.DeepEqual(existing.Labels, desired.Labels) {
+		existing.Labels = desired.Labels
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.Annotations, desired.Annotations) {
+		existing.Annotations = desired.Annotations
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.Spec.Ports, desired.Spec.Ports) {
+		existing.Spec.Ports = desired.Spec.Ports
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.Spec.Selector, desired.Spec.Selector) {
+		existing.Spec.Selector = desired.Spec.Selector
+		changed = true
+	}
+	if existing.Spec.Type != desired.Spec.Type {
+		existing.Spec.Type = desired.Spec.Type
+		changed = true
+	}
+
+	return changed
+}
+
+func syncBrokerConfigMap(existing, desired *corev1.ConfigMap) bool {
+	changed := false
+
+	if !apiequality.Semantic.DeepEqual(existing.Labels, desired.Labels) {
+		existing.Labels = desired.Labels
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.Annotations, desired.Annotations) {
+		existing.Annotations = desired.Annotations
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.Data, desired.Data) {
+		existing.Data = desired.Data
+		changed = true
+	}
+	if !apiequality.Semantic.DeepEqual(existing.BinaryData, desired.BinaryData) {
+		existing.BinaryData = desired.BinaryData
+		changed = true
+	}
+
+	return changed
 }
