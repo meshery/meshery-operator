@@ -1,4 +1,4 @@
-domain: layer5.io
+domain: meshery.io
 layout: go.kubebuilder.io/v2
 projectName: meshery-operator
 repo: github.com/meshery/meshery-operator
