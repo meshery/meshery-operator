@@ -99,7 +99,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 			By("Create the meshsync CRDs first")
 			err := fakeClient.Create(ctx, meshSync)
 			Expect(err).NotTo(HaveOccurred())
-			1
+
 			By("Get the meshsync CRDs")
 			mesheSyncGet := &MeshSync{}
 			err = fakeClient.Get(ctx, typeNamespace, mesheSyncGet)
