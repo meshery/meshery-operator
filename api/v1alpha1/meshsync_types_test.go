@@ -22,7 +22,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 	ctx := context.Background()
 
 	const (
-		URL          string = "https://layer5.io"
+		URL          string = "https://meshery.io"
 		str          string = "healthy"
 		Reason       string = "Testcase"
 		Message      string = "Message for testcase"
@@ -99,13 +99,13 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 			By("Create the meshsync CRDs first")
 			err := fakeClient.Create(ctx, meshSync)
 			Expect(err).NotTo(HaveOccurred())
-
+			1
 			By("Get the meshsync CRDs")
 			mesheSyncGet := &MeshSync{}
 			err = fakeClient.Get(ctx, typeNamespace, mesheSyncGet)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Confirm the URL equal to https://layer5.io")
+			By("Confirm the URL equal to https://meshery.io")
 			url := mesheSyncGet.Spec.Broker.Custom.URL
 			Expect(url == URL).Should(BeTrue())
 

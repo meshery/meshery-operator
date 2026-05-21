@@ -53,7 +53,7 @@ metadata:
     categories: Monitoring
     containerImage: meshery/meshery-operator:stable-latest
     createdAt: "2022-05-12T19:42:22Z"
-    support: Layer5.io
+    support: meshery.io
     description: |-
       Meshery is the cloud native management plane offering lifecycle, configuration, and performance management of Kubernetes, service meshes, and your workloads.
     operators.operatorframework.io/builder: operator-sdk-v1.14.0+git
