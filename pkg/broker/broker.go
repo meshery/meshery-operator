@@ -95,7 +95,7 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client client.C
 	opts := &meshkitkube.ServiceOptions{
 		Name:         m.Name,
 		Namespace:    m.Namespace,
-		PortSelector: "client",
+		PortSelector: clientPortName,
 		APIServerURL: url,
 		WorkerNodeIP: "localhost",
 	}

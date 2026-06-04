@@ -30,7 +30,13 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 )
 
-const defaultNamespace = "default"
+const (
+	defaultNamespace = "default"
+	testAPIVersion   = "meshery.io/v1alpha1"
+	appLabelKey      = "app"
+	brokerLabelValue = "broker"
+	teamLabelKey     = "team"
+)
 
 var _ = Describe("The test cases for customize resource: Broker's controller ", func() {
 
@@ -56,7 +62,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 		namespace = defaultNamespace
 		broker := &v1alpha1.Broker{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "meshery.io/v1alpha1",
+				APIVersion: testAPIVersion,
 				Kind:       "Broker",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -125,14 +131,14 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 					Replicas: &broker.Spec.Size,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							"app": "broker",
+							appLabelKey: brokerLabelValue,
 						},
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: defaultNamespace,
 							Labels: map[string]string{
-								"app": "broker",
+								appLabelKey: brokerLabelValue,
 							},
 						},
 					},

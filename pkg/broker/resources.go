@@ -7,6 +7,17 @@ import (
 	intstr "k8s.io/apimachinery/pkg/util/intstr"
 )
 
+const (
+	mesheryName       = "meshery"
+	appLabelKey       = "app"
+	componentLabelKey = "component"
+	brokerComponent   = "broker"
+	natsServiceName   = "meshery-nats"
+	clientPortName    = "client"
+	configVolumeName  = "config-volume"
+	pidVolumeName     = "pid"
+)
+
 var (
 	val1    int32 = 1
 	val60   int64 = 60
@@ -20,7 +31,7 @@ var (
 	valtrue bool = true
 
 	MesheryLabel = map[string]string{
-		"app": "meshery",
+		appLabelKey: mesheryName,
 	}
 
 	MesheryAnnotation = map[string]string{
@@ -28,8 +39,8 @@ var (
 	}
 
 	BrokerLabel = map[string]string{
-		"app":       MesheryLabel["app"],
-		"component": "broker",
+		appLabelKey:       MesheryLabel[appLabelKey],
+		componentLabelKey: brokerComponent,
 	}
 
 	PrometheusAnnotation = map[string]string{
@@ -41,7 +52,7 @@ var (
 
 	NatsConfigMap = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "meshery",
+			Namespace: mesheryName,
 			Name:      "meshery-nats-config",
 			Labels:    BrokerLabel,
 		},
@@ -60,7 +71,7 @@ include "accounts/resolver.conf"`,
 
 	AccountsConfigMap = &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "meshery",
+			Namespace: mesheryName,
 			Name:      "meshery-nats-accounts",
 			Labels:    BrokerLabel,
 		},
@@ -75,15 +86,15 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 
 	Service = &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   "meshery",
-			Name:        "meshery-nats",
+			Namespace:   mesheryName,
+			Name:        natsServiceName,
 			Labels:      BrokerLabel,
 			Annotations: MesheryAnnotation,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
-					Name: "client",
+					Name: clientPortName,
 					Port: val4222,
 				},
 				{
@@ -114,8 +125,8 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 
 	StatefulSet = &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   "meshery",
-			Name:        "meshery-nats",
+			Namespace:   mesheryName,
+			Name:        natsServiceName,
 			Labels:      BrokerLabel,
 			Annotations: MesheryAnnotation,
 		},
@@ -124,15 +135,15 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 			Selector: &metav1.LabelSelector{
 				MatchLabels: BrokerLabel,
 			},
-			ServiceName: "meshery-nats",
+			ServiceName: natsServiceName,
 			Template:    PodTemplate,
 		},
 	}
 
 	PodTemplate = corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   "meshery",
-			Name:        "meshery-nats",
+			Namespace:   mesheryName,
+			Name:        natsServiceName,
 			Labels:      BrokerLabel,
 			Annotations: PrometheusAnnotation,
 		},
@@ -140,7 +151,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 			ServiceAccountName: "meshery-operator",
 			Volumes: []corev1.Volume{
 				{
-					Name: "config-volume",
+					Name: configVolumeName,
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							LocalObjectReference: corev1.LocalObjectReference{
@@ -150,7 +161,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 					},
 				},
 				{
-					Name: "pid",
+					Name: pidVolumeName,
 					VolumeSource: corev1.VolumeSource{
 						EmptyDir: &corev1.EmptyDirVolumeSource{},
 					},
@@ -175,7 +186,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Ports: []corev1.ContainerPort{
 						{
-							Name: "client",
+							Name: clientPortName,
 
 							ContainerPort: val4222,
 						},
@@ -231,11 +242,11 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      "config-volume",
+							Name:      configVolumeName,
 							MountPath: "/etc/nats-config",
 						},
 						{
-							Name:      "pid",
+							Name:      pidVolumeName,
 							MountPath: "/var/run/nats",
 						},
 						{
@@ -286,11 +297,11 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
-							Name:      "config-volume",
+							Name:      configVolumeName,
 							MountPath: "/etc/nats-config",
 						},
 						{
-							Name:      "pid",
+							Name:      pidVolumeName,
 							MountPath: "/var/run/nats",
 						},
 					},
