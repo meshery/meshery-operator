@@ -23,6 +23,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	appLabelKey     = "app"
+	componentKey    = "component"
+	mesheryName     = "meshery"
+	meshsyncBinary  = "./meshery-meshsync"
+	meshsyncName    = "meshery-meshsync"
+	meshsyncService = "meshsync"
+)
+
 var (
 	val1     int32 = 1
 	val60    int64 = 60
@@ -31,12 +40,12 @@ var (
 	valtrue bool = true
 
 	MesheryLabel = map[string]string{
-		"app": "meshery",
+		appLabelKey: mesheryName,
 	}
 
 	MeshSyncLabel = map[string]string{
-		"app":       MesheryLabel["app"],
-		"component": "meshsync",
+		appLabelKey:  MesheryLabel[appLabelKey],
+		componentKey: meshsyncService,
 	}
 
 	MesheryAnnotation = map[string]string{
@@ -51,7 +60,7 @@ var (
 
 	Deployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "meshery-meshsync",
+			Name:        meshsyncName,
 			Labels:      MeshSyncLabel,
 			Annotations: MesheryAnnotation,
 		},
@@ -66,7 +75,7 @@ var (
 
 	PodTemplate = corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "meshery-meshsync",
+			Name:        meshsyncName,
 			Labels:      MeshSyncLabel,
 			Annotations: MesheryAnnotation,
 		},
@@ -87,7 +96,7 @@ var (
 						},
 					},
 					Command: []string{
-						"./meshery-meshsync",
+						meshsyncBinary,
 					},
 					Env: []corev1.EnvVar{
 						{
@@ -113,7 +122,7 @@ var (
 						ProbeHandler: corev1.ProbeHandler{
 							Exec: &corev1.ExecAction{
 								Command: []string{
-									"./meshery-meshsync",
+									meshsyncBinary,
 									"-h",
 								},
 							},
@@ -127,7 +136,7 @@ var (
 						ProbeHandler: corev1.ProbeHandler{
 							Exec: &corev1.ExecAction{
 								Command: []string{
-									"./meshery-meshsync",
+									meshsyncBinary,
 									"-h",
 								},
 							},

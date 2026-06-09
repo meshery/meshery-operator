@@ -272,7 +272,7 @@ kind:
 	chmod +x ./kind
 	sudo mv ./kind /usr/local/bin/kind
 
-SETUP_ENVTEST_VERSION := d4f1e822ca11e9ff149bf2d9b5285f375334eba5
+SETUP_ENVTEST_VERSION := v0.24.1
 
 bin/setup-envtest: $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION) ## Install setup-envtest CLI
 	@ln -sf setup-envtest-$(SETUP_ENVTEST_VERSION) $(BIN_DIR)/setup-envtest
