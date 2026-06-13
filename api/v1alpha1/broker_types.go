@@ -26,7 +26,9 @@ type BrokerSpec struct {
 }
 
 type Endpoint struct {
+	// +kubebuilder:validation:Format=uri
 	Internal string `json:"internal,omitempty" yaml:"internal,omitempty"`
+	// +kubebuilder:validation:Format=uri
 	External string `json:"external,omitempty" yaml:"external,omitempty"`
 }
 

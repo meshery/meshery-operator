@@ -22,6 +22,7 @@ import (
 )
 
 type CustomMeshsyncBroker struct {
+	// +kubebuilder:validation:Format=uri
 	URL string `json:"url,omitempty" yaml:"url,omitempty"`
 }
 
