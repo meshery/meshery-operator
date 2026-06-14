@@ -261,9 +261,14 @@ catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 
 # Test coverage
+# Run tests with envtest binaries
+.PHONY: test
+test: envtest
+	KUBEBUILDER_ASSETS="$(shell $(BIN_DIR)/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR) -p path)" go test ./... -coverprofile cover.out
+
 .PHONY: coverage
-coverage: test-env
-	go test -v ./... -coverprofile cover.out
+coverage: envtest
+	KUBEBUILDER_ASSETS="$(shell $(BIN_DIR)/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR) -p path)" go test -v ./... -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
 
 .PHONY: kind
@@ -284,9 +289,8 @@ $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION):
 
 # Setting test envrioment
 .PHONY: test-env
-test-env:
-	make bin/setup-envtest
-	bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR)
+test-env: envtest
+	@echo "Test environment ready. Use 'make test' to run tests."
 
 ##@ Integration Tests
 
