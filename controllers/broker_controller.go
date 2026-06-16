@@ -20,6 +20,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/meshery/meshery-operator/pkg/metrics"
+
 	"github.com/go-logr/logr"
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
@@ -57,27 +59,42 @@ const (
 
 // Reconcile is the main reconciliation loop
 func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	start := time.Now()
+	var reconcileErr error
+	var result ctrl.Result
+
+	defer func() {
+		metrics.ReconcileTotal.WithLabelValues("broker").Inc()
+		metrics.ReconcileDuration.WithLabelValues("broker").Observe(time.Since(start).Seconds())
+		if reconcileErr != nil {
+			metrics.ReconcileErrors.WithLabelValues("broker").Inc()
+		}
+	}()
+
 	log := r.Log.WithValues("controller", "Broker", "namespace", req.NamespacedName)
 	log.Info("Reconciling broker")
 
 	baseResource := &mesheryv1alpha1.Broker{}
 	err := r.Get(ctx, req.NamespacedName, baseResource)
 	if err != nil {
-		return r.handleGetError(log, err)
+		result, reconcileErr = r.handleGetError(log, err)
+		return result, reconcileErr
 	}
 
 	// resource deletion
 	if baseResource.GetDeletionTimestamp() != nil {
-		return r.handleDeletion(ctx, log, baseResource)
+		result, reconcileErr = r.handleDeletion(ctx, log, baseResource)
+		return result, reconcileErr
 	}
 
 	// finalizer exists
-	if result, err := r.ensureFinalizer(ctx, log, baseResource); err != nil || result.RequeueAfter > 0 {
-		return result, err
+	if result, reconcileErr = r.ensureFinalizer(ctx, log, baseResource); reconcileErr != nil || result.RequeueAfter > 0 {
+		return result, reconcileErr
 	}
 
 	// main reconciliation
-	return r.performReconciliation(ctx, log, baseResource, req)
+	result, reconcileErr = r.performReconciliation(ctx, log, baseResource, req)
+	return result, reconcileErr
 }
 
 // handleGetError handles errors from fetching the broker resource
