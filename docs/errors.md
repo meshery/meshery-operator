@@ -1,10 +1,12 @@
 # Error handling
 
-The operator standardizes on **MeshKit structured errors**
-(`github.com/meshery/meshkit/errors`). Every error returned from a controller or
-package is constructed with a stable code and rich, user-facing metadata so that
-Meshery Server and the meshkit error-reference tooling can surface actionable
-guidance instead of an opaque string.
+The operator is standardizing on **MeshKit structured errors**
+(`github.com/meshery/meshkit/errors`) as its error-handling convention. The goal is
+that every error returned from a controller or package is constructed with a stable
+code and rich, user-facing metadata so that Meshery Server and the meshkit
+error-reference tooling can surface actionable guidance instead of an opaque string.
+New errors must use this form; the existing registry is mid-migration (see
+[Migration status](#migration-status) below).
 
 ## The convention
 
@@ -51,6 +53,10 @@ code and message are available, but prefer the full `errors.New` form.
 ## Migration status
 
 The error registry in `controllers/error.go` historically used `fmt.Errorf` with
-bare numeric string codes (`1001`-`1012`). It is being migrated to the MeshKit
-form above as the controllers are reworked (WS-3, #785); new errors must use the
-MeshKit form from the outset.
+bare numeric string codes (`1001`-`1012`, plus an outlier `11049`), while
+`pkg/broker/error.go` and `pkg/meshsync/error.go` use the standard-library `errors`
+package with concatenated codes (`1013`-`1016`) that currently collide across the
+two packages. These are being migrated to the MeshKit form above and renumbered into
+the `meshery-operator-NNNN` namespace (allocated from `helpers/component_info.json`)
+as the controllers are reworked (WS-3, #785); new errors must use the MeshKit form
+from the outset.
