@@ -18,18 +18,16 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	"github.com/meshery/meshery-operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -40,6 +38,12 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
+// leaderElectionID is the name of the Lease used to coordinate leader
+// election. It MUST be stable across all replicas and restarts; otherwise
+// every manager would acquire its own uniquely-named lease and never contend,
+// defeating leader election entirely.
+const leaderElectionID = "meshery-operator-leader.meshery.io"
+
 func init() {
 	// +kubebuilder:scaffold:scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -47,9 +51,10 @@ func init() {
 }
 
 func main() {
-	var metricsAddr, namespace string
+	var metricsAddr, probeAddr, namespace string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the health probe endpoint binds to.")
 	flag.StringVar(&namespace, "namespace", "meshery", "The namespace operator is deployed to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
@@ -57,17 +62,17 @@ func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{})))
 
-	opID := uuid.NewUUID()
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
 			BindAddress: metricsAddr,
 		},
+		HealthProbeBindAddress: probeAddr,
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port: 9443,
 		}),
 		LeaderElection:          enableLeaderElection,
-		LeaderElectionID:        fmt.Sprintf("operator-%s.meshery.io", opID),
+		LeaderElectionID:        leaderElectionID,
 		LeaderElectionNamespace: namespace,
 	})
 	if err != nil {
@@ -98,14 +103,23 @@ func main() {
 	}
 
 	if err = mReconciler.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "MeshSync")
+		setupLog.Error(err, "unable to create controller", "controller", "MeshSync")
 		os.Exit(1)
 	}
 	if err = bReconciler.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "Broker")
+		setupLog.Error(err, "unable to create controller", "controller", "Broker")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

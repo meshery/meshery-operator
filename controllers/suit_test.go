@@ -66,7 +66,9 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		ControlPlaneStartTimeout: timeout,
 		ControlPlaneStopTimeout:  timeout,
 		AttachControlPlaneOutput: false,
-		BinaryAssetsDirectory:    filepath.Join("..", "bin", "k8s", "1.30.0-linux-amd64"),
+		// Resolve the control-plane binaries from KUBEBUILDER_ASSETS (set by
+		// `make test` via setup-envtest). Avoids a hard-coded, arch-specific
+		// path that breaks on arm64/macOS. See Makefile `test` target.
 	}
 
 	var cfg *rest.Config
@@ -100,7 +102,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port: 8443,
-			Host: "", // isten on all interfaces
+			Host: "", // listen on all interfaces
 		}),
 		LeaderElection: false,
 	})
@@ -108,6 +110,8 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(mgr).ToNot(BeNil())
 
 	clientSet, err = kubernetes.NewForConfig(cfg)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(clientSet).ToNot(BeNil())
 
 	brokerReconciler := &BrokerReconciler{
 		Client:     mgr.GetClient(),
@@ -124,7 +128,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		Client:     mgr.GetClient(),
 		KubeConfig: cfg,
 		Clientset:  clientSet,
-		Log:        ctrl.Log.WithName("controllers").WithName("Broker"),
+		Log:        ctrl.Log.WithName("controllers").WithName("MeshSync"),
 		Scheme:     mgr.GetScheme(),
 	}
 

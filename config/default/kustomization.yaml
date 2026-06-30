@@ -24,11 +24,10 @@ bases:
 # [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
 #- ../prometheus
 
-patchesStrategicMerge:
-  # Protect the /metrics endpoint by putting it behind auth.
-  # If you want your operator to expose the /metrics
-  # endpoint w/o any authn/z, please comment the following line.
-- manager_auth_proxy_patch.yaml
+# Metrics are served by the manager itself on :8080 (see config/manager).
+# The legacy kube-rbac-proxy sidecar was removed (its image was retired and the
+# sidecar pattern is deprecated); WS-5 reintroduces metrics protection via the
+# controller-runtime authn/authz filter and cert-manager-issued TLS.
 
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
 # crd/kustomization.yaml

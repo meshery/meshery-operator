@@ -5,6 +5,32 @@ metadata:
   name: operator-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - meshery.io
   resources:
   - brokers
@@ -17,6 +43,13 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - meshery.io
+  resources:
+  - brokers/finalizers
+  - meshsyncs/finalizers
+  verbs:
+  - update
 - apiGroups:
   - meshery.io
   resources:
