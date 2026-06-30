@@ -116,8 +116,9 @@ tidy: ## Run go mod tidy against code.
 	go mod tidy
 
 .PHONY: test
-test: manifests generate fmt vet ## Run tests.
-	go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
+test: manifests generate fmt vet test-env ## Run tests.
+	KUBEBUILDER_ASSETS="$$(bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR) -p path)" \
+		go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
 
 ##@ Build
 

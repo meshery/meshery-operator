@@ -66,7 +66,9 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		ControlPlaneStartTimeout: timeout,
 		ControlPlaneStopTimeout:  timeout,
 		AttachControlPlaneOutput: false,
-		BinaryAssetsDirectory:    filepath.Join("..", "bin", "k8s", "1.30.0-linux-amd64"),
+		// Resolve the control-plane binaries from KUBEBUILDER_ASSETS (set by
+		// `make test` via setup-envtest). Avoids a hard-coded, arch-specific
+		// path that breaks on arm64/macOS. See Makefile `test` target.
 	}
 
 	var cfg *rest.Config

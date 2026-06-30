@@ -29,25 +29,49 @@ spec:
     spec:
       terminationGracePeriodSeconds: 10
       serviceAccountName: meshery-operator
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: manager
         image: meshery/meshery-operator:stable-latest
         imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
         ports:
         - containerPort: 9443
           name: server
-          hostPort: 9443
         - containerPort: 8080
           name: metrics
-          hostPort: 8080
+        - containerPort: 8081
+          name: health
         command:
         - /manager
         args:
         - --enable-leader-election
+        - --metrics-addr=:8080
+        - --health-probe-bind-address=:8081
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: 5
+          periodSeconds: 10
         resources:
           limits:
-            cpu: 100m
-            memory: 30Mi
+            cpu: 500m
+            memory: 256Mi
           requests:
             cpu: 100m
-            memory: 20Mi
+            memory: 64Mi
