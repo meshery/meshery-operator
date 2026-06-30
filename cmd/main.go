@@ -29,9 +29,16 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
+
+// RBAC for the controller-runtime metrics authn/authz filter: it delegates
+// bearer-token authentication and SubjectAccessReview authorization to the API
+// server, so the operator's ServiceAccount must be allowed to create both.
+// +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
+// +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
 
 var (
 	scheme   = runtime.NewScheme()
@@ -53,7 +60,7 @@ func init() {
 func main() {
 	var metricsAddr, probeAddr, namespace string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-addr", ":8443", "The address the metric endpoint binds to (served over TLS with authn/authz).")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the health probe endpoint binds to.")
 	flag.StringVar(&namespace, "namespace", "meshery", "The namespace operator is deployed to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
@@ -66,6 +73,12 @@ func main() {
 		Scheme: scheme,
 		Metrics: server.Options{
 			BindAddress: metricsAddr,
+			// Serve metrics over TLS (controller-runtime self-signs when no
+			// CertDir is provided) and gate access behind the API server's
+			// authn + SubjectAccessReview authz, replacing the retired
+			// kube-rbac-proxy sidecar (WS-5).
+			SecureServing:  true,
+			FilterProvider: filters.WithAuthenticationAndAuthorization,
 		},
 		HealthProbeBindAddress: probeAddr,
 		WebhookServer: webhook.NewServer(webhook.Options{

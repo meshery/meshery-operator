@@ -59,7 +59,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2026-06-30T23:44:15Z"
+    createdAt: "2026-06-30T23:51:51Z"
     olm.skipRange: '>=0.0.1 <0.1.0'
     operators.operatorframework.io/builder: operator-sdk-v1.42.3
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -114,6 +114,18 @@ spec:
           - update
           - watch
         - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        - apiGroups:
           - meshery.io
           resources:
           - brokers
@@ -164,7 +176,7 @@ spec:
               containers:
               - args:
                 - --enable-leader-election
-                - --metrics-addr=:8080
+                - --metrics-addr=:8443
                 - --health-probe-bind-address=:8081
                 command:
                 - /manager
@@ -180,8 +192,8 @@ spec:
                 ports:
                 - containerPort: 9443
                   name: server
-                - containerPort: 8080
-                  name: metrics
+                - containerPort: 8443
+                  name: https-metrics
                 - containerPort: 8081
                   name: health
                 readinessProbe:

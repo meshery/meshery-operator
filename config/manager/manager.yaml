@@ -52,15 +52,15 @@ spec:
         ports:
         - containerPort: 9443
           name: server
-        - containerPort: 8080
-          name: metrics
+        - containerPort: 8443
+          name: https-metrics
         - containerPort: 8081
           name: health
         command:
         - /manager
         args:
         - --enable-leader-election
-        - --metrics-addr=:8080
+        - --metrics-addr=:8443
         - --health-probe-bind-address=:8081
         livenessProbe:
           httpGet:
