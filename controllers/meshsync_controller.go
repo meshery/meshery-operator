@@ -147,8 +147,8 @@ func (r *MeshSyncReconciler) checkMeshsyncHealth(ctx context.Context, baseResour
 func (r *MeshSyncReconciler) patchMeshsyncStatus(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync) (ctrl.Result, error) {
 	patch, err := utils.Marshal(baseResource)
 	if err != nil {
-		err = ErrUpdateResource(err)
-		log.Error(err, "unable to update meshsync resource")
+		err = ErrMarshal(err)
+		log.Error(err, "unable to marshal meshsync resource")
 		return ctrl.Result{}, err
 	}
 	err = r.Status().Patch(ctx, baseResource, client.RawPatch(types.MergePatchType, []byte(patch)))

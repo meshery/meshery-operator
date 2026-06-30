@@ -116,6 +116,14 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes.
 tidy: ## Run go mod tidy against code.
 	go mod tidy
 
+.PHONY: error
+error: ## Analyze MeshKit error codes (read-only); writes errorutil_*.json to ./helpers.
+	go run github.com/meshery/meshkit/cmd/errorutil -d . analyze -i ./helpers -o ./helpers
+
+.PHONY: error-util
+error-util: ## Assign/update MeshKit error codes and regenerate the error reference export.
+	go run github.com/meshery/meshkit/cmd/errorutil -d . update -i ./helpers -o ./helpers
+
 .PHONY: test
 test: manifests generate fmt vet test-env ## Run tests.
 	KUBEBUILDER_ASSETS="$$(bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR) -p path)" \

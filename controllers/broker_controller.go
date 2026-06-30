@@ -217,7 +217,7 @@ func (r *BrokerReconciler) getBrokerEndpoint(ctx context.Context, log logr.Logge
 func (r *BrokerReconciler) patchBrokerStatus(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.Broker) (ctrl.Result, error) {
 	patch, err := utils.Marshal(baseResource)
 	if err != nil {
-		err = ErrUpdateResource(err)
+		err = ErrMarshal(err)
 		log.Error(err, "Unable to marshal broker resource")
 		return ctrl.Result{}, err
 	}

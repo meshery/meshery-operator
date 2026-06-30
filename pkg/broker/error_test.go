@@ -18,33 +18,53 @@ package broker
 
 import (
 	"errors"
+	"strings"
 	"testing"
+
+	meshkiterrors "github.com/meshery/meshkit/errors"
 )
 
-func TestErrGettingResource(t *testing.T) {
-	err := ErrGettingResource(errors.New("test"))
+func assertMeshkitError(t *testing.T, err error, wantCode, wantDetail string) {
+	t.Helper()
 	if err == nil {
-		t.Error("expected error but got nil")
+		t.Fatal("expected an error, got nil")
+	}
+	if got := meshkiterrors.GetCode(err); got != wantCode {
+		t.Errorf("expected code %q, got %q", wantCode, got)
+	}
+	if got := meshkiterrors.GetSeverity(err); got != meshkiterrors.Alert {
+		t.Errorf("expected severity Alert, got %d", got)
+	}
+	if wantDetail != "" && !strings.Contains(err.Error(), wantDetail) {
+		t.Errorf("expected error to carry detail %q, got: %s", wantDetail, err.Error())
 	}
 }
 
-func TestErrGettingEndpoint(t *testing.T) {
-	err := ErrGettingEndpoint(errors.New("test"))
-	if err == nil {
-		t.Error("expected error but got nil")
-	}
+func TestErrGettingBrokerResource(t *testing.T) {
+	assertMeshkitError(t, ErrGettingBrokerResource(errors.New("boom")), ErrGettingBrokerResourceCode, "boom")
 }
 
-func TestErrReplicasNotReady(t *testing.T) {
-	err := ErrReplicasNotReady("test")
-	if err == nil {
-		t.Error("expected error but got nil")
-	}
+func TestErrGettingBrokerEndpoint(t *testing.T) {
+	assertMeshkitError(t, ErrGettingBrokerEndpoint(errors.New("boom")), ErrGettingBrokerEndpointCode, "boom")
 }
 
-func TestErrConditionFalse(t *testing.T) {
-	err := ErrConditionFalse("test")
-	if err == nil {
-		t.Error("expected error but got nil")
+func TestErrBrokerReplicasNotReady(t *testing.T) {
+	assertMeshkitError(t, ErrBrokerReplicasNotReady("not enough replicas"), ErrBrokerReplicasNotReadyCode, "not enough replicas")
+}
+
+func TestErrBrokerConditionFalse(t *testing.T) {
+	assertMeshkitError(t, ErrBrokerConditionFalse("condition false"), ErrBrokerConditionFalseCode, "condition false")
+}
+
+// TestErrorCodesUnique guards against re-introducing the historical code
+// collision; every code in this package must be distinct.
+func TestErrorCodesUnique(t *testing.T) {
+	codes := []string{ErrGettingBrokerResourceCode, ErrBrokerReplicasNotReadyCode, ErrBrokerConditionFalseCode, ErrGettingBrokerEndpointCode}
+	seen := make(map[string]bool, len(codes))
+	for _, c := range codes {
+		if seen[c] {
+			t.Errorf("duplicate error code %q within the broker registry", c)
+		}
+		seen[c] = true
 	}
 }
