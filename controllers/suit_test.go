@@ -102,7 +102,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		},
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port: 8443,
-			Host: "", // isten on all interfaces
+			Host: "", // listen on all interfaces
 		}),
 		LeaderElection: false,
 	})
@@ -110,6 +110,8 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(mgr).ToNot(BeNil())
 
 	clientSet, err = kubernetes.NewForConfig(cfg)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(clientSet).ToNot(BeNil())
 
 	brokerReconciler := &BrokerReconciler{
 		Client:     mgr.GetClient(),
@@ -126,7 +128,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		Client:     mgr.GetClient(),
 		KubeConfig: cfg,
 		Clientset:  clientSet,
-		Log:        ctrl.Log.WithName("controllers").WithName("Broker"),
+		Log:        ctrl.Log.WithName("controllers").WithName("MeshSync"),
 		Scheme:     mgr.GetScheme(),
 	}
 

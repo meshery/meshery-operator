@@ -62,7 +62,7 @@ assert_resources_meshsync() {
   fi
   
   echo "Now waiting for meshsync deployment to be ready..."
-  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=condition=available --timeout=300s deployment/meshery-meshsync || {
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=condition=available --timeout=600s deployment/meshery-meshsync || {
     echo "❌ meshsync deployment failed to become ready"
     kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=meshsync
     kubectl --namespace "$OPERATOR_NAMESPACE" describe deployment/meshery-meshsync
@@ -93,7 +93,7 @@ assert_resources_broker() {
   fi
   
   echo "Now waiting for broker statefulset to be ready..."
-  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=300s statefulset/meshery-broker || {
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=600s statefulset/meshery-broker || {
     echo "❌ broker statefulset failed to become ready"
     kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=broker
     kubectl --namespace "$OPERATOR_NAMESPACE" describe statefulset/meshery-broker
@@ -153,6 +153,21 @@ setup() {
   build_operator_image
   kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER_NAME"
 
+  # Pre-load the workload images the operator deploys so the readiness asserts
+  # are not gated on a first-time image pull on the kind node. The meshsync
+  # image in particular is large and its pull latency from Docker Hub varies
+  # widely on CI runners (observed 2s-5min), which previously blew past the
+  # readiness budget. Pulling here (on the runner, with a warm network) and
+  # side-loading into kind makes pod startup deterministic.
+  echo "Pre-loading workload images into KinD cluster..."
+  for img in meshery/meshsync:stable-latest; do
+    if docker pull "$img"; then
+      kind load docker-image "$img" --name "$CLUSTER_NAME" || echo "⚠️  failed to side-load $img (will pull at runtime)"
+    else
+      echo "⚠️  failed to pull $img (will pull at runtime)"
+    fi
+  done
+
   echo "Creating $OPERATOR_NAMESPACE namespace..."
   kubectl create namespace "$OPERATOR_NAMESPACE" || true
 
@@ -172,8 +187,10 @@ setup() {
   cd "$TEMP_CONFIG_DIR/manager" 
   "$PROJECT_ROOT/bin/kustomize" edit set image meshery/meshery-operator="$OPERATOR_IMAGE"
   
-  # Set imagePullPolicy to Never for integration tests (image is loaded into kind cluster)
-  sed -i 's/imagePullPolicy: Always/imagePullPolicy: Never/' manager.yaml
+  # Set imagePullPolicy to Never for integration tests (image is loaded into kind cluster).
+  # Use a portable in-place edit: GNU sed accepts a bare `-i`, but BSD/macOS sed
+  # requires an explicit backup suffix, so pass one and delete the backup.
+  sed -i.bak 's/imagePullPolicy: Always/imagePullPolicy: Never/' manager.yaml && rm -f manager.yaml.bak
   
   cd "$PROJECT_ROOT"
   
