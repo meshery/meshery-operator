@@ -141,6 +141,17 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 								appLabelKey: brokerLabelValue,
 							},
 						},
+						Spec: corev1.PodSpec{
+							// A pod template must declare at least one container;
+							// the apiserver rejects an empty container list with a
+							// 422 (spec.template.spec.containers: Required value).
+							Containers: []corev1.Container{
+								{
+									Name:  "nats",
+									Image: "nats:latest",
+								},
+							},
+						},
 					},
 				},
 			}
