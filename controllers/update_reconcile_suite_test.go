@@ -126,4 +126,66 @@ var _ = Describe("Controller update reconciliation", func() {
 			g.Expect(deployment.Spec.Template.Spec.Containers[0].Env[0].Value).To(Equal("nats://broker-new:4222"))
 		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
 	})
+
+	It("reconciles the broker Service type in place when spec.service.type changes", func() {
+		namespace := fmt.Sprintf("broker-net-%d", GinkgoRandomSeed())
+		name := "broker-net"
+		createNamespace(namespace)
+
+		broker := &mesheryv1alpha1.Broker{
+			TypeMeta:   metav1.TypeMeta{APIVersion: testAPIVersion, Kind: "Broker"},
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec: mesheryv1alpha1.BrokerSpec{
+				Size:    1,
+				Service: mesheryv1alpha1.BrokerServiceSpec{Type: corev1.ServiceTypeClusterIP},
+			},
+		}
+		Expect(k8sClient.Create(ctx, broker)).To(Succeed())
+
+		svcKey := types.NamespacedName{Name: name, Namespace: namespace}
+		By("the NATS Service is created as ClusterIP")
+		Eventually(func(g Gomega) {
+			svc := &corev1.Service{}
+			g.Expect(k8sClient.Get(ctx, svcKey, svc)).To(Succeed())
+			g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		By("patching the Broker to NodePort reconciles the live Service in place (no recreation)")
+		Eventually(func() error {
+			current := &mesheryv1alpha1.Broker{}
+			if err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, current); err != nil {
+				return err
+			}
+			current.Spec.Service.Type = corev1.ServiceTypeNodePort
+			return k8sClient.Update(ctx, current)
+		}, 5*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		Eventually(func(g Gomega) {
+			svc := &corev1.Service{}
+			g.Expect(k8sClient.Get(ctx, svcKey, svc)).To(Succeed())
+			g.Expect(svc.Spec.Type).To(Equal(corev1.ServiceTypeNodePort))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+	})
+
+	It("rejects loadBalancerClass on a non-LoadBalancer service via CEL", func() {
+		namespace := fmt.Sprintf("broker-cel-%d", GinkgoRandomSeed())
+		name := "broker-cel"
+		createNamespace(namespace)
+
+		class := "internal"
+		broker := &mesheryv1alpha1.Broker{
+			TypeMeta:   metav1.TypeMeta{APIVersion: testAPIVersion, Kind: "Broker"},
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec: mesheryv1alpha1.BrokerSpec{
+				Size: 1,
+				Service: mesheryv1alpha1.BrokerServiceSpec{
+					Type:              corev1.ServiceTypeClusterIP,
+					LoadBalancerClass: &class,
+				},
+			},
+		}
+		err := k8sClient.Create(ctx, broker)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("loadBalancerClass is only valid when service type is LoadBalancer"))
+	})
 })

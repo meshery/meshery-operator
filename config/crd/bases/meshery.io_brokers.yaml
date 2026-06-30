@@ -8,13 +8,30 @@ metadata:
 spec:
   group: meshery.io
   names:
+    categories:
+    - meshery
     kind: Broker
     listKind: BrokerList
     plural: brokers
+    shortNames:
+    - br
     singular: broker
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.size
+      name: Size
+      type: integer
+    - jsonPath: .status.endpoint.external
+      name: External
+      type: string
+    - jsonPath: .status.endpoint.internal
+      name: Internal
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: Broker is the Schema for the brokers API
@@ -37,13 +54,75 @@ spec:
           metadata:
             type: object
           spec:
-            description: BrokerSpec defines the desired state of Broker
+            description: |-
+              BrokerSpec defines the desired state of Broker.
+              (Field order is optimised for struct alignment; the JSON/CRD shape is
+              unaffected.)
             properties:
+              service:
+                description: |-
+                  Service controls how the broker is exposed on the network. Every field is
+                  reconcilable in place: editing it updates the live Service and re-derives
+                  status.endpoint without recreating the broker pods.
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Annotations are merged onto the client Service (cloud LB hints, MetalLB
+                      address pools, internal-LB switches).
+                    type: object
+                  externalEndpointOverride:
+                    description: |-
+                      ExternalEndpointOverride pins the advertised external endpoint (host:port)
+                      when auto-derivation is undesirable: an ingress/gateway in front of the
+                      broker, an air-gapped topology, or NAT. The nats:// scheme is added by
+                      consumers.
+                    type: string
+                  loadBalancerClass:
+                    description: |-
+                      LoadBalancerClass selects a specific load-balancer implementation
+                      (LoadBalancer type only).
+                    type: string
+                  loadBalancerSourceRanges:
+                    description: |-
+                      LoadBalancerSourceRanges restricts client access to the given CIDRs
+                      (LoadBalancer type only).
+                    items:
+                      type: string
+                    type: array
+                  type:
+                    description: |-
+                      Type is the Kubernetes Service type for client access. When empty the
+                      operator keeps its historical default (LoadBalancer). Set ClusterIP on
+                      clusters without a cloud load-balancer (kind, minikube, bare-metal), or
+                      NodePort to expose the broker on node IPs.
+                    enum:
+                    - ClusterIP
+                    - NodePort
+                    - LoadBalancer
+                    type: string
+                type: object
+                x-kubernetes-validations:
+                - message: loadBalancerClass is only valid when service type is LoadBalancer
+                  rule: '!has(self.loadBalancerClass) || !has(self.type) || self.type
+                    == ''LoadBalancer'''
+                - message: loadBalancerSourceRanges is only valid when service type
+                    is LoadBalancer
+                  rule: '!has(self.loadBalancerSourceRanges) || !has(self.type) ||
+                    self.type == ''LoadBalancer'''
               size:
+                default: 1
+                description: Size is the number of NATS server replicas.
                 format: int32
                 maximum: 10
                 minimum: 1
                 type: integer
+              version:
+                description: |-
+                  Version pins the NATS server image tag. When empty the operator uses its
+                  bundled default NATS version.
+                type: string
             type: object
           status:
             description: BrokerStatus defines the observed state of Broker

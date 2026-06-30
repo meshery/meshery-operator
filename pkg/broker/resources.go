@@ -17,7 +17,23 @@ const (
 	monitorPortName   = "monitor"
 	configVolumeName  = "config-volume"
 	pidVolumeName     = "pid"
+
+	// defaultNATSVersion is the NATS server image tag used when BrokerSpec.Version
+	// is empty. Override per-Broker via spec.version.
+	defaultNATSVersion = "2.10.29-alpine3.21"
+	// natsConfigReloaderImage is the maintained config-reloader (the former
+	// connecteverything org is defunct and now lives under natsio).
+	natsConfigReloaderImage = "natsio/nats-server-config-reloader:0.23.0"
 )
+
+// natsImage returns the NATS server image for the given spec version, falling
+// back to the operator's bundled default.
+func natsImage(version string) string {
+	if version == "" {
+		version = defaultNATSVersion
+	}
+	return "nats:" + version
+}
 
 var (
 	val1    int32 = 1
@@ -183,7 +199,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 			Containers: []corev1.Container{
 				{
 					Name:            "nats",
-					Image:           "nats:2.8.2-alpine3.15",
+					Image:           "nats:" + defaultNATSVersion,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Ports: []corev1.ContainerPort{
 						{
@@ -291,7 +307,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 				},
 				{
 					Name:            "reloader",
-					Image:           "connecteverything/nats-server-config-reloader:0.6.0",
+					Image:           natsConfigReloaderImage,
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Command: []string{
 						"nats-server-config-reloader", "-pid", "/var/run/nats/nats.pid", "-config", "/etc/nats-config/nats.conf",

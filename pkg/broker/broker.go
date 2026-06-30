@@ -33,8 +33,8 @@ func GetObjects(m *mesheryv1alpha1.Broker) []Object {
 	return []Object{
 		getServerConfig(),
 		getAccountConfig(),
-		getServiceObject(m.Namespace, m.Name),
-		getServerObject(m.Namespace, m.Name, desiredReplicas(m)),
+		getServiceObject(m.Namespace, m.Name, m.Spec.Service),
+		getServerObject(m.Namespace, m.Name, desiredReplicas(m), m.Spec.Version),
 	}
 }
 
@@ -48,21 +48,44 @@ func desiredReplicas(m *mesheryv1alpha1.Broker) int32 {
 	return 1
 }
 
-func getServerObject(namespace, name string, replicas int32) Object {
+func getServerObject(namespace, name string, replicas int32, version string) Object {
 	var obj = &v1.StatefulSet{}
 	StatefulSet.DeepCopyInto(obj)
 	obj.Namespace = namespace
 	obj.Name = name
 	obj.Spec.Replicas = &replicas
+	if len(obj.Spec.Template.Spec.Containers) > 0 {
+		obj.Spec.Template.Spec.Containers[0].Image = natsImage(version)
+	}
 	return obj
 }
 
-func getServiceObject(namespace, name string) Object {
+func getServiceObject(namespace, name string, svc mesheryv1alpha1.BrokerServiceSpec) Object {
 	var obj = &corev1.Service{}
 	Service.DeepCopyInto(obj)
 	obj.Name = name
 	obj.Namespace = namespace
+	applyServiceSpec(obj, svc)
 	return obj
+}
+
+// applyServiceSpec overlays the user-declared networking onto the NATS client
+// Service. An unset Type preserves the historical LoadBalancer default; the
+// LoadBalancer-only fields are applied only for that type.
+func applyServiceSpec(obj *corev1.Service, svc mesheryv1alpha1.BrokerServiceSpec) {
+	if svc.Type != "" {
+		obj.Spec.Type = svc.Type
+	}
+	for k, v := range svc.Annotations {
+		if obj.Annotations == nil {
+			obj.Annotations = map[string]string{}
+		}
+		obj.Annotations[k] = v
+	}
+	if obj.Spec.Type == corev1.ServiceTypeLoadBalancer {
+		obj.Spec.LoadBalancerClass = svc.LoadBalancerClass
+		obj.Spec.LoadBalancerSourceRanges = svc.LoadBalancerSourceRanges
+	}
 }
 
 func getServerConfig() Object {
@@ -105,6 +128,11 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, c client.Client
 	}
 
 	internal, external, _ := DeriveEndpoint(serviceObj, apiServerURL)
+	// An explicit override wins over auto-derivation (ingress/gateway, air-gapped,
+	// NAT topologies where TCP-derived external addresses are wrong).
+	if override := m.Spec.Service.ExternalEndpointOverride; override != "" {
+		external = override
+	}
 	m.Status.Endpoint.Internal = internal
 	m.Status.Endpoint.External = external
 	return nil
