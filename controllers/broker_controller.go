@@ -23,6 +23,7 @@ import (
 	"github.com/go-logr/logr"
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
+	"github.com/meshery/meshery-operator/pkg/metrics"
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -50,6 +51,8 @@ type BrokerReconciler struct {
 
 const (
 	brokerFinalizer = "broker.meshery.io/finalizer"
+	// brokerControllerName labels this controller's reconciliation metrics.
+	brokerControllerName = "broker"
 )
 
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch;create;update;patch;delete
@@ -59,7 +62,16 @@ const (
 // +kubebuilder:rbac:groups="",resources=services;configmaps,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is the main reconciliation loop
-func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, reconcileErr error) {
+	start := time.Now()
+	defer func() {
+		metrics.ReconcileTotal.WithLabelValues(brokerControllerName).Inc()
+		metrics.ReconcileDuration.WithLabelValues(brokerControllerName).Observe(time.Since(start).Seconds())
+		if reconcileErr != nil {
+			metrics.ReconcileErrors.WithLabelValues(brokerControllerName).Inc()
+		}
+	}()
+
 	log := r.Log.WithValues("controller", "Broker", "namespace", req.NamespacedName)
 	log.Info("Reconciling broker")
 
@@ -75,8 +87,8 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// finalizer exists
-	if result, err := r.ensureFinalizer(ctx, log, baseResource); err != nil || result.RequeueAfter > 0 {
-		return result, err
+	if res, err := r.ensureFinalizer(ctx, log, baseResource); err != nil || res.RequeueAfter > 0 {
+		return res, err
 	}
 
 	// main reconciliation

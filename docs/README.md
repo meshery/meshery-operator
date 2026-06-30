@@ -10,6 +10,7 @@ the [Meshery docs site](https://docs.meshery.io).
 | [development.md](development.md) | Local setup, the `go/v4` project layout, the Makefile targets, tool versions, and how to build/run the operator. |
 | [testing.md](testing.md) | The three test tiers (unit, envtest, kind e2e) and how to run each. |
 | [errors.md](errors.md) | The error-handling convention (MeshKit structured errors) and how to add a new error. |
+| [metrics.md](metrics.md) | The Prometheus reconciliation metrics, how they are wired to the manager endpoint, and how to add a metric. |
 | [proposals/operator-modernization-plan.md](proposals/operator-modernization-plan.md) | The phased modernization plan and the eight workstreams it is delivered in. |
 
 ## Repository layout (Kubebuilder `go/v4`)
