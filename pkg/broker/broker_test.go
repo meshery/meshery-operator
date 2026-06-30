@@ -91,14 +91,14 @@ var _ = Describe("Broker funtions test cases", func() {
 					Replicas: &m.Spec.Size,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
-							"app": "broker",
+							appLabelKey: brokerComponent,
 						},
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: name,
 							Labels: map[string]string{
-								"app": "broker",
+								appLabelKey: brokerComponent,
 							},
 						},
 					},

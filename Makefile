@@ -116,8 +116,9 @@ tidy: ## Run go mod tidy against code.
 	go mod tidy
 
 .PHONY: test
-test: manifests generate fmt vet ## Run tests.
-	go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
+test: manifests generate fmt vet test-env ## Run tests.
+	KUBEBUILDER_ASSETS="$$(bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR) -p path)" \
+		go test --short ./... -race -coverprofile=coverage.txt -covermode=atomic
 
 ##@ Build
 
@@ -151,12 +152,9 @@ PLATFORMS ?= linux/arm64,linux/amd64
 .PHONY: docker-buildx
 docker-buildx: test ## Build and push docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- docker buildx create --name project-v3-builder
-	docker buildx use project-v3-builder
-	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
-	- docker buildx rm project-v3-builder
-	rm Dockerfile.cross
+	docker buildx create --name project-v3-builder --use
+	docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile .
+	docker buildx rm project-v3-builder
 
 ##@ Deployment
 
@@ -275,7 +273,7 @@ kind:
 	chmod +x ./kind
 	sudo mv ./kind /usr/local/bin/kind
 
-SETUP_ENVTEST_VERSION := d4f1e822ca11e9ff149bf2d9b5285f375334eba5
+SETUP_ENVTEST_VERSION := v0.24.1
 
 bin/setup-envtest: $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION) ## Install setup-envtest CLI
 	@ln -sf setup-envtest-$(SETUP_ENVTEST_VERSION) $(BIN_DIR)/setup-envtest

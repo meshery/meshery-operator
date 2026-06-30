@@ -32,7 +32,7 @@ var _ = Describe("Controller update reconciliation", func() {
 
 		broker := &mesheryv1alpha1.Broker{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "meshery.io/v1alpha1",
+				APIVersion: testAPIVersion,
 				Kind:       "Broker",
 			},
 			ObjectMeta: metav1.ObjectMeta{
@@ -77,7 +77,7 @@ var _ = Describe("Controller update reconciliation", func() {
 
 		meshsync := &mesheryv1alpha1.MeshSync{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "meshery.io/v1alpha1",
+				APIVersion: testAPIVersion,
 				Kind:       "MeshSync",
 			},
 			ObjectMeta: metav1.ObjectMeta{

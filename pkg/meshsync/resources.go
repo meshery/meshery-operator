@@ -23,6 +23,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	appLabelKey     = "app"
+	componentKey    = "component"
+	mesheryName     = "meshery"
+	meshsyncBinary  = "./meshery-meshsync"
+	meshsyncName    = "meshery-meshsync"
+	meshsyncService = "meshsync"
+)
+
 var (
 	val1     int32 = 1
 	val60    int64 = 60
@@ -31,12 +40,12 @@ var (
 	valtrue bool = true
 
 	MesheryLabel = map[string]string{
-		"app": "meshery",
+		appLabelKey: mesheryName,
 	}
 
 	MeshSyncLabel = map[string]string{
-		"app":       MesheryLabel["app"],
-		"component": "meshsync",
+		appLabelKey:  MesheryLabel[appLabelKey],
+		componentKey: meshsyncService,
 	}
 
 	MesheryAnnotation = map[string]string{
@@ -51,7 +60,7 @@ var (
 
 	Deployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "meshery-meshsync",
+			Name:        meshsyncName,
 			Labels:      MeshSyncLabel,
 			Annotations: MesheryAnnotation,
 		},
@@ -66,7 +75,7 @@ var (
 
 	PodTemplate = corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        "meshery-meshsync",
+			Name:        meshsyncName,
 			Labels:      MeshSyncLabel,
 			Annotations: MesheryAnnotation,
 		},
@@ -87,7 +96,7 @@ var (
 						},
 					},
 					Command: []string{
-						"./meshery-meshsync",
+						meshsyncBinary,
 					},
 					Env: []corev1.EnvVar{
 						{
@@ -105,15 +114,22 @@ var (
 							corev1.ResourceMemory: MemoryLimit,
 						},
 					},
+					// NOTE: these probes exec the meshsync binary itself (`-h`),
+					// which forks+execs a fresh Go process on every probe. While
+					// meshsync performs its initial full-cluster sync it can
+					// saturate the node's CPU, so a 2s exec timeout is too tight
+					// on small/CPU-constrained nodes and the pod never reports
+					// Ready. Use a 10s timeout for headroom. (Replacing the
+					// exec probe with a lightweight check is tracked in WS-3.)
 					LivenessProbe: &corev1.Probe{
 						InitialDelaySeconds: 60,
 						PeriodSeconds:       10,
-						TimeoutSeconds:      2,
+						TimeoutSeconds:      10,
 						FailureThreshold:    4,
 						ProbeHandler: corev1.ProbeHandler{
 							Exec: &corev1.ExecAction{
 								Command: []string{
-									"./meshery-meshsync",
+									meshsyncBinary,
 									"-h",
 								},
 							},
@@ -121,13 +137,13 @@ var (
 					},
 					ReadinessProbe: &corev1.Probe{
 						InitialDelaySeconds: 20,
-						PeriodSeconds:       4,
-						TimeoutSeconds:      2,
+						PeriodSeconds:       10,
+						TimeoutSeconds:      10,
 						FailureThreshold:    4,
 						ProbeHandler: corev1.ProbeHandler{
 							Exec: &corev1.ExecAction{
 								Command: []string{
-									"./meshery-meshsync",
+									meshsyncBinary,
 									"-h",
 								},
 							},

@@ -29,8 +29,9 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 		PublishingTo string = "Publish for testcase"
 		FileManager  string = "testcase-meshsync"
 
-		Kind       string = "MeshSync"
-		APIVersion string = "meshery.io/v1alpha1"
+		Kind             string = "MeshSync"
+		APIVersion       string = "meshery.io/v1alpha1"
+		defaultNamespace string = "default"
 	)
 
 	var meshSync *MeshSync
@@ -43,8 +44,8 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 				Kind:       Kind,
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "default",
-				Name:      "default",
+				Namespace: defaultNamespace,
+				Name:      defaultNamespace,
 			},
 			Spec: MeshSyncSpec{
 				Size: 2,
@@ -53,8 +54,8 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 						URL: URL,
 					},
 					Native: NativeMeshsyncBroker{
-						Namespace: "default",
-						Name:      "default",
+						Namespace: defaultNamespace,
+						Name:      defaultNamespace,
 					},
 				},
 				WatchList: corev1.ConfigMap{
@@ -64,7 +65,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "watch-list",
-						Namespace: "default",
+						Namespace: defaultNamespace,
 					},
 					Data: map[string]string{
 						"blacklist": "",
@@ -75,8 +76,8 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 		}
 
 		typeNamespace = types.NamespacedName{
-			Namespace: "default",
-			Name:      "default",
+			Namespace: defaultNamespace,
+			Name:      defaultNamespace,
 		}
 	})
 
@@ -119,7 +120,7 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "watch-list",
-					Namespace: "default",
+					Namespace: defaultNamespace,
 				},
 				Data: map[string]string{
 					"blacklist": "",

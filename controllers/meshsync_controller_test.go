@@ -41,7 +41,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 		It("Getting meshSync resource should be failing", func() {
 			namespace = defaultNamespace
 			meshSync := &v1alpha1.MeshSync{}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, meshSync)
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, meshSync)
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -50,11 +50,11 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 		namespace = defaultNamespace
 		meshSync := &v1alpha1.MeshSync{
 			TypeMeta: metav1.TypeMeta{
-				APIVersion: "meshery.io/v1alpha1",
+				APIVersion: testAPIVersion,
 				Kind:       "MeshSync",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "default",
+				Name:      defaultNamespace,
 				Namespace: namespace,
 			},
 			Spec: v1alpha1.MeshSyncSpec{
@@ -67,16 +67,16 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 	It("Getting meshSync resource should be successful", func() {
 		namespace = defaultNamespace
 		meshSync := &v1alpha1.MeshSync{}
-		err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, meshSync)
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, meshSync)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(meshSync.Spec.Size).To(Equal(int32(1)))
 	})
 
 	It("Updating meshSync resource should be successful", func() {
-		namespace = "default"
+		namespace = defaultNamespace
 		Eventually(func() error {
 			meshSync := &v1alpha1.MeshSync{}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, meshSync)
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, meshSync)
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 
 		By("Checking if the meshSync resource is updated")
 		meshSync := &v1alpha1.MeshSync{}
-		err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, meshSync)
+		err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, meshSync)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(meshSync.Spec.Size).To(Equal(int32(2)))
 	})
@@ -95,7 +95,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 		It("Deleting meshSync resource should be succeeding", func() {
 			namespace = defaultNamespace
 			meshSync := &v1alpha1.MeshSync{}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: "default", Namespace: namespace}, meshSync)
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, meshSync)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, meshSync)).Should(Succeed())
 		})

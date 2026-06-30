@@ -8,6 +8,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const oldAnnotation = "old"
+
 func TestSyncBrokerStatefulSet(t *testing.T) {
 	const newAnnotation = "new"
 	one := int32(1)
@@ -15,18 +17,18 @@ func TestSyncBrokerStatefulSet(t *testing.T) {
 
 	existing := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"app": "old"},
-			Annotations: map[string]string{"team": "old"},
+			Labels:      map[string]string{appLabelKey: oldAnnotation},
+			Annotations: map[string]string{teamLabelKey: oldAnnotation},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas:    &one,
-			ServiceName: "old",
+			ServiceName: oldAnnotation,
 		},
 	}
 	desired := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"app": newAnnotation},
-			Annotations: map[string]string{"team": newAnnotation},
+			Labels:      map[string]string{appLabelKey: newAnnotation},
+			Annotations: map[string]string{teamLabelKey: newAnnotation},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas:    &two,
@@ -37,10 +39,10 @@ func TestSyncBrokerStatefulSet(t *testing.T) {
 	if changed := syncBrokerStatefulSet(existing, desired); !changed {
 		t.Fatal("expected statefulset sync to report changes")
 	}
-	if existing.Labels["app"] != newAnnotation {
+	if existing.Labels[appLabelKey] != newAnnotation {
 		t.Fatalf("expected labels to be updated, got %v", existing.Labels)
 	}
-	if existing.Annotations["team"] != newAnnotation {
+	if existing.Annotations[teamLabelKey] != newAnnotation {
 		t.Fatalf("expected annotations to be updated, got %v", existing.Annotations)
 	}
 	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != two {
@@ -58,12 +60,12 @@ func TestSyncBrokerService(t *testing.T) {
 	const newAnnotation = "new"
 	existing := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"app": "old"},
-			Annotations: map[string]string{"team": "old"},
+			Labels:      map[string]string{appLabelKey: oldAnnotation},
+			Annotations: map[string]string{teamLabelKey: oldAnnotation},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
-			Selector: map[string]string{"app": "old"},
+			Selector: map[string]string{appLabelKey: oldAnnotation},
 			Ports: []corev1.ServicePort{
 				{Name: "client", Port: 4222},
 			},
@@ -72,12 +74,12 @@ func TestSyncBrokerService(t *testing.T) {
 	}
 	desired := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"app": newAnnotation},
-			Annotations: map[string]string{"team": newAnnotation},
+			Labels:      map[string]string{appLabelKey: newAnnotation},
+			Annotations: map[string]string{teamLabelKey: newAnnotation},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeLoadBalancer,
-			Selector: map[string]string{"app": newAnnotation},
+			Selector: map[string]string{appLabelKey: newAnnotation},
 			Ports: []corev1.ServicePort{
 				{Name: "client", Port: 5222},
 			},
@@ -87,10 +89,10 @@ func TestSyncBrokerService(t *testing.T) {
 	if changed := syncBrokerService(existing, desired); !changed {
 		t.Fatal("expected service sync to report changes")
 	}
-	if existing.Labels["app"] != newAnnotation {
+	if existing.Labels[appLabelKey] != newAnnotation {
 		t.Fatalf("expected labels to be updated, got %v", existing.Labels)
 	}
-	if existing.Annotations["team"] != newAnnotation {
+	if existing.Annotations[teamLabelKey] != newAnnotation {
 		t.Fatalf("expected annotations to be updated, got %v", existing.Annotations)
 	}
 	if existing.Spec.Type != corev1.ServiceTypeLoadBalancer {
@@ -99,7 +101,7 @@ func TestSyncBrokerService(t *testing.T) {
 	if existing.Spec.Ports[0].Port != 5222 {
 		t.Fatalf("expected service port to be updated, got %d", existing.Spec.Ports[0].Port)
 	}
-	if existing.Spec.Selector["app"] != newAnnotation {
+	if existing.Spec.Selector[appLabelKey] != newAnnotation {
 		t.Fatalf("expected selector to be updated, got %v", existing.Spec.Selector)
 	}
 	if existing.Spec.ClusterIP != "10.0.0.1" {
@@ -114,16 +116,16 @@ func TestSyncBrokerConfigMap(t *testing.T) {
 	const newAnnotation = "new"
 	existing := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"app": "old"},
-			Annotations: map[string]string{"team": "old"},
+			Labels:      map[string]string{appLabelKey: oldAnnotation},
+			Annotations: map[string]string{teamLabelKey: oldAnnotation},
 		},
-		Data:       map[string]string{"config": "old"},
-		BinaryData: map[string][]byte{"bin": []byte("old")},
+		Data:       map[string]string{"config": oldAnnotation},
+		BinaryData: map[string][]byte{"bin": []byte(oldAnnotation)},
 	}
 	desired := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"app": newAnnotation},
-			Annotations: map[string]string{"team": newAnnotation},
+			Labels:      map[string]string{appLabelKey: newAnnotation},
+			Annotations: map[string]string{teamLabelKey: newAnnotation},
 		},
 		Data:       map[string]string{"config": newAnnotation},
 		BinaryData: map[string][]byte{"bin": []byte(newAnnotation)},
@@ -150,8 +152,8 @@ func TestSyncMeshsyncDeployment(t *testing.T) {
 
 	existing := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"app": "old"},
-			Annotations: map[string]string{"team": "old"},
+			Labels:      map[string]string{appLabelKey: oldAnnotation},
+			Annotations: map[string]string{teamLabelKey: oldAnnotation},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &one,
@@ -159,8 +161,8 @@ func TestSyncMeshsyncDeployment(t *testing.T) {
 	}
 	desired := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      map[string]string{"app": newAnnotation},
-			Annotations: map[string]string{"team": newAnnotation},
+			Labels:      map[string]string{appLabelKey: newAnnotation},
+			Annotations: map[string]string{teamLabelKey: newAnnotation},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &two,
@@ -170,10 +172,10 @@ func TestSyncMeshsyncDeployment(t *testing.T) {
 	if changed := syncMeshsyncDeployment(existing, desired); !changed {
 		t.Fatal("expected deployment sync to report changes")
 	}
-	if existing.Labels["app"] != newAnnotation {
+	if existing.Labels[appLabelKey] != newAnnotation {
 		t.Fatalf("expected labels to be updated, got %v", existing.Labels)
 	}
-	if existing.Annotations["team"] != newAnnotation {
+	if existing.Annotations[teamLabelKey] != newAnnotation {
 		t.Fatalf("expected annotations to be updated, got %v", existing.Annotations)
 	}
 	if existing.Spec.Replicas == nil || *existing.Spec.Replicas != two {

@@ -54,6 +54,10 @@ const (
 
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile reconciles the MeshSync resource
 func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
