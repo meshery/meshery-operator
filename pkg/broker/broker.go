@@ -2,9 +2,9 @@ package broker
 
 import (
 	"context"
+	"fmt"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
-	meshkitkube "github.com/meshery/meshkit/utils/kubernetes"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,12 +25,16 @@ type Object interface {
 	metav1.Object
 }
 
-func GetObjects(m *mesheryv1alpha1.Broker) map[string]Object {
-	return map[string]Object{
-		ServerConfig:  getServerConfig(),
-		AccountConfig: getAccountConfig(),
-		ServerObject:  getServerObject(m.Namespace, m.Name, m.Spec.Size),
-		ServiceObject: getServiceObject(m.Namespace, m.Name),
+// GetObjects returns the broker-owned objects in a deterministic order:
+// ConfigMaps and Service before the StatefulSet, so the workload's config and
+// (clusterIP-bearing) Service exist before endpoint derivation runs. A slice —
+// not a map — guarantees that order on every reconcile (WS-3 §4.3 #16).
+func GetObjects(m *mesheryv1alpha1.Broker) []Object {
+	return []Object{
+		getServerConfig(),
+		getAccountConfig(),
+		getServiceObject(m.Namespace, m.Name),
+		getServerObject(m.Namespace, m.Name, m.Spec.Size),
 	}
 }
 
@@ -63,55 +67,38 @@ func getAccountConfig() Object {
 	return obj
 }
 
-func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client client.Client) error {
+// CheckHealth reports whether the broker StatefulSet has reached its desired
+// ready replica count. StatefulSets do not populate status.conditions reliably,
+// so ReadyReplicas is the authoritative signal (WS-3 §4.3 #17).
+func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, c client.Client) error {
 	obj := &v1.StatefulSet{}
-	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj)
-	if err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj); err != nil {
 		return ErrGettingBrokerResource(err)
 	}
 
-	if obj.Status.Replicas != obj.Status.ReadyReplicas {
-		if len(obj.Status.Conditions) > 0 {
-			return ErrBrokerReplicasNotReady(obj.Status.Conditions[0].Reason)
-		}
-		return ErrBrokerReplicasNotReady("Condition Unknown")
+	desired := int32(1)
+	if m.Spec.Size > 0 {
+		desired = m.Spec.Size
 	}
-
-	if len(obj.Status.Conditions) > 0 && (obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown) {
-		return ErrBrokerConditionFalse(obj.Status.Conditions[0].Reason)
+	if obj.Status.ReadyReplicas != desired {
+		return ErrBrokerReplicasNotReady(fmt.Sprintf("%d of %d replicas ready", obj.Status.ReadyReplicas, desired))
 	}
-
 	return nil
 }
 
-// GetEndpoint returns those endpoints in the given service which match the selector.
-func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client client.Client, url string) error {
+// GetEndpoint derives the broker endpoints from the Service and writes them to
+// the Broker status. Derivation is pure and non-blocking: it reads only the
+// Service spec/status (no TCP dials), so it never stalls the reconcile queue
+// (WS-3 §4.3 #14, WS-6). Addresses are stored as host:port; the nats:// scheme
+// is applied where the endpoint is consumed (MeshSync BROKER_URL injection).
+func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, c client.Client, apiServerURL string) error {
 	serviceObj := &corev1.Service{}
-	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, serviceObj)
-	if err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, serviceObj); err != nil {
 		return ErrGettingBrokerResource(err)
 	}
 
-	opts := &meshkitkube.ServiceOptions{
-		Name:         m.Name,
-		Namespace:    m.Namespace,
-		PortSelector: clientPortName,
-		APIServerURL: url,
-		WorkerNodeIP: "localhost",
-	}
-
-	endpoint, err := meshkitkube.GetEndpoint(ctx, opts, serviceObj)
-	if err != nil {
-		return ErrGettingBrokerEndpoint(err)
-	}
-
-	// Set the broker status endpoints
-	if endpoint.External != nil {
-		m.Status.Endpoint.External = endpoint.External.String()
-	}
-	if endpoint.Internal != nil {
-		m.Status.Endpoint.Internal = endpoint.Internal.String()
-	}
-
+	internal, external, _ := DeriveEndpoint(serviceObj, apiServerURL)
+	m.Status.Endpoint.Internal = internal
+	m.Status.Endpoint.External = external
 	return nil
 }

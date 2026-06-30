@@ -18,6 +18,8 @@ package meshsync
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	v1 "k8s.io/api/apps/v1"
@@ -30,6 +32,9 @@ import (
 
 const (
 	ServerObject = "server-object"
+	// brokerURLEnv is the env var the MeshSync container reads its broker
+	// connection string from.
+	brokerURLEnv = "BROKER_URL"
 )
 
 type Object interface {
@@ -37,39 +42,65 @@ type Object interface {
 	metav1.Object
 }
 
-func GetObjects(m *mesheryv1alpha1.MeshSync) map[string]Object {
-	return map[string]Object{
-		ServerObject: getServerObject(m.Namespace, m.Name, m.Spec.Size, m.Status.PublishingTo),
-	}
+// GetObjects returns the MeshSync-owned objects as a deterministic slice.
+func GetObjects(m *mesheryv1alpha1.MeshSync) []Object {
+	return []Object{GetServerObject(m)}
 }
 
-func getServerObject(namespace, name string, replicas int32, url string) Object {
-	var obj = &v1.Deployment{}
+// GetServerObject builds the MeshSync Deployment for the given CR, injecting the
+// broker URL by env name (not position) and normalising it to a nats:// scheme
+// (WS-3 §4.3 #18).
+func GetServerObject(m *mesheryv1alpha1.MeshSync) Object {
+	obj := &v1.Deployment{}
 	Deployment.DeepCopyInto(obj)
-	obj.Namespace = namespace
-	obj.Name = name
-	obj.Spec.Replicas = &replicas
-	obj.Spec.Template.Spec.Containers[0].Env[0].Value = url // Set broker endpoint
+	obj.Namespace = m.Namespace
+	obj.Name = m.Name
+	obj.Spec.Replicas = &m.Spec.Size
+	if len(obj.Spec.Template.Spec.Containers) > 0 {
+		setBrokerURL(&obj.Spec.Template.Spec.Containers[0], m.Status.PublishingTo)
+	}
 	return obj
 }
 
-func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, client client.Client) error {
+// setBrokerURL sets the BROKER_URL env var by name, leaving the template default
+// in place when no endpoint has been derived yet.
+func setBrokerURL(container *corev1.Container, rawURL string) {
+	if rawURL == "" {
+		return
+	}
+	value := ensureNatsScheme(rawURL)
+	for i := range container.Env {
+		if container.Env[i].Name == brokerURLEnv {
+			container.Env[i].Value = value
+			return
+		}
+	}
+	container.Env = append(container.Env, corev1.EnvVar{Name: brokerURLEnv, Value: value})
+}
+
+// ensureNatsScheme prefixes a bare host:port with nats://, while leaving an
+// already-schemed URL (nats://, tls://, …) untouched.
+func ensureNatsScheme(raw string) string {
+	if strings.Contains(raw, "://") {
+		return raw
+	}
+	return "nats://" + raw
+}
+
+// CheckHealth reports whether the MeshSync Deployment has reached its desired
+// ready replica count (ReadyReplicas is the authoritative signal — WS-3 §4.3 #17).
+func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, c client.Client) error {
 	obj := &v1.Deployment{}
-	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj)
-	if err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj); err != nil {
 		return ErrGettingMeshsyncResource(err)
 	}
 
-	if obj.Status.Replicas != obj.Status.ReadyReplicas {
-		if len(obj.Status.Conditions) > 0 {
-			return ErrMeshsyncReplicasNotReady(obj.Status.Conditions[0].Reason)
-		}
-		return ErrMeshsyncReplicasNotReady("Condition Unknown")
+	desired := int32(1)
+	if m.Spec.Size > 0 {
+		desired = m.Spec.Size
 	}
-
-	if len(obj.Status.Conditions) > 0 && (obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown) {
-		return ErrMeshsyncConditionFalse(obj.Status.Conditions[0].Reason)
+	if obj.Status.ReadyReplicas != desired {
+		return ErrMeshsyncReplicasNotReady(fmt.Sprintf("%d of %d replicas ready", obj.Status.ReadyReplicas, desired))
 	}
-
 	return nil
 }

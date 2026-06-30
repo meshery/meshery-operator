@@ -27,7 +27,6 @@ import (
 	"github.com/meshery/meshery-operator/pkg/metrics"
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +36,10 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	util "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // MeshSyncReconciler reconciles a MeshSync object
@@ -53,11 +55,15 @@ const (
 	meshsyncFinalizer = "meshsync.meshery.io/finalizer"
 	// meshsyncControllerName labels this controller's reconciliation metrics.
 	meshsyncControllerName = "meshsync"
+	// meshsyncFieldManager is the stable Server-Side Apply field manager for the
+	// MeshSync Deployment.
+	meshsyncFieldManager = "meshery-operator-meshsync"
 )
 
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/finalizers,verbs=update
+// +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -92,19 +98,50 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	if res, err := r.ensureFinalizer(ctx, log, baseResource); err != nil || res.RequeueAfter > 0 {
 		return res, err
 	}
-	return r.performReconciliation(ctx, log, baseResource, req)
+	return r.performReconciliation(ctx, log, baseResource)
 
 }
 
 func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Watch Broker objects so a change to a referenced Broker's endpoint
+	// re-enqueues the MeshSync that consumes it, propagating the new BROKER_URL
+	// without manual intervention (WS-3 §4.3 #15, WS-4 §6.2.4).
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.MeshSync{}).
 		Owns(&appsv1.Deployment{}).
+		Watches(&mesheryv1alpha1.Broker{}, handler.EnqueueRequestsFromMapFunc(r.meshsyncsForBroker)).
 		Complete(r)
 }
 
+// meshsyncsForBroker maps a Broker event to reconcile requests for every
+// MeshSync that references it as a native broker.
+func (r *MeshSyncReconciler) meshsyncsForBroker(ctx context.Context, obj client.Object) []reconcile.Request {
+	broker, ok := obj.(*mesheryv1alpha1.Broker)
+	if !ok {
+		return nil
+	}
+
+	var meshsyncs mesheryv1alpha1.MeshSyncList
+	if err := r.List(ctx, &meshsyncs); err != nil {
+		r.Log.Error(err, "unable to list MeshSync resources for Broker watch", "broker", broker.Name)
+		return nil
+	}
+
+	var requests []reconcile.Request
+	for i := range meshsyncs.Items {
+		native := meshsyncs.Items[i].Spec.Broker.Native
+		if native.Name == broker.Name && native.Namespace == broker.Namespace {
+			requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+				Name:      meshsyncs.Items[i].Name,
+				Namespace: meshsyncs.Items[i].Namespace,
+			}})
+		}
+	}
+	return requests
+}
+
 // performReconciliation performs the main meshsync reconciliation logic
-func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
+func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync) (ctrl.Result, error) {
 	// Set initial status to processing
 	if err := r.updateStatusCondition(ctx, baseResource, "Processing", v1.ConditionTrue, "Reconciling", "Reconciling meshsync"); err != nil {
 		log.Error(err, "Failed to update meshsync status to Processing")
@@ -117,7 +154,7 @@ func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr
 	}
 
 	// Deploy meshsync resources
-	if result, err := r.deployMeshsyncResources(ctx, log, baseResource, req); err != nil {
+	if result, err := r.deployMeshsyncResources(ctx, log, baseResource); err != nil {
 		return result, err
 	}
 
@@ -136,15 +173,13 @@ func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr
 	return r.patchMeshsyncStatus(ctx, log, baseResource)
 }
 
-func (r *MeshSyncReconciler) deployMeshsyncResources(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
-	result, err := r.reconcileMeshsync(ctx, true, baseResource, req)
-	if err != nil {
-		err = ErrReconcileMeshsync(err)
+func (r *MeshSyncReconciler) deployMeshsyncResources(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync) (ctrl.Result, error) {
+	if err := r.reconcileMeshsync(ctx, baseResource); err != nil {
 		log.Error(err, "Meshsync reconciliation failed")
 		_ = r.updateStatusCondition(ctx, baseResource, "Failed", v1.ConditionFalse, "ReconciliationFailed", "Meshsync reconciliation failed")
 		return ctrl.Result{}, err
 	}
-	return result, nil
+	return ctrl.Result{}, nil
 }
 
 func (r *MeshSyncReconciler) checkMeshsyncHealth(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
@@ -297,62 +332,29 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 	return nil
 }
 
-func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.MeshSync, req ctrl.Request) (ctrl.Result, error) {
-	desired := meshsyncpackage.GetObjects(baseResource)[meshsyncpackage.ServerObject]
-	key := types.NamespacedName{
-		Name:      baseResource.Name,
-		Namespace: baseResource.Namespace,
+// reconcileMeshsync drives the MeshSync Deployment to its desired state with a
+// single Server-Side Apply, mirroring the Broker controller. SSA avoids the
+// read-modify-DeepEqual hot-loop and lets the API server keep its defaulted
+// fields (WS-3 §4.3 #13, §6.2.2).
+func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
+	desired := meshsyncpackage.GetServerObject(baseResource)
+	desired.SetNamespace(baseResource.Namespace)
+	if err := util.SetControllerReference(baseResource, desired, r.Scheme); err != nil {
+		return ErrReconcileMeshsync(err)
 	}
-	existing := &appsv1.Deployment{}
-	err := r.Get(ctx, key, existing)
-	switch {
-	case err != nil && kubeerror.IsNotFound(err) && enable:
-		desiredDeployment := desired.(*appsv1.Deployment)
-		_ = util.SetControllerReference(baseResource, desiredDeployment, r.Scheme)
-		er := r.Create(ctx, desiredDeployment)
-		if er != nil {
-			return ctrl.Result{}, ErrCreateMeshsync(er)
-		}
-		r.Log.Info("Meshsync created successfully")
-		// .Owns will trigger a reconcile for the object
-		return ctrl.Result{}, nil
-	case err != nil && enable:
-		return ctrl.Result{}, ErrGetMeshsync(err)
-	case err == nil && !enable:
-		er := r.Delete(ctx, existing)
-		if er != nil {
-			return ctrl.Result{}, ErrDeleteMeshsync(er)
-		}
-		return ctrl.Result{RequeueAfter: time.Second}, nil
+	if err := r.apply(ctx, desired); err != nil {
+		return ErrCreateMeshsync(err)
 	}
-	if !enable {
-		return ctrl.Result{}, nil
-	}
-	desiredDeployment := desired.(*appsv1.Deployment)
-	if syncMeshsyncDeployment(existing, desiredDeployment) {
-		if err := r.Update(ctx, existing); err != nil {
-			return ctrl.Result{}, ErrUpdateResource(err)
-		}
-	}
-
-	return ctrl.Result{}, nil
+	return nil
 }
 
-func syncMeshsyncDeployment(existing, desired *appsv1.Deployment) bool {
-	changed := false
-
-	if !apiequality.Semantic.DeepEqual(existing.Labels, desired.Labels) {
-		existing.Labels = desired.Labels
-		changed = true
+// apply performs a Server-Side Apply of the MeshSync Deployment using a stable
+// field manager.
+func (r *MeshSyncReconciler) apply(ctx context.Context, obj client.Object) error {
+	gvk, err := apiutil.GVKForObject(obj, r.Scheme)
+	if err != nil {
+		return err
 	}
-	if !apiequality.Semantic.DeepEqual(existing.Annotations, desired.Annotations) {
-		existing.Annotations = desired.Annotations
-		changed = true
-	}
-	if !apiequality.Semantic.DeepEqual(existing.Spec, desired.Spec) {
-		existing.Spec = desired.Spec
-		changed = true
-	}
-
-	return changed
+	obj.GetObjectKind().SetGroupVersionKind(gvk)
+	return r.Patch(ctx, obj, client.Apply, client.FieldOwner(meshsyncFieldManager), client.ForceOwnership)
 }

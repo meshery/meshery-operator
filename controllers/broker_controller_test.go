@@ -35,7 +35,6 @@ const (
 	testAPIVersion   = "meshery.io/v1alpha1"
 	appLabelKey      = "app"
 	brokerLabelValue = "broker"
-	teamLabelKey     = "team"
 )
 
 var _ = Describe("The test cases for customize resource: Broker's controller ", func() {
@@ -159,6 +158,15 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			By("Creating statefulset resources for testing broker")
 			err = k8sClient.Create(ctx, statefulSet)
 			Expect(err).ToNot(HaveOccurred())
+
+			By("Health must still fail until ReadyReplicas reaches the desired count")
+			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(HaveOccurred())
+
+			By("Driving the StatefulSet to ready via the status subresource (no kubelet)")
+			statefulSet.Status.Replicas = broker.Spec.Size
+			statefulSet.Status.ReadyReplicas = broker.Spec.Size
+			Expect(k8sClient.Status().Update(ctx, statefulSet)).To(Succeed())
+
 			By("Checking if the broker is healthy, it should be successful")
 			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(Succeed())
 		})
