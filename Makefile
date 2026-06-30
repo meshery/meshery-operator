@@ -8,7 +8,8 @@ VERSION ?= 0.0.1
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 BIN_DIR := $(PROJECT_DIR)/bin
 
-ENVTEST_K8S_VERSION = 1.30.0
+# Keep ENVTEST_K8S_VERSION aligned with the k8s.io/* libraries in go.mod (v0.35.x).
+ENVTEST_K8S_VERSION = 1.35.0
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -51,10 +52,6 @@ endif
 
 # Image URL to use all building/pushing image targets
 IMG ?= meshery/meshery-operator:stable-latest
-
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true"
-
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -108,8 +105,12 @@ vet: ## Run go vet against code.
 
 # Run go lint against code
 .PHONY: lint
-lint:
-	golangci-lint run -c .golangci.yml -v ./...
+lint: golangci-lint ## Run golangci-lint linter.
+	$(GOLANGCI_LINT) run -c .golangci.yml ./...
+
+.PHONY: lint-fix
+lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes.
+	$(GOLANGCI_LINT) run -c .golangci.yml --fix ./...
 
 .PHONY: tidy
 tidy: ## Run go mod tidy against code.
@@ -124,12 +125,11 @@ test: manifests generate fmt vet test-env ## Run tests.
 
 .PHONY: build
 build: generate fmt vet manifests ## Build manager binary.
-	go build -o bin/manager main.go
+	go build -o bin/manager cmd/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go mod tidy; \
-	go run ./main.go
+	go run ./cmd/main.go
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
@@ -189,21 +189,40 @@ $(LOCALBIN):
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.17.1
+KUSTOMIZE_VERSION ?= v5.8.1
+CONTROLLER_TOOLS_VERSION ?= v0.18.0
+GOLANGCI_LINT_VERSION ?= v2.12.2
 
-KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
+# go-install-versioned installs a Go-based tool at a pinned version into bin/,
+# re-installing when the on-disk binary reports a different version. The plain
+# binary path (no version suffix) is kept so consumers like
+# integration-tests/main.sh can reference $(LOCALBIN)/<tool> directly.
+# $(1)=binary path  $(2)=version string  $(3)=`go install` package@version  $(4)=version-probe command
+define go-install-versioned
+@{ \
+set -e ;\
+if [ ! -x "$(1)" ] || ! $(4) 2>/dev/null | grep -qF "$(patsubst v%,%,$(2))"; then \
+	echo "Installing $(3)" ;\
+	rm -f "$(1)" ;\
+	GOBIN=$(LOCALBIN) go install $(3) ;\
+fi ;\
+}
+endef
+
 .PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
-$(KUSTOMIZE): $(LOCALBIN)
-	test -s $(LOCALBIN)/kustomize || { curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
+kustomize: $(LOCALBIN) ## Download kustomize locally if necessary.
+	$(call go-install-versioned,$(KUSTOMIZE),$(KUSTOMIZE_VERSION),sigs.k8s.io/kustomize/kustomize/v5@$(KUSTOMIZE_VERSION),$(KUSTOMIZE) version)
 
 .PHONY: controller-gen
-controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
-$(CONTROLLER_GEN): $(LOCALBIN)
-	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+controller-gen: $(LOCALBIN) ## Download controller-gen locally if necessary.
+	$(call go-install-versioned,$(CONTROLLER_GEN),$(CONTROLLER_TOOLS_VERSION),sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION),$(CONTROLLER_GEN) --version)
+
+.PHONY: golangci-lint
+golangci-lint: $(LOCALBIN) ## Download golangci-lint locally if necessary.
+	$(call go-install-versioned,$(GOLANGCI_LINT),$(GOLANGCI_LINT_VERSION),github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION),$(GOLANGCI_LINT) version)
 
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
@@ -222,6 +241,7 @@ bundle-push: ## Push the bundle image.
 
 .PHONY: opm
 OPM = ./bin/opm
+OPM_VERSION ?= v1.72.0
 opm: ## Download opm locally if necessary.
 ifeq (,$(wildcard $(OPM)))
 ifeq (,$(shell which opm 2>/dev/null))
@@ -229,7 +249,7 @@ ifeq (,$(shell which opm 2>/dev/null))
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
 	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.23.0/$${OS}-$${ARCH}-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/$(OPM_VERSION)/$${OS}-$${ARCH}-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else
@@ -267,11 +287,15 @@ coverage: test-env
 	go test -v ./... -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
 
+KIND ?= $(LOCALBIN)/kind
+KIND_VERSION ?= v0.32.0
 .PHONY: kind
-kind:
-	curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.18.0/kind-linux-amd64
-	chmod +x ./kind
-	sudo mv ./kind /usr/local/bin/kind
+kind: $(LOCALBIN) ## Download kind locally (bin/) for the current OS/ARCH if necessary.
+	@test -x $(KIND) && $(KIND) version 2>/dev/null | grep -qF "$(patsubst v%,%,$(KIND_VERSION))" || { \
+		echo "Installing kind $(KIND_VERSION)" ;\
+		curl -fsSLo $(KIND) https://kind.sigs.k8s.io/dl/$(KIND_VERSION)/kind-$(shell go env GOOS)-$(shell go env GOARCH) ;\
+		chmod +x $(KIND) ;\
+	}
 
 SETUP_ENVTEST_VERSION := v0.24.1
 
