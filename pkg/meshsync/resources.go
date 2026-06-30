@@ -114,10 +114,17 @@ var (
 							corev1.ResourceMemory: MemoryLimit,
 						},
 					},
+					// NOTE: these probes exec the meshsync binary itself (`-h`),
+					// which forks+execs a fresh Go process on every probe. While
+					// meshsync performs its initial full-cluster sync it can
+					// saturate the node's CPU, so a 2s exec timeout is too tight
+					// on small/CPU-constrained nodes and the pod never reports
+					// Ready. Use a 10s timeout for headroom. (Replacing the
+					// exec probe with a lightweight check is tracked in WS-3.)
 					LivenessProbe: &corev1.Probe{
 						InitialDelaySeconds: 60,
 						PeriodSeconds:       10,
-						TimeoutSeconds:      2,
+						TimeoutSeconds:      10,
 						FailureThreshold:    4,
 						ProbeHandler: corev1.ProbeHandler{
 							Exec: &corev1.ExecAction{
@@ -130,8 +137,8 @@ var (
 					},
 					ReadinessProbe: &corev1.Probe{
 						InitialDelaySeconds: 20,
-						PeriodSeconds:       4,
-						TimeoutSeconds:      2,
+						PeriodSeconds:       10,
+						TimeoutSeconds:      10,
 						FailureThreshold:    4,
 						ProbeHandler: corev1.ProbeHandler{
 							Exec: &corev1.ExecAction{
