@@ -154,13 +154,18 @@ setup() {
   kind load docker-image "$OPERATOR_IMAGE" --name "$CLUSTER_NAME"
 
   # Pre-load the workload images the operator deploys so the readiness asserts
-  # are not gated on a first-time image pull on the kind node. The meshsync
-  # image in particular is large and its pull latency from Docker Hub varies
-  # widely on CI runners (observed 2s-5min), which previously blew past the
-  # readiness budget. Pulling here (on the runner, with a warm network) and
-  # side-loading into kind makes pod startup deterministic.
+  # are not gated on first-time image pulls on the kind node. On a 2-vCPU CI
+  # runner those pulls otherwise compete for CPU/IO with meshsync's initial
+  # cluster sync, starving the (exec) readiness probe and pushing readiness
+  # well past the budget. Pulling here (on the runner, warm network) and
+  # side-loading into kind removes that contention and makes startup
+  # deterministic. NOTE: the NATS image tags are duplicated from
+  # pkg/broker/resources.go; keep them in sync (WS-4 updates the NATS line).
   echo "Pre-loading workload images into KinD cluster..."
-  for img in meshery/meshsync:stable-latest; do
+  for img in \
+    meshery/meshsync:stable-latest \
+    nats:2.8.2-alpine3.15 \
+    connecteverything/nats-server-config-reloader:0.6.0; do
     if docker pull "$img"; then
       kind load docker-image "$img" --name "$CLUSTER_NAME" || echo "⚠️  failed to side-load $img (will pull at runtime)"
     else
