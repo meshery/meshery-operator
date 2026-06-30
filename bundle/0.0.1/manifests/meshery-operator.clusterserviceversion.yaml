@@ -587,7 +587,7 @@ FnZVJlYWR5ccllPAAAAABJRU5ErkJggg=="
   - name: Meshery Operator
     url: https://meshery-operator.domain
   maintainers:
-  - email: urakiny@gmai.com
+  - email: urakiny@gmail.com
     name: aisuko
   maturity: alpha
   provider:
