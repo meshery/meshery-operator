@@ -105,30 +105,89 @@ assert_resources_broker() {
 
 assert_resources_cr_broker_status() {
   echo "🔍 Asserting broker CR status property..."
-  
-  echo "Waiting for broker CR to have endpoints in status..."
+
+  # The sample broker is ClusterIP, so the operator derives an internal endpoint
+  # (clusterIP:4222) and no external address. We require the internal endpoint;
+  # the external endpoint is exercised by the NodePort reconfiguration scenario.
+  echo "Waiting for broker CR to have an internal endpoint in status..."
   timeout=300
   while [ $timeout -gt 0 ]; do
-    external_endpoint=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o jsonpath='{.status.endpoint.external}' 2>/dev/null)
     internal_endpoint=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o jsonpath='{.status.endpoint.internal}' 2>/dev/null)
-    
-    if [ -n "$external_endpoint" ] && [ -n "$internal_endpoint" ]; then
-      echo "✅ broker CR status has external endpoint: $external_endpoint"
+    if [ -n "$internal_endpoint" ]; then
       echo "✅ broker CR status has internal endpoint: $internal_endpoint"
       break
     fi
-    echo "Waiting for broker CR endpoints... ($timeout seconds remaining)"
+    echo "Waiting for broker CR internal endpoint... ($timeout seconds remaining)"
     sleep 5
     timeout=$((timeout - 5))
   done
-  
+
   if [ $timeout -le 0 ]; then
-    echo "❌ broker CR endpoints were not populated within timeout"
+    echo "❌ broker CR internal endpoint was not populated within timeout"
     kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o yaml
     exit 1
   fi
-  
+
   echo "✅ Broker CR endpoint validation completed!"
+}
+
+assert_meshsync_broker_url() {
+  echo "🔍 Asserting MeshSync BROKER_URL is injected with a nats:// scheme..."
+  broker_url=$(kubectl --namespace "$OPERATOR_NAMESPACE" get deployment/meshery-meshsync \
+    -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="BROKER_URL")].value}' 2>/dev/null)
+  echo "MeshSync BROKER_URL = $broker_url"
+  case "$broker_url" in
+    nats://*) echo "✅ MeshSync BROKER_URL is nats://-schemed" ;;
+    *)
+      echo "❌ MeshSync BROKER_URL missing nats:// scheme: '$broker_url'"
+      exit 1
+      ;;
+  esac
+}
+
+# Validate post-deploy service networking reconfiguration (WS-4 primary objective):
+# patch the live Broker from ClusterIP to NodePort and assert the operator
+# reconciles the Service type in place (no recreation) and re-derives the external
+# endpoint, without a manual Service edit or pod deletion.
+assert_networking_reconfiguration() {
+  echo "🔍 Asserting in-place service networking reconfiguration (ClusterIP -> NodePort)..."
+
+  local svc_uid_before
+  svc_uid_before=$(kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-broker -o jsonpath='{.metadata.uid}' 2>/dev/null)
+  echo "Broker Service UID before: $svc_uid_before"
+
+  echo "Patching Broker spec.service.type to NodePort..."
+  kubectl --namespace "$OPERATOR_NAMESPACE" patch broker meshery-broker --type=merge \
+    -p '{"spec":{"service":{"type":"NodePort"}}}'
+
+  echo "Waiting for the Service type to reconcile to NodePort..."
+  timeout=180
+  while [ $timeout -gt 0 ]; do
+    svc_type=$(kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-broker -o jsonpath='{.spec.type}' 2>/dev/null)
+    ext=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o jsonpath='{.status.endpoint.external}' 2>/dev/null)
+    if [ "$svc_type" = "NodePort" ] && [ -n "$ext" ]; then
+      echo "✅ Service reconciled to NodePort; external endpoint: $ext"
+      break
+    fi
+    echo "Waiting for NodePort reconcile (type=$svc_type external=$ext)... ($timeout seconds remaining)"
+    sleep 5
+    timeout=$((timeout - 5))
+  done
+  if [ $timeout -le 0 ]; then
+    echo "❌ Service did not reconcile to NodePort with an external endpoint"
+    kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-broker -o yaml
+    kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o yaml
+    exit 1
+  fi
+
+  local svc_uid_after
+  svc_uid_after=$(kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-broker -o jsonpath='{.metadata.uid}' 2>/dev/null)
+  echo "Broker Service UID after: $svc_uid_after"
+  if [ -n "$svc_uid_before" ] && [ "$svc_uid_before" != "$svc_uid_after" ]; then
+    echo "❌ Service was recreated (UID changed) instead of reconciled in place"
+    exit 1
+  fi
+  echo "✅ Service reconfigured in place (same UID) — no recreation."
 }
 
 assert_resources() {
@@ -137,7 +196,9 @@ assert_resources() {
   assert_resources_meshsync
   assert_resources_broker
   assert_resources_cr_broker_status
-  
+  assert_meshsync_broker_url
+  assert_networking_reconfiguration
+
   echo "✅ All components (operator, meshsync, broker) are deployed and ready!"
   echo "✅ Operator functionality assertion completed successfully!"
 }
@@ -146,8 +207,17 @@ setup() {
   check_dependencies
   echo "🔧 Setting up..."
 
+  # Pin the Kubernetes version in CI by exporting KIND_NODE_IMAGE to a
+  # kindest/node digest/tag (e.g. kindest/node:v1.34.0). Left empty here so the
+  # script uses the kind binary's default node image for the installed kind
+  # version; CI sets it explicitly so cluster versions don't drift between runs.
   echo "Creating KinD cluster..."
-  kind create cluster --name "$CLUSTER_NAME"
+  if [ -n "${KIND_NODE_IMAGE:-}" ]; then
+    echo "Using pinned node image: $KIND_NODE_IMAGE"
+    kind create cluster --name "$CLUSTER_NAME" --image "$KIND_NODE_IMAGE"
+  else
+    kind create cluster --name "$CLUSTER_NAME"
+  fi
 
   echo "Loading operator image into KinD cluster..."
   build_operator_image
@@ -164,8 +234,8 @@ setup() {
   echo "Pre-loading workload images into KinD cluster..."
   for img in \
     meshery/meshsync:stable-latest \
-    nats:2.8.2-alpine3.15 \
-    connecteverything/nats-server-config-reloader:0.6.0; do
+    nats:2.10.29-alpine3.21 \
+    natsio/nats-server-config-reloader:0.23.0; do
     if docker pull "$img"; then
       kind load docker-image "$img" --name "$CLUSTER_NAME" || echo "⚠️  failed to side-load $img (will pull at runtime)"
     else

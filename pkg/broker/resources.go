@@ -321,6 +321,15 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 							Name:      pidVolumeName,
 							MountPath: "/var/run/nats",
 						},
+						// The natsio reloader (unlike the defunct connecteverything
+						// one) follows `include` directives in nats.conf, so it must
+						// also see the accounts config that nats.conf includes;
+						// otherwise it exits with "accounts/resolver.conf does not
+						// exist" and crash-loops the pod.
+						{
+							Name:      "resolver-volume",
+							MountPath: "/etc/nats-config/accounts",
+						},
 					},
 				},
 			},
