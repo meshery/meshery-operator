@@ -31,6 +31,12 @@ spec:
       serviceAccountName: meshery-operator
       securityContext:
         runAsNonRoot: true
+        # 65532 is the numeric UID/GID of the "nonroot" user in the
+        # gcr.io/distroless/static:nonroot base image. kubelet's runAsNonRoot
+        # admission check cannot verify a non-numeric image user, so the UID
+        # must be stated explicitly here.
+        runAsUser: 65532
+        runAsGroup: 65532
         seccompProfile:
           type: RuntimeDefault
       containers:
