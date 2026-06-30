@@ -24,6 +24,7 @@ import (
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
 	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
+	"github.com/meshery/meshery-operator/pkg/metrics"
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -50,6 +51,8 @@ type MeshSyncReconciler struct {
 
 const (
 	meshsyncFinalizer = "meshsync.meshery.io/finalizer"
+	// meshsyncControllerName labels this controller's reconciliation metrics.
+	meshsyncControllerName = "meshsync"
 )
 
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
@@ -60,7 +63,16 @@ const (
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile reconciles the MeshSync resource
-func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, reconcileErr error) {
+	start := time.Now()
+	defer func() {
+		metrics.ReconcileTotal.WithLabelValues(meshsyncControllerName).Inc()
+		metrics.ReconcileDuration.WithLabelValues(meshsyncControllerName).Observe(time.Since(start).Seconds())
+		if reconcileErr != nil {
+			metrics.ReconcileErrors.WithLabelValues(meshsyncControllerName).Inc()
+		}
+	}()
+
 	log := r.Log
 	log = log.WithValues("controller", "MeshSync")
 	log = log.WithValues("namespace", req.NamespacedName)
@@ -77,8 +89,8 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.handleDeletion(ctx, log, baseResource)
 	}
 
-	if result, err := r.ensureFinalizer(ctx, log, baseResource); err != nil || result.RequeueAfter > 0 {
-		return result, err
+	if res, err := r.ensureFinalizer(ctx, log, baseResource); err != nil || res.RequeueAfter > 0 {
+		return res, err
 	}
 	return r.performReconciliation(ctx, log, baseResource, req)
 
