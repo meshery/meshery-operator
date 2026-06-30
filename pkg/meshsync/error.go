@@ -17,28 +17,53 @@ limitations under the License.
 package meshsync
 
 import (
-	"errors"
+	meshkiterrors "github.com/meshery/meshkit/errors"
 )
 
+// Error codes. Names and codes are unique within the meshery-operator component;
+// allocate the next free code from helpers/component_info.json and bump its
+// next_error_code. These were renumbered from 1013-1016 and renamed to resolve a
+// code-and-name collision with the pkg/broker registry.
 const (
-	ErrGettingResourceCode  = "1013"
-	ErrReplicasNotReadyCode = "1014"
-	ErrConditionFalseCode   = "1015"
-	ErrGettingEndpointCode  = "1016"
+	ErrGettingMeshsyncResourceCode  = "1018"
+	ErrMeshsyncReplicasNotReadyCode = "1019"
+	ErrMeshsyncConditionFalseCode   = "1020"
+	ErrGettingMeshsyncEndpointCode  = "1021"
 )
 
-func ErrGettingResource(err error) error {
-	return errors.New(ErrGettingResourceCode + ":" + "Unable to get resource" + err.Error())
+// ErrGettingMeshsyncResource is returned when a MeshSync-owned resource cannot be fetched.
+func ErrGettingMeshsyncResource(err error) error {
+	return meshkiterrors.New(ErrGettingMeshsyncResourceCode, meshkiterrors.Alert,
+		[]string{"Unable to get a MeshSync-owned resource"},
+		[]string{err.Error()},
+		[]string{"The MeshSync Deployment lookup failed"},
+		[]string{"Check the operator RBAC and confirm the Deployment exists in the MeshSync namespace"})
 }
 
-func ErrGettingEndpoint(err error) error {
-	return errors.New(ErrGettingEndpointCode + ":" + "Unable to get endpoint" + err.Error())
+// ErrGettingMeshsyncEndpoint is returned when the MeshSync broker endpoint cannot be resolved.
+func ErrGettingMeshsyncEndpoint(err error) error {
+	return meshkiterrors.New(ErrGettingMeshsyncEndpointCode, meshkiterrors.Alert,
+		[]string{"Unable to get the MeshSync broker endpoint"},
+		[]string{err.Error()},
+		[]string{"The broker referenced by the MeshSync spec has no resolvable endpoint"},
+		[]string{"Verify the native broker CR or the custom broker URL configured in the MeshSync spec"})
 }
 
-func ErrReplicasNotReady(reason string) error {
-	return errors.New(ErrReplicasNotReadyCode + ":" + "The replicas are not ready" + reason)
+// ErrMeshsyncReplicasNotReady is returned when the MeshSync workload has not
+// reached its desired ready replica count.
+func ErrMeshsyncReplicasNotReady(reason string) error {
+	return meshkiterrors.New(ErrMeshsyncReplicasNotReadyCode, meshkiterrors.Alert,
+		[]string{"MeshSync replicas are not ready"},
+		[]string{reason},
+		[]string{"The MeshSync Deployment has not reached its desired ReadyReplicas"},
+		[]string{"Inspect the Deployment pod status and events; the controller will requeue and retry"})
 }
 
-func ErrConditionFalse(reason string) error {
-	return errors.New(ErrConditionFalseCode + ":" + "The condition is false" + reason)
+// ErrMeshsyncConditionFalse is returned when a required MeshSync readiness condition reports false.
+func ErrMeshsyncConditionFalse(reason string) error {
+	return meshkiterrors.New(ErrMeshsyncConditionFalseCode, meshkiterrors.Alert,
+		[]string{"A MeshSync readiness condition is false"},
+		[]string{reason},
+		[]string{"A required status condition on the MeshSync workload reports False"},
+		[]string{"Inspect the MeshSync status conditions for the reported reason"})
 }

@@ -19,192 +19,95 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	meshkiterrors "github.com/meshery/meshkit/errors"
 )
 
+// assertMeshkitError verifies a constructor returns a MeshKit structured error
+// carrying the expected code, Alert severity, and the underlying cause.
+func assertMeshkitError(t *testing.T, err error, wantCode, wantCause string) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected an error, got nil")
+	}
+	if got := meshkiterrors.GetCode(err); got != wantCode {
+		t.Errorf("expected code %q, got %q", wantCode, got)
+	}
+	if got := meshkiterrors.GetSeverity(err); got != meshkiterrors.Alert {
+		t.Errorf("expected severity Alert (%d), got %d", meshkiterrors.Severity(meshkiterrors.Alert), got)
+	}
+	if wantCause != "" && !strings.Contains(err.Error(), wantCause) {
+		t.Errorf("expected error to carry cause %q, got: %s", wantCause, err.Error())
+	}
+}
+
 func TestErrGetMeshsync(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrGetMeshsync(testErr)
-
-	expectedPrefix := "1001: Unable to get meshsync resource:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	// Test error unwrapping
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrGetMeshsync(errors.New("boom")), ErrGetMeshsyncCode, "boom")
 }
 
 func TestErrCreateMeshsync(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrCreateMeshsync(testErr)
-
-	expectedPrefix := "1002: Unable to create meshsync controller:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrCreateMeshsync(errors.New("boom")), ErrCreateMeshsyncCode, "boom")
 }
 
 func TestErrDeleteMeshsync(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrDeleteMeshsync(testErr)
-
-	expectedPrefix := "1008: Unable to delete meshsync controller:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrDeleteMeshsync(errors.New("boom")), ErrDeleteMeshsyncCode, "boom")
 }
 
 func TestErrReconcileMeshsync(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrReconcileMeshsync(testErr)
-
-	expectedPrefix := "1003: Error during meshsync resource reconciliation:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
+	assertMeshkitError(t, ErrReconcileMeshsync(errors.New("boom")), ErrReconcileMeshsyncCode, "boom")
 }
 
-// Test case for ErrGetBroker
 func TestErrGetBroker(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrGetBroker(testErr)
-
-	expectedPrefix := "1004: Broker resource not found:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrGetBroker(errors.New("boom")), ErrGetBrokerCode, "boom")
 }
 
-// Test case for ErrCreateBroker
 func TestErrCreateBroker(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrCreateBroker(testErr)
-
-	expectedPrefix := "1005: Unable to create broker controller:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrCreateBroker(errors.New("boom")), ErrCreateBrokerCode, "boom")
 }
 
-// Test case for ErrDeleteBroker
 func TestErrDeleteBroker(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrDeleteBroker(testErr)
-
-	expectedPrefix := "1009: Unable to delete broker controller:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrDeleteBroker(errors.New("boom")), ErrDeleteBrokerCode, "boom")
 }
 
-// Test case for ErrReconcileBroker
 func TestErrReconcileBroker(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrReconcileBroker(testErr)
-
-	expectedPrefix := "1006: Error during broker resource reconciliation:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrReconcileBroker(errors.New("boom")), ErrReconcileBrokerCode, "boom")
 }
 
-// Test case for ErrReconcileCR
 func TestErrReconcileCR(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrReconcileCR(testErr)
-
-	expectedPrefix := "1007: Error during custom resource reconciliation:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrReconcileCR(errors.New("boom")), ErrReconcileCRCode, "boom")
 }
 
-// Test case for ErrCheckHealth
 func TestErrCheckHealth(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrCheckHealth(testErr)
-
-	expectedPrefix := "1010: Error during health check:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrCheckHealth(errors.New("boom")), ErrCheckHealthCode, "boom")
 }
 
-// Test case for ErrGetEndpoint
 func TestErrGetEndpoint(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrGetEndpoint(testErr)
-
-	expectedPrefix := "1011: Unable to get endpoint:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrGetEndpoint(errors.New("boom")), ErrGetEndpointCode, "boom")
 }
 
-// Test case for ErrUpdateResource
 func TestErrUpdateResource(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrUpdateResource(testErr)
-
-	expectedPrefix := "1012: Unable to update resource:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
-	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
-	}
+	assertMeshkitError(t, ErrUpdateResource(errors.New("boom")), ErrUpdateResourceCode, "boom")
 }
 
-// Test case for ErrMarshal
 func TestErrMarshal(t *testing.T) {
-	testErr := errors.New("test error")
-	err := ErrMarshal(testErr)
+	assertMeshkitError(t, ErrMarshal(errors.New("boom")), ErrMarshalCode, "boom")
+}
 
-	expectedPrefix := "11049: Error during marshaling:"
-	if !strings.Contains(err.Error(), expectedPrefix) {
-		t.Errorf("Expected error to contain '%s', got: %s", expectedPrefix, err.Error())
+// TestErrorCodesUnique guards against the historical code collision between the
+// controllers registry and the pkg/* registries by asserting every code in this
+// package is distinct.
+func TestErrorCodesUnique(t *testing.T) {
+	codes := []string{
+		ErrGetMeshsyncCode, ErrCreateMeshsyncCode, ErrReconcileMeshsyncCode,
+		ErrGetBrokerCode, ErrCreateBrokerCode, ErrReconcileBrokerCode,
+		ErrReconcileCRCode, ErrDeleteMeshsyncCode, ErrDeleteBrokerCode,
+		ErrCheckHealthCode, ErrGetEndpointCode, ErrUpdateResourceCode, ErrMarshalCode,
 	}
-
-	if !errors.Is(err, testErr) {
-		t.Error("Expected error to wrap the original error")
+	seen := make(map[string]bool, len(codes))
+	for _, c := range codes {
+		if seen[c] {
+			t.Errorf("duplicate error code %q within the controllers registry", c)
+		}
+		seen[c] = true
 	}
 }

@@ -67,18 +67,18 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, client client.C
 	obj := &v1.StatefulSet{}
 	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj)
 	if err != nil {
-		return ErrGettingResource(err)
+		return ErrGettingBrokerResource(err)
 	}
 
 	if obj.Status.Replicas != obj.Status.ReadyReplicas {
 		if len(obj.Status.Conditions) > 0 {
-			return ErrReplicasNotReady(obj.Status.Conditions[0].Reason)
+			return ErrBrokerReplicasNotReady(obj.Status.Conditions[0].Reason)
 		}
-		return ErrReplicasNotReady("Condition Unknown")
+		return ErrBrokerReplicasNotReady("Condition Unknown")
 	}
 
 	if len(obj.Status.Conditions) > 0 && (obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown) {
-		return ErrConditionFalse(obj.Status.Conditions[0].Reason)
+		return ErrBrokerConditionFalse(obj.Status.Conditions[0].Reason)
 	}
 
 	return nil
@@ -89,7 +89,7 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client client.C
 	serviceObj := &corev1.Service{}
 	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, serviceObj)
 	if err != nil {
-		return ErrGettingResource(err)
+		return ErrGettingBrokerResource(err)
 	}
 
 	opts := &meshkitkube.ServiceOptions{
@@ -102,7 +102,7 @@ func GetEndpoint(ctx context.Context, m *mesheryv1alpha1.Broker, client client.C
 
 	endpoint, err := meshkitkube.GetEndpoint(ctx, opts, serviceObj)
 	if err != nil {
-		return ErrGettingEndpoint(err)
+		return ErrGettingBrokerEndpoint(err)
 	}
 
 	// Set the broker status endpoints

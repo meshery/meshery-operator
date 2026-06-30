@@ -57,18 +57,18 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, client client
 	obj := &v1.Deployment{}
 	err := client.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj)
 	if err != nil {
-		return ErrGettingResource(err)
+		return ErrGettingMeshsyncResource(err)
 	}
 
 	if obj.Status.Replicas != obj.Status.ReadyReplicas {
 		if len(obj.Status.Conditions) > 0 {
-			return ErrReplicasNotReady(obj.Status.Conditions[0].Reason)
+			return ErrMeshsyncReplicasNotReady(obj.Status.Conditions[0].Reason)
 		}
-		return ErrReplicasNotReady("Condition Unknown")
+		return ErrMeshsyncReplicasNotReady("Condition Unknown")
 	}
 
 	if len(obj.Status.Conditions) > 0 && (obj.Status.Conditions[0].Status == corev1.ConditionFalse || obj.Status.Conditions[0].Status == corev1.ConditionUnknown) {
-		return ErrConditionFalse(obj.Status.Conditions[0].Reason)
+		return ErrMeshsyncConditionFalse(obj.Status.Conditions[0].Reason)
 	}
 
 	return nil
