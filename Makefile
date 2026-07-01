@@ -215,7 +215,12 @@ set -e ;\
 if [ ! -x "$(1)" ] || ! $(4) 2>/dev/null | grep -qF "$(patsubst v%,%,$(2))"; then \
 	echo "Installing $(3)" ;\
 	rm -f "$(1)" ;\
-	GOBIN=$(LOCALBIN) go install $(3) ;\
+	for attempt in 1 2 3; do \
+		if GOBIN=$(LOCALBIN) go install $(3); then break; fi ;\
+		echo "go install $(3) failed (attempt $$attempt/3); retrying..." ;\
+		sleep $$((attempt * 10)) ;\
+	done ;\
+	test -x "$(1)" ;\
 fi ;\
 }
 endef
