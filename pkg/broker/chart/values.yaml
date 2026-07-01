@@ -37,6 +37,20 @@ config:
     authorization:
       token: << $NATS_TOKEN >>
 
+# Pod-level hardening: non-root with a runtime seccomp profile. The NATS server
+# only reads config and writes its PID to an emptyDir, so nothing needs root;
+# fsGroup keeps the shared volumes writable for both containers.
+podTemplate:
+  merge:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+
 container:
   env:
     NATS_TOKEN:
@@ -45,17 +59,42 @@ container:
           name: meshery-nats-auth
           key: token
   merge:
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
     resources:
       requests:
         cpu: 100m
         memory: 64Mi
       limits:
+        cpu: "1"
         memory: 256Mi
 
 reloader:
   enabled: true
+  merge:
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
 
 service:
+  # Expose the monitoring port on the client Service: MeshSync's startup
+  # connectivity test pings http://<broker-host>:8222/connz before it connects,
+  # and the broker host it derives from BROKER_URL is this Service.
+  ports:
+    monitor:
+      enabled: true
   merge:
     metadata:
       annotations:

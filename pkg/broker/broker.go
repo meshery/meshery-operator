@@ -78,22 +78,21 @@ func overlayBrokerSpec(obj Object, m *mesheryv1alpha1.Broker) {
 }
 
 // applyServiceSpec overlays the user-declared networking onto the NATS client
-// Service. An unset Type preserves the historical LoadBalancer default (the
-// chart renders ClusterIP); flipping the default is a deliberate, release-noted
-// change. LoadBalancer-only fields are applied only for that type.
+// Service. An unset Type keeps the chart's rendered default (ClusterIP) — the
+// old implicit LoadBalancer default is gone (#801): a broker should not acquire
+// a public address unless the CR asks for one. LoadBalancer-only fields are
+// applied only for that type.
 func applyServiceSpec(obj *corev1.Service, svc mesheryv1alpha1.BrokerServiceSpec) {
-	t := svc.Type
-	if t == "" {
-		t = corev1.ServiceTypeLoadBalancer
+	if svc.Type != "" {
+		obj.Spec.Type = svc.Type
 	}
-	obj.Spec.Type = t
 	for k, v := range svc.Annotations {
 		if obj.Annotations == nil {
 			obj.Annotations = map[string]string{}
 		}
 		obj.Annotations[k] = v
 	}
-	if t == corev1.ServiceTypeLoadBalancer {
+	if obj.Spec.Type == corev1.ServiceTypeLoadBalancer {
 		obj.Spec.LoadBalancerClass = svc.LoadBalancerClass
 		obj.Spec.LoadBalancerSourceRanges = svc.LoadBalancerSourceRanges
 	}

@@ -76,6 +76,10 @@ spec:
     name: nats
     port: 4222
     targetPort: nats
+  - appProtocol: http
+    name: monitor
+    port: 8222
+    targetPort: monitor
   selector:
     app.kubernetes.io/component: nats
     app.kubernetes.io/instance: meshery-nats
@@ -162,10 +166,17 @@ spec:
           timeoutSeconds: 5
         resources:
           limits:
+            cpu: "1"
             memory: 256Mi
           requests:
             cpu: 100m
             memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
         startupProbe:
           failureThreshold: 90
           httpGet:
@@ -187,12 +198,32 @@ spec:
         - /etc/nats-config/nats.conf
         image: natsio/nats-server-config-reloader:0.23.0
         name: reloader
+        resources:
+          limits:
+            cpu: 100m
+            memory: 64Mi
+          requests:
+            cpu: 10m
+            memory: 16Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
         volumeMounts:
         - mountPath: /var/run/nats
           name: pid
         - mountPath: /etc/nats-config
           name: config
       enableServiceLinks: false
+      securityContext:
+        fsGroup: 65532
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
       shareProcessNamespace: true
       terminationGracePeriodSeconds: 60
       volumes:

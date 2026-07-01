@@ -73,9 +73,25 @@ func GetServerObject(m *mesheryv1alpha1.MeshSync, tokenSecret string) Object {
 	size := desiredReplicas(m)
 	obj.Spec.Replicas = &size
 	if len(obj.Spec.Template.Spec.Containers) > 0 {
+		applyVersion(&obj.Spec.Template.Spec.Containers[0], m.Spec.Version)
 		setBrokerURL(&obj.Spec.Template.Spec.Containers[0], m.Status.PublishingTo, tokenSecret)
 	}
 	return obj
+}
+
+// applyVersion maps spec.version onto the MeshSync image tag. Moving tags
+// (…-latest) keep PullAlways so clusters track the channel; pinned tags switch
+// to IfNotPresent so side-loaded images (kind) and air-gapped clusters work.
+func applyVersion(c *corev1.Container, version string) {
+	if version == "" {
+		return
+	}
+	c.Image = meshsyncImageRepo + ":" + version
+	if strings.HasSuffix(version, "-latest") {
+		c.ImagePullPolicy = corev1.PullAlways
+	} else {
+		c.ImagePullPolicy = corev1.PullIfNotPresent
+	}
 }
 
 // setBrokerURL sets the BROKER_URL env var by name, leaving the template default

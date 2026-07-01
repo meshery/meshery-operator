@@ -30,6 +30,12 @@ const (
 	meshsyncBinary  = "./meshery-meshsync"
 	meshsyncName    = "meshery-meshsync"
 	meshsyncService = "meshsync"
+
+	// meshsyncImageRepo is the image repository spec.version tags resolve
+	// against.
+	meshsyncImageRepo = "meshery/meshsync"
+	// defaultMeshSyncVersion is the image tag used when spec.version is empty.
+	defaultMeshSyncVersion = "stable-latest"
 )
 
 var (
@@ -86,12 +92,14 @@ var (
 			Containers: []corev1.Container{
 				{
 					Name:            "meshsync",
-					Image:           "meshery/meshsync:stable-latest",
+					Image:           meshsyncImageRepo + ":" + defaultMeshSyncVersion,
 					ImagePullPolicy: corev1.PullAlways,
 					Ports: []corev1.ContainerPort{
 						{
+							// No HostPort: pinning a host port would limit
+							// scheduling to one MeshSync per node for a port
+							// nothing external needs to reach.
 							Name:          "client",
-							HostPort:      val11000,
 							ContainerPort: val11000,
 						},
 					},

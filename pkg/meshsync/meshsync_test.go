@@ -111,6 +111,25 @@ func TestSetBrokerURLWithTokenSecret(t *testing.T) {
 	}
 }
 
+func TestApplyVersion(t *testing.T) {
+	c := &corev1.Container{Image: "meshery/meshsync:stable-latest", ImagePullPolicy: corev1.PullAlways}
+
+	applyVersion(c, "")
+	if c.Image != "meshery/meshsync:stable-latest" || c.ImagePullPolicy != corev1.PullAlways {
+		t.Errorf("empty version must leave the template untouched, got %s/%s", c.Image, c.ImagePullPolicy)
+	}
+
+	applyVersion(c, "v1.0.0")
+	if c.Image != "meshery/meshsync:v1.0.0" || c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("pinned version = %s/%s, want meshery/meshsync:v1.0.0/IfNotPresent", c.Image, c.ImagePullPolicy)
+	}
+
+	applyVersion(c, "edge-latest")
+	if c.Image != "meshery/meshsync:edge-latest" || c.ImagePullPolicy != corev1.PullAlways {
+		t.Errorf("moving tag = %s/%s, want meshery/meshsync:edge-latest/Always", c.Image, c.ImagePullPolicy)
+	}
+}
+
 func TestWithTokenUserinfo(t *testing.T) {
 	cases := map[string]string{ //nolint:gosec // G101: fixture URLs with placeholder userinfo, not credentials
 		"nats://host:4222":            "nats://$(NATS_TOKEN)@host:4222",

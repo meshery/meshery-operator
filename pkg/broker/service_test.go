@@ -28,11 +28,11 @@ func TestApplyServiceSpec(t *testing.T) {
 	lb := corev1.ServiceTypeLoadBalancer
 	class := "internal"
 
-	t.Run("unset type defaults to LoadBalancer", func(t *testing.T) {
+	t.Run("unset type keeps the chart default (ClusterIP)", func(t *testing.T) {
 		svc := &corev1.Service{Spec: corev1.ServiceSpec{Type: corev1.ServiceTypeClusterIP}}
 		applyServiceSpec(svc, mesheryv1alpha1.BrokerServiceSpec{})
-		if svc.Spec.Type != lb {
-			t.Errorf("type = %q, want LoadBalancer", svc.Spec.Type)
+		if svc.Spec.Type != corev1.ServiceTypeClusterIP {
+			t.Errorf("type = %q, want ClusterIP (no implicit LoadBalancer)", svc.Spec.Type)
 		}
 	})
 
