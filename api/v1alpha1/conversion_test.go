@@ -25,10 +25,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	testNamespace  = "meshery"
+	testBrokerName = "meshery-broker"
+	// whitelistKey is the WatchList ConfigMap key MeshSync reads its resource
+	// filter from.
+	whitelistKey = "whitelist"
+)
+
 func TestBrokerConversionRoundTrip(t *testing.T) {
 	lbClass := "internal"
 	orig := &Broker{
-		ObjectMeta: metav1.ObjectMeta{Name: "meshery-broker", Namespace: "meshery", Labels: map[string]string{"app": "meshery"}},
+		ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Namespace: testNamespace, Labels: map[string]string{"app": "meshery"}},
 		Spec: BrokerSpec{
 			Version: "2.14.2-alpine",
 			Size:    3,
@@ -65,14 +73,14 @@ func TestBrokerConversionRoundTrip(t *testing.T) {
 
 func TestMeshSyncConversionRoundTrip(t *testing.T) {
 	orig := &MeshSync{
-		ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync", Namespace: "meshery"},
+		ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync", Namespace: testNamespace},
 		Spec: MeshSyncSpec{
 			Size:    2,
 			Version: "stable-latest",
-			Broker:  MeshsyncBroker{Native: NativeMeshsyncBroker{Name: "meshery-broker", Namespace: "meshery"}},
+			Broker:  MeshsyncBroker{Native: NativeMeshsyncBroker{Name: testBrokerName, Namespace: testNamespace}},
 			WatchList: corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync-watch"},
-				Data:       map[string]string{"whitelist": "[]"},
+				Data:       map[string]string{whitelistKey: "[]"},
 			},
 		},
 		Status: MeshSyncStatus{
@@ -85,7 +93,7 @@ func TestMeshSyncConversionRoundTrip(t *testing.T) {
 	if err := orig.ConvertTo(hub); err != nil {
 		t.Fatalf("ConvertTo: %v", err)
 	}
-	if hub.Spec.Broker.Native.Name != "meshery-broker" || hub.Spec.WatchList.Data["whitelist"] != "[]" {
+	if hub.Spec.Broker.Native.Name != testBrokerName || hub.Spec.WatchList.Data[whitelistKey] != "[]" {
 		t.Fatalf("hub not populated correctly: %+v", hub.Spec)
 	}
 
