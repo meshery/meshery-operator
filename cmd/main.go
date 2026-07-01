@@ -21,6 +21,7 @@ import (
 	"os"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	mesheryv1alpha2 "github.com/meshery/meshery-operator/api/v1alpha2"
 	"github.com/meshery/meshery-operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -55,6 +56,7 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(mesheryv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(mesheryv1alpha2.AddToScheme(scheme))
 }
 
 func main() {
@@ -122,6 +124,21 @@ func main() {
 	if err = bReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Broker")
 		os.Exit(1)
+	}
+
+	// Register the conversion webhook for the v1alpha2 hub so the served
+	// v1alpha1 CRs round-trip through the /convert endpoint. Gated by
+	// ENABLE_WEBHOOKS so `make run` (no serving certs) can opt out; in-cluster it
+	// is required because the CRDs declare conversion strategy Webhook.
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = ctrl.NewWebhookManagedBy(mgr).For(&mesheryv1alpha2.Broker{}).Complete(); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Broker")
+			os.Exit(1)
+		}
+		if err = ctrl.NewWebhookManagedBy(mgr).For(&mesheryv1alpha2.MeshSync{}).Complete(); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "MeshSync")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 
