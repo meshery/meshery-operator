@@ -212,13 +212,44 @@ assert_networking_reconfiguration() {
   echo "✅ Service reconfigured in place (same UID) — no recreation."
 }
 
+# Validate the v1alpha1 <-> v1alpha2 conversion webhook end to end: the Broker was
+# created as v1alpha1, so reading it as v1alpha2 exercises the conversion webhook
+# (and requires cert-manager to have injected the CRD's caBundle).
+assert_conversion_webhook() {
+  echo "🔍 Asserting v1alpha1 <-> v1alpha2 conversion webhook..."
+
+  echo "Waiting for cert-manager to inject the conversion CA into the Broker CRD..."
+  timeout=180
+  while [ $timeout -gt 0 ]; do
+    ca=$(kubectl get crd brokers.meshery.io -o jsonpath='{.spec.conversion.webhook.clientConfig.caBundle}' 2>/dev/null)
+    [ -n "$ca" ] && break
+    sleep 5
+    timeout=$((timeout - 5))
+  done
+  if [ -z "$ca" ]; then
+    echo "❌ conversion caBundle was not injected into brokers.meshery.io"
+    exit 1
+  fi
+
+  v1size=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker.v1alpha1.meshery.io meshery-broker -o jsonpath='{.spec.size}' 2>/dev/null)
+  v2size=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker.v1alpha2.meshery.io meshery-broker -o jsonpath='{.spec.size}' 2>/dev/null)
+  if [ -n "$v2size" ] && [ "$v1size" = "$v2size" ]; then
+    echo "✅ Broker round-trips v1alpha1<->v1alpha2 (size=$v2size read via both versions)"
+  else
+    echo "❌ conversion webhook failed (v1alpha1 size='$v1size', v1alpha2 size='$v2size')"
+    kubectl get crd brokers.meshery.io -o jsonpath='{.spec.versions[*].name} storage={.spec.conversion.strategy}'; echo
+    exit 1
+  fi
+}
+
 assert_resources() {
   echo "🔍 Asserting operator functionality..."
-  
+
   assert_resources_meshsync
   assert_resources_broker
   assert_resources_cr_broker_status
   assert_meshsync_broker_url
+  assert_conversion_webhook
   assert_networking_reconfiguration
 
   echo "✅ All components (operator, meshsync, broker) are deployed and ready!"
@@ -267,6 +298,14 @@ setup() {
 
   echo "Creating $OPERATOR_NAMESPACE namespace..."
   kubectl create namespace "$OPERATOR_NAMESPACE" || true
+
+  # cert-manager is required: config/default deploys a self-signed Issuer +
+  # Certificate for the conversion webhook's serving cert, and cert-manager's
+  # ca-injector populates the caBundle in the CRDs' conversion config.
+  echo "Installing cert-manager (for the v1alpha1<->v1alpha2 conversion webhook)..."
+  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+  kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=300s
+  kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=180s
 
   echo "Installing operator CRDs..."
   cd "$PROJECT_ROOT"
