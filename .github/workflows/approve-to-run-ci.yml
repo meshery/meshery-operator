@@ -12,14 +12,14 @@ jobs:
         runs-on: ubuntu-24.04
         steps:
           - name: Checkout code
-            uses: actions/checkout@v6
-          - uses: actions/setup-go@v5
+            uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+          - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
             with:
               go-version-file: go.mod
               cache: true
               cache-dependency-path: go.sum
           - name: golangci-lint
-            uses: golangci/golangci-lint-action@v9
+            uses: golangci/golangci-lint-action@d583c34f0599d37dbac4a198b9c83201be380893 # v9.3.0
             with:
               version: v2.12.2
     tidy:
@@ -27,9 +27,9 @@ jobs:
         runs-on: ubuntu-24.04
         steps:
           - name: Checkout code
-            uses: actions/checkout@v6
+            uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
           - name: Set up Go
-            uses: actions/setup-go@v5
+            uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
             with:
               go-version-file: go.mod
               cache: true
@@ -44,9 +44,9 @@ jobs:
         runs-on: ubuntu-24.04
         steps:
           - name: Checkout code
-            uses: actions/checkout@v6
+            uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
           - name: Set up Go
-            uses: actions/setup-go@v5
+            uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
             with:
               go-version-file: go.mod
               cache: true
@@ -65,12 +65,36 @@ jobs:
         runs-on: ubuntu-24.04
         steps:
           - name: Checkout code
-            uses: actions/checkout@v6
+            uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
           - name: Set up Go
-            uses: actions/setup-go@v5
+            uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
             with:
               go-version-file: go.mod
               cache: true
               cache-dependency-path: go.sum
           - name: Build
             run: make build
+
+    # Fail the build if committed generated artifacts (DeepCopy, CRDs, RBAC,
+    # webhook manifests) drift from the Go source. Bundle regeneration is not
+    # gated here because it requires the operator-sdk binary; see WS-1/WS-8.
+    manifests-drift:
+        name: Generated manifests drift gate
+        runs-on: ubuntu-24.04
+        steps:
+          - name: Checkout code
+            uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+          - name: Set up Go
+            uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+            with:
+              go-version-file: go.mod
+              cache: true
+              cache-dependency-path: go.sum
+          - name: Regenerate manifests and DeepCopy
+            run: make manifests generate
+          - name: Verify no drift
+            run: |
+              if ! git diff --exit-code; then
+                echo "::error::Generated files are out of date. Run 'make manifests generate' and commit the result."
+                exit 1
+              fi

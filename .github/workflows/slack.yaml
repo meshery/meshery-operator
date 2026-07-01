@@ -11,14 +11,14 @@ jobs:
   star-notify:
     if: github.event_name == 'watch'
     name: Notify Slack on star
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Get current star count
         run: |
           echo "STARS=$(curl --silent 'https://api.github.com/repos/${{ github.repository }}' -H 'Accept: application/vnd.github.preview' | jq '.stargazers_count')" >> $GITHUB_ENV
 
       - name: Notify Slack
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -30,10 +30,10 @@ jobs:
   good-first-issue-notify:
     if: github.event_name == 'issues' && (github.event.label.name == 'good first issue' || github.event.label.name == 'first-timers-only')
     name: Notify Slack for new good-first-issue
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Notify Slack
-        uses: slackapi/slack-github-action@v2.1.1
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         with:
           method: chat.postMessage
           token: ${{ secrets.SLACK_BOT_TOKEN }}

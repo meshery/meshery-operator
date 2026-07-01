@@ -4,6 +4,7 @@ linters:
   enable:
     - goconst
     - gocritic
+    - gosec
     - govet
     - staticcheck
     - unused

@@ -17,14 +17,14 @@ jobs:
         if: github.repository == 'meshery/meshery-operator'
         runs-on: ubuntu-24.04
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
               # token here with write access to meshery-operator repo
               with:
                   token: ${{ secrets.GH_ACCESS_TOKEN }}
                   ref: "master"
 
             - name: Setup Go
-              uses: actions/setup-go@v5
+              uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
               with:
                   go-version-file: go.mod
 
@@ -34,7 +34,7 @@ jobs:
                   go run github.com/meshery/meshkit/cmd/errorutil -d . update --skip-dirs meshery -i ./helpers -o ./helpers
             # to update errorutil* files in meshery-operator repo
             - name: Commit changes
-              uses: stefanzweifel/git-auto-commit-action@v4
+              uses: stefanzweifel/git-auto-commit-action@b863ae1933cb653a53c021fe36dbb774e1fb9403 # v5.2.0
               with:
                   commit_user_name: l5io
                   commit_user_email: ci@meshery.io
@@ -45,7 +45,7 @@ jobs:
 
             # to push changes to meshery docs
             - name: Checkout meshery
-              uses: actions/checkout@v4
+              uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
               with:
                   repository: "meshery/meshery"
                   # token with write access to meshery repository
