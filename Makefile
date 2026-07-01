@@ -367,3 +367,9 @@ integration-tests-setup-debug-output:
 .PHONY: integration-tests
 ## Runs integration tests full cycle (setup, run validation, cleanup)
 integration-tests: integration-tests-setup integration-tests-run integration-tests-cleanup
+
+.PHONY: e2e-dev
+## Fast local e2e loop: reuse the kind cluster, rebuild/reload the operator, re-assert
+e2e-dev:
+	REUSE_CLUSTER=1 ./integration-tests/main.sh setup
+	./integration-tests/main.sh assert
