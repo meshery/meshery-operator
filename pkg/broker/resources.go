@@ -17,6 +17,7 @@ const (
 	monitorPortName   = "monitor"
 	configVolumeName  = "config-volume"
 	pidVolumeName     = "pid"
+	resolverVolume    = "resolver-volume"
 
 	// defaultNATSVersion is the NATS server image tag used when BrokerSpec.Version
 	// is empty. Override per-Broker via spec.version.
@@ -184,7 +185,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 					},
 				},
 				{
-					Name: "resolver-volume",
+					Name: resolverVolume,
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							LocalObjectReference: corev1.LocalObjectReference{
@@ -267,7 +268,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 							MountPath: "/var/run/nats",
 						},
 						{
-							Name:      "resolver-volume",
+							Name:      resolverVolume,
 							MountPath: "/etc/nats-config/accounts",
 						},
 					},
@@ -327,7 +328,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 						// otherwise it exits with "accounts/resolver.conf does not
 						// exist" and crash-loops the pod.
 						{
-							Name:      "resolver-volume",
+							Name:      resolverVolume,
 							MountPath: "/etc/nats-config/accounts",
 						},
 					},

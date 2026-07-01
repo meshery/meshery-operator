@@ -33,6 +33,7 @@ import (
 const (
 	defaultNamespace = "default"
 	testAPIVersion   = "meshery.io/v1alpha1"
+	testBrokerKind   = "Broker"
 	appLabelKey      = "app"
 	brokerLabelValue = "broker"
 )
@@ -62,7 +63,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 		broker := &v1alpha1.Broker{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: testAPIVersion,
-				Kind:       "Broker",
+				Kind:       testBrokerKind,
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      defaultNamespace,

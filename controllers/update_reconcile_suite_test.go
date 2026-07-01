@@ -33,7 +33,7 @@ var _ = Describe("Controller update reconciliation", func() {
 		broker := &mesheryv1alpha1.Broker{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: testAPIVersion,
-				Kind:       "Broker",
+				Kind:       testBrokerKind,
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
@@ -133,7 +133,7 @@ var _ = Describe("Controller update reconciliation", func() {
 		createNamespace(namespace)
 
 		broker := &mesheryv1alpha1.Broker{
-			TypeMeta:   metav1.TypeMeta{APIVersion: testAPIVersion, Kind: "Broker"},
+			TypeMeta:   metav1.TypeMeta{APIVersion: testAPIVersion, Kind: testBrokerKind},
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 			Spec: mesheryv1alpha1.BrokerSpec{
 				Size:    1,
@@ -174,7 +174,7 @@ var _ = Describe("Controller update reconciliation", func() {
 
 		class := "internal"
 		broker := &mesheryv1alpha1.Broker{
-			TypeMeta:   metav1.TypeMeta{APIVersion: testAPIVersion, Kind: "Broker"},
+			TypeMeta:   metav1.TypeMeta{APIVersion: testAPIVersion, Kind: testBrokerKind},
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 			Spec: mesheryv1alpha1.BrokerSpec{
 				Size: 1,
