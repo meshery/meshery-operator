@@ -59,7 +59,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2026-07-01T02:17:07Z"
+    createdAt: "2026-07-01T13:05:15Z"
     olm.skipRange: '>=0.0.1 <0.1.0'
     operators.operatorframework.io/builder: operator-sdk-v1.42.3
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -72,11 +72,17 @@ spec:
     - kind: Broker
       name: brokers.meshery.io
       version: v1alpha1
+    - kind: Broker
+      name: brokers.meshery.io
+      version: v1alpha2
     - description: MeshSync is the Schema for the meshsyncs API
       displayName: Mesh Sync
       kind: MeshSync
       name: meshsyncs.meshery.io
       version: v1alpha1
+    - kind: MeshSync
+      name: meshsyncs.meshery.io
+      version: v1alpha2
   description: Meshery Operator is the multi-service mesh operator and implementation
     of MeshSync.
   displayName: meshery-operator
@@ -216,6 +222,10 @@ spec:
                     drop:
                     - ALL
                   readOnlyRootFilesystem: true
+                volumeMounts:
+                - mountPath: /tmp/k8s-webhook-server/serving-certs
+                  name: cert
+                  readOnly: true
               securityContext:
                 runAsGroup: 65532
                 runAsNonRoot: true
@@ -224,6 +234,11 @@ spec:
                   type: RuntimeDefault
               serviceAccountName: meshery-operator
               terminationGracePeriodSeconds: 10
+              volumes:
+              - name: cert
+                secret:
+                  defaultMode: 420
+                  secretName: webhook-server-cert
       permissions:
       - rules:
         - apiGroups:
@@ -284,3 +299,16 @@ spec:
     url: https://github.com/meshery
   replaces: meshery-operator.v0.0.1
   version: 0.1.0
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    conversionCRDs:
+    - brokers.meshery.io
+    - meshsyncs.meshery.io
+    deploymentName: meshery-operator
+    generateName: cbrokersmeshsyncs.kb.io
+    sideEffects: None
+    targetPort: 9443
+    type: ConversionWebhook
+    webhookPath: /convert
