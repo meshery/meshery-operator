@@ -39,56 +39,23 @@ var _ = Describe("Broker funtions test cases", func() {
 		ctx = context.TODO()
 	})
 
-	Context("Test for GetObjects function", func() {
-		It("should return the ordered slice of objects", func() {
-			m := &mesheryv1alpha1.Broker{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test",
-					Namespace: "test",
-				},
-				Spec: mesheryv1alpha1.BrokerSpec{
-					Size: 1,
-				},
-			}
-			objs := GetObjects(m)
-			Expect(objs).To(HaveLen(4))
-
-			By("ConfigMaps and Service must precede the StatefulSet")
-			_, lastIsStatefulSet := objs[len(objs)-1].(*v1.StatefulSet)
-			Expect(lastIsStatefulSet).To(BeTrue())
-
-			By("the StatefulSet must carry the Broker name and namespace")
-			var sts *v1.StatefulSet
-			for _, o := range objs {
-				Expect(o).ToNot(BeNil())
-				if s, ok := o.(*v1.StatefulSet); ok {
-					sts = s
-				}
-			}
-			Expect(sts).ToNot(BeNil())
-			Expect(sts.GetName()).To(Equal(m.Name))
-			Expect(sts.GetNamespace()).To(Equal(m.Namespace))
-		})
-	})
-
 	Context("Test for CheckHealth function", func() {
 		It("should be unhealthy until ReadyReplicas reaches the desired count", func() {
-			namespace := defaultNamespace
-			name := defaultNamespace
 			m := &mesheryv1alpha1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: namespace,
+					Name:      "meshery-broker",
+					Namespace: defaultNamespace,
 				},
 				Spec: mesheryv1alpha1.BrokerSpec{
 					Size: 1,
 				},
 			}
 
+			// The operator reads the NATS StatefulSet by its fixed chart name.
 			s := &v1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: namespace,
-					Name:      name,
+					Namespace: defaultNamespace,
+					Name:      natsServiceName,
 				},
 				Spec: v1.StatefulSetSpec{
 					Replicas: &m.Spec.Size,
@@ -99,7 +66,7 @@ var _ = Describe("Broker funtions test cases", func() {
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: name,
+							Name: natsServiceName,
 							Labels: map[string]string{
 								appLabelKey: brokerComponent,
 							},
@@ -133,29 +100,27 @@ var _ = Describe("Broker funtions test cases", func() {
 
 	Context("Test for GetEndpoint function", func() {
 		It("should derive the endpoint from a NodePort Service without network I/O", func() {
-			name := defaultNamespace
-			namespace := defaultNamespace
 			m := &mesheryv1alpha1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: namespace,
+					Name:      "meshery-broker",
+					Namespace: defaultNamespace,
 				},
 				Spec: mesheryv1alpha1.BrokerSpec{
 					Size: 1,
 				},
 			}
 
-			By("Create the broker Service first")
+			By("Create the broker client Service under its fixed chart name")
 			s := &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: namespace,
+					Name:      natsServiceName,
+					Namespace: defaultNamespace,
 				},
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeNodePort,
 					Ports: []corev1.ServicePort{
-						{Name: clientPortName, Port: 4222, NodePort: 30002},
-						{Name: monitorPortName, Port: 8222},
+						{Name: "nats", Port: 4222, NodePort: 30002},
+						{Name: "monitor", Port: 8222},
 					},
 				},
 			}

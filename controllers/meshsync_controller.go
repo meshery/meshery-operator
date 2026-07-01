@@ -27,6 +27,7 @@ import (
 	"github.com/meshery/meshery-operator/pkg/metrics"
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,7 +66,7 @@ const (
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/finalizers,verbs=update
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=services;secrets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile reconciles the MeshSync resource
@@ -323,13 +324,38 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 		if err != nil {
 			return ErrGetEndpoint(err)
 		}
-		baseResource.Status.PublishingTo = brokerresource.Status.Endpoint.Internal
+		// Inject the NATS token (if the broker uses token auth) into the URL so
+		// MeshSync can authenticate: nats://<token>@host:port.
+		token := r.brokerToken(ctx, brokerresource.Namespace)
+		baseResource.Status.PublishingTo = natsURL(token, brokerresource.Status.Endpoint.Internal)
 	} else if baseResource.Spec.Broker.Custom.URL != "" {
 		// Add handler for custom broker config
 		baseResource.Status.PublishingTo = baseResource.Spec.Broker.Custom.URL
 	}
 
 	return nil
+}
+
+// brokerToken returns the NATS auth token from the broker's meshery-nats-auth
+// Secret, or "" when the broker runs without token auth.
+func (r *MeshSyncReconciler) brokerToken(ctx context.Context, namespace string) string {
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: namespace}, secret); err != nil {
+		return ""
+	}
+	return string(secret.Data["token"])
+}
+
+// natsURL builds a scheme-qualified broker URL, embedding the token as userinfo
+// when present.
+func natsURL(token, hostPort string) string {
+	if hostPort == "" {
+		return ""
+	}
+	if token == "" {
+		return "nats://" + hostPort
+	}
+	return "nats://" + token + "@" + hostPort
 }
 
 // reconcileMeshsync drives the MeshSync Deployment to its desired state with a

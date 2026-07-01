@@ -112,11 +112,11 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			Expect(err).ToNot(HaveOccurred())
 			By("Ensuring no StatefulSet exists before health check")
 			existingStatefulSet := &v1.StatefulSet{}
-			err = k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, existingStatefulSet)
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: "meshery-nats", Namespace: namespace}, existingStatefulSet)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, existingStatefulSet)).Should(Succeed())
 				Eventually(func() bool {
-					err = k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, existingStatefulSet)
+					err = k8sClient.Get(ctx, types.NamespacedName{Name: "meshery-nats", Namespace: namespace}, existingStatefulSet)
 					return err != nil
 				}).Should(BeTrue())
 			}
@@ -125,7 +125,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			statefulSet := &v1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      defaultNamespace,
+					Name:      "meshery-nats",
 				},
 				Spec: v1.StatefulSetSpec{
 					Replicas: &broker.Spec.Size,
