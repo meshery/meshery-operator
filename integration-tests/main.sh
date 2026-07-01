@@ -302,8 +302,12 @@ setup() {
   # cert-manager is required: config/default deploys a self-signed Issuer +
   # Certificate for the conversion webhook's serving cert, and cert-manager's
   # ca-injector populates the caBundle in the CRDs' conversion config.
-  echo "Installing cert-manager (for the v1alpha1<->v1alpha2 conversion webhook)..."
-  kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+  # Pinned for deterministic CI; override via CERT_MANAGER_VERSION to test newer
+  # releases.
+  CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.3}"
+  echo "Installing cert-manager ${CERT_MANAGER_VERSION} (for the v1alpha1<->v1alpha2 conversion webhook)..."
+  kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
+  kubectl -n cert-manager rollout status deploy/cert-manager --timeout=300s
   kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=300s
   kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=180s
 
