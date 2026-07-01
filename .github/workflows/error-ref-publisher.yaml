@@ -17,7 +17,7 @@ jobs:
         if: github.repository == 'meshery/meshery-operator'
         runs-on: ubuntu-24.04
         steps:
-            - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+            - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
               # token here with write access to meshery-operator repo
               with:
                   token: ${{ secrets.GH_ACCESS_TOKEN }}
@@ -45,7 +45,7 @@ jobs:
 
             # to push changes to meshery docs
             - name: Checkout meshery
-              uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+              uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
               with:
                   repository: "meshery/meshery"
                   # token with write access to meshery repository
