@@ -44,7 +44,7 @@ const (
 	// AuthSecretName holds the NATS token that the vendored StatefulSet reads via
 	// the $NATS_TOKEN env var. The operator generates it at runtime; it is never
 	// committed to source (replacing the old committed account JWT).
-	AuthSecretName = "meshery-nats-auth"
+	AuthSecretName = "meshery-nats-auth" //nolint:gosec // G101: the Secret object's name, not a credential
 )
 
 var (

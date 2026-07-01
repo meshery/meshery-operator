@@ -113,7 +113,7 @@ func TestChartNatsReadsTokenFromSecret(t *testing.T) {
 
 func brokerFixture(size int32, svcType corev1.ServiceType) *mesheryv1alpha1.Broker {
 	m := &mesheryv1alpha1.Broker{}
-	m.Name = "meshery-broker"
+	m.Name = testBrokerName
 	m.Namespace = mesheryName
 	m.Spec = mesheryv1alpha1.BrokerSpec{Size: size, Service: mesheryv1alpha1.BrokerServiceSpec{Type: svcType}}
 	return m

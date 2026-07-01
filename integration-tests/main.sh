@@ -95,7 +95,9 @@ assert_resources_broker() {
   echo "Now waiting for broker statefulset to be ready..."
   kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=600s statefulset/meshery-nats || {
     echo "❌ broker statefulset failed to become ready"
-    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=broker
+    # The vendored NATS chart labels its pods with app.kubernetes.io/*, not the
+    # operator's app=meshery,component=broker labels.
+    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app.kubernetes.io/instance=meshery-nats
     kubectl --namespace "$OPERATOR_NAMESPACE" describe statefulset/meshery-nats
     exit 1
   }
@@ -140,6 +142,26 @@ assert_meshsync_broker_url() {
     nats://*) echo "✅ MeshSync BROKER_URL is nats://-schemed" ;;
     *)
       echo "❌ MeshSync BROKER_URL missing nats:// scheme: '$broker_url'"
+      exit 1
+      ;;
+  esac
+
+  # Any literal userinfo in BROKER_URL is a leaked credential: the token must
+  # only ever appear as the $(NATS_TOKEN) reference, resolved in-pod from the
+  # auth Secret.
+  case "$broker_url" in
+    *'$(NATS_TOKEN)'*)
+      echo "🔍 Token auth in use; asserting NATS_TOKEN is sourced from the auth Secret..."
+      token_secret=$(kubectl --namespace "$OPERATOR_NAMESPACE" get deployment/meshery-meshsync \
+        -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="NATS_TOKEN")].valueFrom.secretKeyRef.name}' 2>/dev/null)
+      if [ "$token_secret" != "meshery-nats-auth" ]; then
+        echo "❌ NATS_TOKEN is not a secretKeyRef to meshery-nats-auth (got '$token_secret')"
+        exit 1
+      fi
+      echo "✅ NATS_TOKEN comes from Secret '$token_secret'; no credential in the pod spec"
+      ;;
+    *@*)
+      echo "❌ MeshSync BROKER_URL embeds a literal credential: '$broker_url'"
       exit 1
       ;;
   esac

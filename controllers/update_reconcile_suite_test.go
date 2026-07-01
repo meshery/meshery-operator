@@ -46,7 +46,7 @@ var _ = Describe("Controller update reconciliation", func() {
 		Expect(k8sClient.Create(ctx, broker)).To(Succeed())
 
 		// Broker-owned objects use the fixed chart release name, not the CR name.
-		statefulSetKey := types.NamespacedName{Name: "meshery-nats", Namespace: namespace}
+		statefulSetKey := types.NamespacedName{Name: natsObjectName, Namespace: namespace}
 		Eventually(func(g Gomega) {
 			statefulSet := &appsv1.StatefulSet{}
 			g.Expect(k8sClient.Get(ctx, statefulSetKey, statefulSet)).To(Succeed())
@@ -143,7 +143,7 @@ var _ = Describe("Controller update reconciliation", func() {
 		}
 		Expect(k8sClient.Create(ctx, broker)).To(Succeed())
 
-		svcKey := types.NamespacedName{Name: "meshery-nats", Namespace: namespace}
+		svcKey := types.NamespacedName{Name: natsObjectName, Namespace: namespace}
 		By("the NATS Service is created as ClusterIP")
 		Eventually(func(g Gomega) {
 			svc := &corev1.Service{}

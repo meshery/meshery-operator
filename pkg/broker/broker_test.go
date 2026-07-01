@@ -27,7 +27,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const defaultNamespace = "default"
+const (
+	defaultNamespace = "default"
+	testBrokerName   = "meshery-broker"
+)
 
 var _ = Describe("Broker funtions test cases", func() {
 
@@ -43,7 +46,7 @@ var _ = Describe("Broker funtions test cases", func() {
 		It("should be unhealthy until ReadyReplicas reaches the desired count", func() {
 			m := &mesheryv1alpha1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "meshery-broker",
+					Name:      testBrokerName,
 					Namespace: defaultNamespace,
 				},
 				Spec: mesheryv1alpha1.BrokerSpec{
@@ -102,7 +105,7 @@ var _ = Describe("Broker funtions test cases", func() {
 		It("should derive the endpoint from a NodePort Service without network I/O", func() {
 			m := &mesheryv1alpha1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "meshery-broker",
+					Name:      testBrokerName,
 					Namespace: defaultNamespace,
 				},
 				Spec: mesheryv1alpha1.BrokerSpec{

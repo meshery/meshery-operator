@@ -274,7 +274,7 @@ func (r *MeshSyncReconciler) handleGetError(log logr.Logger, err error) (ctrl.Re
 
 func (r *MeshSyncReconciler) Cleanup(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
 	log := r.Log.WithValues("meshsync", baseResource.Name, "namespace", baseResource.Namespace)
-	objects := meshsyncpackage.GetObjects(baseResource)
+	objects := meshsyncpackage.GetObjects(baseResource, "")
 	log.Info("Cleaning up meshsync resources")
 	for _, object := range objects {
 		log.Info("Deleting meshsync object", "kind", object.GetObjectKind().GroupVersionKind().Kind, "name", object.GetName())
@@ -324,10 +324,10 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 		if err != nil {
 			return ErrGetEndpoint(err)
 		}
-		// Inject the NATS token (if the broker uses token auth) into the URL so
-		// MeshSync can authenticate: nats://<token>@host:port.
-		token := r.brokerToken(ctx, brokerresource.Namespace)
-		baseResource.Status.PublishingTo = natsURL(token, brokerresource.Status.Endpoint.Internal)
+		// The status stays credential-free: the NATS token (if the broker uses
+		// token auth) reaches the MeshSync pod via a secretKeyRef and $(VAR)
+		// expansion, never through this broadly-readable field.
+		baseResource.Status.PublishingTo = natsURL(brokerresource.Status.Endpoint.Internal)
 	} else if baseResource.Spec.Broker.Custom.URL != "" {
 		// Add handler for custom broker config
 		baseResource.Status.PublishingTo = baseResource.Spec.Broker.Custom.URL
@@ -336,26 +336,49 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 	return nil
 }
 
-// brokerToken returns the NATS auth token from the broker's meshery-nats-auth
-// Secret, or "" when the broker runs without token auth.
-func (r *MeshSyncReconciler) brokerToken(ctx context.Context, namespace string) string {
-	secret := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: namespace}, secret); err != nil {
-		return ""
+// ensureBrokerTokenSecret makes the broker's NATS auth token consumable by the
+// MeshSync pod through a secretKeyRef: a pod can only reference Secrets in its
+// own namespace, so when the native broker lives elsewhere its auth Secret is
+// mirrored (SSA) into the MeshSync's namespace. Returns the Secret name in the
+// MeshSync's namespace, or "" when the broker runs without token auth (or a
+// custom broker URL is configured).
+func (r *MeshSyncReconciler) ensureBrokerTokenSecret(ctx context.Context, m *mesheryv1alpha1.MeshSync) (string, error) {
+	if m.Spec.Broker.Native == (mesheryv1alpha1.NativeMeshsyncBroker{}) {
+		return "", nil
 	}
-	return string(secret.Data["token"])
+	brokerNamespace := m.Spec.Broker.Native.Namespace
+	src := &corev1.Secret{}
+	if err := r.Get(ctx, types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: brokerNamespace}, src); err != nil {
+		if kubeerror.IsNotFound(err) {
+			return "", nil // token auth not in use
+		}
+		return "", err
+	}
+	if brokerNamespace == m.Namespace {
+		return brokerpackage.AuthSecretName, nil
+	}
+
+	mirror := &corev1.Secret{
+		TypeMeta:   v1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+		ObjectMeta: v1.ObjectMeta{Name: brokerpackage.AuthSecretName, Namespace: m.Namespace, Labels: src.Labels},
+		Type:       src.Type,
+		Data:       src.Data,
+	}
+	if err := util.SetControllerReference(m, mirror, r.Scheme); err != nil {
+		return "", err
+	}
+	if err := r.apply(ctx, mirror); err != nil {
+		return "", err
+	}
+	return brokerpackage.AuthSecretName, nil
 }
 
-// natsURL builds a scheme-qualified broker URL, embedding the token as userinfo
-// when present.
-func natsURL(token, hostPort string) string {
+// natsURL builds a scheme-qualified, credential-free broker URL.
+func natsURL(hostPort string) string {
 	if hostPort == "" {
 		return ""
 	}
-	if token == "" {
-		return "nats://" + hostPort
-	}
-	return "nats://" + token + "@" + hostPort
+	return "nats://" + hostPort
 }
 
 // reconcileMeshsync drives the MeshSync Deployment to its desired state with a
@@ -363,7 +386,11 @@ func natsURL(token, hostPort string) string {
 // read-modify-DeepEqual hot-loop and lets the API server keep its defaulted
 // fields (WS-3 §4.3 #13, §6.2.2).
 func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
-	desired := meshsyncpackage.GetServerObject(baseResource)
+	tokenSecret, err := r.ensureBrokerTokenSecret(ctx, baseResource)
+	if err != nil {
+		return ErrReconcileMeshsync(err)
+	}
+	desired := meshsyncpackage.GetServerObject(baseResource, tokenSecret)
 	desired.SetNamespace(baseResource.Namespace)
 	if err := util.SetControllerReference(baseResource, desired, r.Scheme); err != nil {
 		return ErrReconcileMeshsync(err)

@@ -100,8 +100,8 @@ var (
 					},
 					Env: []corev1.EnvVar{
 						{
-							Name:  "BROKER_URL",
-							Value: "nats://localhost:4222",
+							Name:  brokerURLEnv,
+							Value: defaultBrokerURL,
 						},
 					},
 					Resources: corev1.ResourceRequirements{

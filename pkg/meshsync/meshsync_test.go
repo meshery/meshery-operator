@@ -34,7 +34,7 @@ func TestGetObjects(t *testing.T) {
 			Size: 1,
 		},
 	}
-	obj := GetObjects(m)
+	obj := GetObjects(m, "")
 	if len(obj) == 0 {
 		t.Fatal("GetObjects returned no objects")
 	}
@@ -60,9 +60,9 @@ func TestEnsureNatsScheme(t *testing.T) {
 func TestSetBrokerURLByName(t *testing.T) {
 	c := &corev1.Container{Env: []corev1.EnvVar{
 		{Name: "OTHER", Value: "x"},
-		{Name: brokerURLEnv, Value: "nats://localhost:4222"},
+		{Name: brokerURLEnv, Value: defaultBrokerURL},
 	}}
-	setBrokerURL(c, "10.0.0.5:4222")
+	setBrokerURL(c, "10.0.0.5:4222", "")
 	if c.Env[1].Value != "nats://10.0.0.5:4222" {
 		t.Errorf("BROKER_URL = %q, want nats://10.0.0.5:4222", c.Env[1].Value)
 	}
@@ -71,8 +71,56 @@ func TestSetBrokerURLByName(t *testing.T) {
 	}
 
 	// An empty endpoint must leave the template default untouched.
-	setBrokerURL(c, "")
+	setBrokerURL(c, "", "")
 	if c.Env[1].Value != "nats://10.0.0.5:4222" {
 		t.Errorf("empty URL must not change BROKER_URL, got %q", c.Env[1].Value)
+	}
+}
+
+func TestSetBrokerURLWithTokenSecret(t *testing.T) {
+	c := &corev1.Container{Env: []corev1.EnvVar{
+		{Name: "OTHER", Value: "x"},
+		{Name: brokerURLEnv, Value: defaultBrokerURL},
+	}}
+	setBrokerURL(c, "meshery-nats.meshery:4222", "meshery-nats-auth")
+
+	var tokenIdx, urlIdx = -1, -1
+	for i, e := range c.Env {
+		switch e.Name {
+		case natsTokenEnv:
+			tokenIdx = i
+			if e.ValueFrom == nil || e.ValueFrom.SecretKeyRef == nil ||
+				e.ValueFrom.SecretKeyRef.Name != "meshery-nats-auth" ||
+				e.ValueFrom.SecretKeyRef.Key != natsTokenKey {
+				t.Errorf("NATS_TOKEN must be sourced from the auth Secret, got %+v", e)
+			}
+		case brokerURLEnv:
+			urlIdx = i
+			want := "nats://$(NATS_TOKEN)@meshery-nats.meshery:4222"
+			if e.Value != want {
+				t.Errorf("BROKER_URL = %q, want %q", e.Value, want)
+			}
+		}
+	}
+	if tokenIdx == -1 || urlIdx == -1 {
+		t.Fatalf("missing NATS_TOKEN (%d) or BROKER_URL (%d) env entry", tokenIdx, urlIdx)
+	}
+	// $(VAR) references only expand when VAR is defined earlier in the list.
+	if tokenIdx > urlIdx {
+		t.Errorf("NATS_TOKEN (idx %d) must precede BROKER_URL (idx %d)", tokenIdx, urlIdx)
+	}
+}
+
+func TestWithTokenUserinfo(t *testing.T) {
+	cases := map[string]string{ //nolint:gosec // G101: fixture URLs with placeholder userinfo, not credentials
+		"nats://host:4222":            "nats://$(NATS_TOKEN)@host:4222",
+		"tls://host:4222":             "tls://$(NATS_TOKEN)@host:4222",
+		"nats://user:pass@host:4222":  "nats://user:pass@host:4222",
+		"nats://$(NATS_TOKEN)@h:4222": "nats://$(NATS_TOKEN)@h:4222",
+	}
+	for in, want := range cases {
+		if got := withTokenUserinfo(in); got != want {
+			t.Errorf("withTokenUserinfo(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
