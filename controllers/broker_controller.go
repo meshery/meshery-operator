@@ -63,7 +63,7 @@ const (
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers/finalizers,verbs=update
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=services;configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services;configmaps;secrets,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is the main reconciliation loop
 func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, reconcileErr error) {
@@ -281,6 +281,7 @@ func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&corev1.Service{}).
 		Owns(&corev1.ConfigMap{}).
+		Owns(&corev1.Secret{}).
 		Complete(r)
 }
 
@@ -313,6 +314,13 @@ func (r *BrokerReconciler) Cleanup(ctx context.Context, baseResource *mesheryv1a
 // §6.2.2). Applying the full ordered object set every reconcile also removes the
 // "return after first Create" partial-progress behaviour (#16).
 func (r *BrokerReconciler) reconcileBroker(ctx context.Context, baseResource *mesheryv1alpha1.Broker) error {
+	// The NATS StatefulSet reads its token from the meshery-nats-auth Secret, so
+	// that Secret must exist before the pod starts. Generate it once and keep the
+	// existing token on subsequent reconciles (SSA-applying a fresh random token
+	// every reconcile would rotate it and drop client connections).
+	if err := r.ensureAuthSecret(ctx, baseResource); err != nil {
+		return err
+	}
 	for _, object := range brokerpackage.GetObjects(baseResource) {
 		object.SetNamespace(baseResource.Namespace)
 		if err := ctrl.SetControllerReference(baseResource, object, r.Scheme); err != nil {
@@ -321,6 +329,36 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, baseResource *me
 		if err := r.apply(ctx, object); err != nil {
 			return ErrReconcileBroker(err)
 		}
+	}
+	return nil
+}
+
+// ensureAuthSecret creates the meshery-nats-auth Secret with a freshly generated
+// token the first time, and is a no-op once it exists so the token is stable.
+func (r *BrokerReconciler) ensureAuthSecret(ctx context.Context, baseResource *mesheryv1alpha1.Broker) error {
+	key := types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: baseResource.Namespace}
+	existing := &corev1.Secret{}
+	err := r.Get(ctx, key, existing)
+	if err == nil {
+		return nil
+	}
+	if !kubeerror.IsNotFound(err) {
+		return ErrGetBroker(err)
+	}
+
+	token, err := brokerpackage.GenerateToken()
+	if err != nil {
+		return ErrCreateBroker(err)
+	}
+	secret := brokerpackage.BuildAuthSecret(baseResource.Namespace, token)
+	if err := ctrl.SetControllerReference(baseResource, secret, r.Scheme); err != nil {
+		return ErrReconcileBroker(err)
+	}
+	if err := r.Create(ctx, secret); err != nil {
+		if kubeerror.IsAlreadyExists(err) {
+			return nil
+		}
+		return ErrCreateBroker(err)
 	}
 	return nil
 }

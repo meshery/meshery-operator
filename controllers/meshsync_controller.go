@@ -27,6 +27,7 @@ import (
 	"github.com/meshery/meshery-operator/pkg/metrics"
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,7 +66,7 @@ const (
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/finalizers,verbs=update
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=services;secrets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile reconciles the MeshSync resource
@@ -273,7 +274,7 @@ func (r *MeshSyncReconciler) handleGetError(log logr.Logger, err error) (ctrl.Re
 
 func (r *MeshSyncReconciler) Cleanup(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
 	log := r.Log.WithValues("meshsync", baseResource.Name, "namespace", baseResource.Namespace)
-	objects := meshsyncpackage.GetObjects(baseResource)
+	objects := meshsyncpackage.GetObjects(baseResource, "")
 	log.Info("Cleaning up meshsync resources")
 	for _, object := range objects {
 		log.Info("Deleting meshsync object", "kind", object.GetObjectKind().GroupVersionKind().Kind, "name", object.GetName())
@@ -323,7 +324,10 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 		if err != nil {
 			return ErrGetEndpoint(err)
 		}
-		baseResource.Status.PublishingTo = brokerresource.Status.Endpoint.Internal
+		// The status stays credential-free: the NATS token (if the broker uses
+		// token auth) reaches the MeshSync pod via a secretKeyRef and $(VAR)
+		// expansion, never through this broadly-readable field.
+		baseResource.Status.PublishingTo = natsURL(brokerresource.Status.Endpoint.Internal)
 	} else if baseResource.Spec.Broker.Custom.URL != "" {
 		// Add handler for custom broker config
 		baseResource.Status.PublishingTo = baseResource.Spec.Broker.Custom.URL
@@ -332,12 +336,61 @@ func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseReso
 	return nil
 }
 
+// ensureBrokerTokenSecret makes the broker's NATS auth token consumable by the
+// MeshSync pod through a secretKeyRef: a pod can only reference Secrets in its
+// own namespace, so when the native broker lives elsewhere its auth Secret is
+// mirrored (SSA) into the MeshSync's namespace. Returns the Secret name in the
+// MeshSync's namespace, or "" when the broker runs without token auth (or a
+// custom broker URL is configured).
+func (r *MeshSyncReconciler) ensureBrokerTokenSecret(ctx context.Context, m *mesheryv1alpha1.MeshSync) (string, error) {
+	if m.Spec.Broker.Native == (mesheryv1alpha1.NativeMeshsyncBroker{}) {
+		return "", nil
+	}
+	brokerNamespace := m.Spec.Broker.Native.Namespace
+	src := &corev1.Secret{}
+	if err := r.Get(ctx, types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: brokerNamespace}, src); err != nil {
+		if kubeerror.IsNotFound(err) {
+			return "", nil // token auth not in use
+		}
+		return "", err
+	}
+	if brokerNamespace == m.Namespace {
+		return brokerpackage.AuthSecretName, nil
+	}
+
+	mirror := &corev1.Secret{
+		TypeMeta:   v1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+		ObjectMeta: v1.ObjectMeta{Name: brokerpackage.AuthSecretName, Namespace: m.Namespace, Labels: src.Labels},
+		Type:       src.Type,
+		Data:       src.Data,
+	}
+	if err := util.SetControllerReference(m, mirror, r.Scheme); err != nil {
+		return "", err
+	}
+	if err := r.apply(ctx, mirror); err != nil {
+		return "", err
+	}
+	return brokerpackage.AuthSecretName, nil
+}
+
+// natsURL builds a scheme-qualified, credential-free broker URL.
+func natsURL(hostPort string) string {
+	if hostPort == "" {
+		return ""
+	}
+	return "nats://" + hostPort
+}
+
 // reconcileMeshsync drives the MeshSync Deployment to its desired state with a
 // single Server-Side Apply, mirroring the Broker controller. SSA avoids the
 // read-modify-DeepEqual hot-loop and lets the API server keep its defaulted
 // fields (WS-3 §4.3 #13, §6.2.2).
 func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
-	desired := meshsyncpackage.GetServerObject(baseResource)
+	tokenSecret, err := r.ensureBrokerTokenSecret(ctx, baseResource)
+	if err != nil {
+		return ErrReconcileMeshsync(err)
+	}
+	desired := meshsyncpackage.GetServerObject(baseResource, tokenSecret)
 	desired.SetNamespace(baseResource.Namespace)
 	if err := util.SetControllerReference(baseResource, desired, r.Scheme); err != nil {
 		return ErrReconcileMeshsync(err)

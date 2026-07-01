@@ -94,9 +94,9 @@ spec:
                   type:
                     description: |-
                       Type is the Kubernetes Service type for client access. When empty the
-                      operator keeps its historical default (LoadBalancer). Set ClusterIP on
-                      clusters without a cloud load-balancer (kind, minikube, bare-metal), or
-                      NodePort to expose the broker on node IPs.
+                      broker stays cluster-internal (ClusterIP). Set LoadBalancer to acquire a
+                      cloud load-balancer address, or NodePort to expose the broker on node
+                      IPs.
                     enum:
                     - ClusterIP
                     - NodePort

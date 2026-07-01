@@ -57,9 +57,9 @@ type BrokerServiceSpec struct {
 	LoadBalancerClass *string `json:"loadBalancerClass,omitempty" yaml:"loadBalancerClass,omitempty"`
 
 	// Type is the Kubernetes Service type for client access. When empty the
-	// operator keeps its historical default (LoadBalancer). Set ClusterIP on
-	// clusters without a cloud load-balancer (kind, minikube, bare-metal), or
-	// NodePort to expose the broker on node IPs.
+	// broker stays cluster-internal (ClusterIP). Set LoadBalancer to acquire a
+	// cloud load-balancer address, or NodePort to expose the broker on node
+	// IPs.
 	// +kubebuilder:validation:Enum=ClusterIP;NodePort;LoadBalancer
 	// +optional
 	Type corev1.ServiceType `json:"type,omitempty" yaml:"type,omitempty"`

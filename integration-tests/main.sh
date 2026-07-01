@@ -78,7 +78,7 @@ assert_resources_broker() {
   echo "Waiting for broker statefulset to be created by operator..."
   timeout=300
   while [ $timeout -gt 0 ]; do
-    if kubectl --namespace "$OPERATOR_NAMESPACE" get statefulset/meshery-broker >/dev/null 2>&1; then
+    if kubectl --namespace "$OPERATOR_NAMESPACE" get statefulset/meshery-nats >/dev/null 2>&1; then
       echo "✅ broker statefulset found"
       break
     fi
@@ -93,10 +93,12 @@ assert_resources_broker() {
   fi
   
   echo "Now waiting for broker statefulset to be ready..."
-  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=600s statefulset/meshery-broker || {
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=jsonpath='{.status.readyReplicas}'=1 --timeout=600s statefulset/meshery-nats || {
     echo "❌ broker statefulset failed to become ready"
-    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app=meshery,component=broker
-    kubectl --namespace "$OPERATOR_NAMESPACE" describe statefulset/meshery-broker
+    # The vendored NATS chart labels its pods with app.kubernetes.io/*, not the
+    # operator's app=meshery,component=broker labels.
+    kubectl --namespace "$OPERATOR_NAMESPACE" get pods -l app.kubernetes.io/instance=meshery-nats
+    kubectl --namespace "$OPERATOR_NAMESPACE" describe statefulset/meshery-nats
     exit 1
   }
   
@@ -143,6 +145,26 @@ assert_meshsync_broker_url() {
       exit 1
       ;;
   esac
+
+  # Any literal userinfo in BROKER_URL is a leaked credential: the token must
+  # only ever appear as the $(NATS_TOKEN) reference, resolved in-pod from the
+  # auth Secret.
+  case "$broker_url" in
+    *'$(NATS_TOKEN)'*)
+      echo "🔍 Token auth in use; asserting NATS_TOKEN is sourced from the auth Secret..."
+      token_secret=$(kubectl --namespace "$OPERATOR_NAMESPACE" get deployment/meshery-meshsync \
+        -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="NATS_TOKEN")].valueFrom.secretKeyRef.name}' 2>/dev/null)
+      if [ "$token_secret" != "meshery-nats-auth" ]; then
+        echo "❌ NATS_TOKEN is not a secretKeyRef to meshery-nats-auth (got '$token_secret')"
+        exit 1
+      fi
+      echo "✅ NATS_TOKEN comes from Secret '$token_secret'; no credential in the pod spec"
+      ;;
+    *@*)
+      echo "❌ MeshSync BROKER_URL embeds a literal credential: '$broker_url'"
+      exit 1
+      ;;
+  esac
 }
 
 # Validate post-deploy service networking reconfiguration (WS-4 primary objective):
@@ -153,7 +175,7 @@ assert_networking_reconfiguration() {
   echo "🔍 Asserting in-place service networking reconfiguration (ClusterIP -> NodePort)..."
 
   local svc_uid_before
-  svc_uid_before=$(kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-broker -o jsonpath='{.metadata.uid}' 2>/dev/null)
+  svc_uid_before=$(kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-nats -o jsonpath='{.metadata.uid}' 2>/dev/null)
   echo "Broker Service UID before: $svc_uid_before"
 
   echo "Patching Broker spec.service.type to NodePort..."
@@ -163,7 +185,7 @@ assert_networking_reconfiguration() {
   echo "Waiting for the Service type to reconcile to NodePort..."
   timeout=180
   while [ $timeout -gt 0 ]; do
-    svc_type=$(kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-broker -o jsonpath='{.spec.type}' 2>/dev/null)
+    svc_type=$(kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-nats -o jsonpath='{.spec.type}' 2>/dev/null)
     ext=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o jsonpath='{.status.endpoint.external}' 2>/dev/null)
     if [ "$svc_type" = "NodePort" ] && [ -n "$ext" ]; then
       echo "✅ Service reconciled to NodePort; external endpoint: $ext"
@@ -175,13 +197,13 @@ assert_networking_reconfiguration() {
   done
   if [ $timeout -le 0 ]; then
     echo "❌ Service did not reconcile to NodePort with an external endpoint"
-    kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-broker -o yaml
+    kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-nats -o yaml
     kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o yaml
     exit 1
   fi
 
   local svc_uid_after
-  svc_uid_after=$(kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-broker -o jsonpath='{.metadata.uid}' 2>/dev/null)
+  svc_uid_after=$(kubectl --namespace "$OPERATOR_NAMESPACE" get service/meshery-nats -o jsonpath='{.metadata.uid}' 2>/dev/null)
   echo "Broker Service UID after: $svc_uid_after"
   if [ -n "$svc_uid_before" ] && [ "$svc_uid_before" != "$svc_uid_after" ]; then
     echo "❌ Service was recreated (UID changed) instead of reconciled in place"
@@ -234,7 +256,7 @@ setup() {
   echo "Pre-loading workload images into KinD cluster..."
   for img in \
     meshery/meshsync:stable-latest \
-    nats:2.10.29-alpine3.21 \
+    nats:2.14.2-alpine \
     natsio/nats-server-config-reloader:0.23.0; do
     if docker pull "$img"; then
       kind load docker-image "$img" --name "$CLUSTER_NAME" || echo "⚠️  failed to side-load $img (will pull at runtime)"

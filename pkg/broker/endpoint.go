@@ -62,15 +62,17 @@ func DeriveEndpoint(svc *corev1.Service, apiServerURL string) (internal, externa
 	return internal, external, pending
 }
 
-// clientServicePort returns the NATS client port, preferring the port named
-// "client" and falling back to the first declared port.
+// clientServicePort returns the NATS client port, preferring a port named
+// "client" or "nats" (the official chart's name), or one on the standard client
+// port 4222, and falling back to the first declared port.
 func clientServicePort(svc *corev1.Service) *corev1.ServicePort {
 	if svc == nil || len(svc.Spec.Ports) == 0 {
 		return nil
 	}
 	for i := range svc.Spec.Ports {
-		if svc.Spec.Ports[i].Name == clientPortName {
-			return &svc.Spec.Ports[i]
+		p := &svc.Spec.Ports[i]
+		if p.Name == clientPortName || p.Name == natsName || p.Port == 4222 {
+			return p
 		}
 	}
 	return &svc.Spec.Ports[0]
