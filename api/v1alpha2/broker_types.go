@@ -12,7 +12,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha2
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -20,8 +20,6 @@ import (
 )
 
 // BrokerSpec defines the desired state of Broker.
-// (Field order is optimised for struct alignment; the JSON/CRD shape is
-// unaffected.)
 type BrokerSpec struct {
 	// Version pins the NATS server image tag. When empty the operator uses its
 	// bundled default NATS version.
@@ -57,9 +55,9 @@ type BrokerServiceSpec struct {
 	LoadBalancerClass *string `json:"loadBalancerClass,omitempty" yaml:"loadBalancerClass,omitempty"`
 
 	// Type is the Kubernetes Service type for client access. When empty the
-	// broker stays cluster-internal (ClusterIP). Set LoadBalancer to acquire a
-	// cloud load-balancer address, or NodePort to expose the broker on node
-	// IPs.
+	// operator keeps its historical default (LoadBalancer). Set ClusterIP on
+	// clusters without a cloud load-balancer (kind, minikube, bare-metal), or
+	// NodePort to expose the broker on node IPs.
 	// +kubebuilder:validation:Enum=ClusterIP;NodePort;LoadBalancer
 	// +optional
 	Type corev1.ServiceType `json:"type,omitempty" yaml:"type,omitempty"`
@@ -90,6 +88,7 @@ type BrokerStatus struct {
 
 // Broker is the Schema for the brokers API
 // +kubebuilder:subresource:status
+// +kubebuilder:storageversion
 // +kubebuilder:resource:shortName=br,categories=meshery
 // +kubebuilder:printcolumn:name="Size",type=integer,JSONPath=`.spec.size`
 // +kubebuilder:printcolumn:name="External",type=string,JSONPath=`.status.endpoint.external`

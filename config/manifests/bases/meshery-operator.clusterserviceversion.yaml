@@ -4,6 +4,7 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
+    olm.skipRange: '>=0.0.1 <0.1.0'
   name: meshery-operator.v0.0.0
   namespace: placeholder
 spec:
@@ -41,10 +42,12 @@ spec:
   - name: Meshery Operator
     url: https://meshery-operator.domain
   maintainers:
-  - email: urakiny@gmai.com1
+  - email: urakiny@gmail.com
     name: aisuko
   maturity: alpha
+  minKubeVersion: 1.25.0
   provider:
     name: meshery
     url: https://github.com/meshery
+  replaces: meshery-operator.v0.0.1
   version: 0.0.0

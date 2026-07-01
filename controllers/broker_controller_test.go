@@ -33,6 +33,10 @@ import (
 const (
 	defaultNamespace = "default"
 	testAPIVersion   = "meshery.io/v1alpha1"
+	testBrokerKind   = "Broker"
+	// natsObjectName is the fixed chart-release name of the NATS StatefulSet
+	// and client Service, regardless of the Broker CR's name.
+	natsObjectName   = "meshery-nats"
 	appLabelKey      = "app"
 	brokerLabelValue = "broker"
 )
@@ -62,7 +66,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 		broker := &v1alpha1.Broker{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: testAPIVersion,
-				Kind:       "Broker",
+				Kind:       testBrokerKind,
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      defaultNamespace,
@@ -111,11 +115,11 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			Expect(err).ToNot(HaveOccurred())
 			By("Ensuring no StatefulSet exists before health check")
 			existingStatefulSet := &v1.StatefulSet{}
-			err = k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, existingStatefulSet)
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: natsObjectName, Namespace: namespace}, existingStatefulSet)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, existingStatefulSet)).Should(Succeed())
 				Eventually(func() bool {
-					err = k8sClient.Get(ctx, types.NamespacedName{Name: defaultNamespace, Namespace: namespace}, existingStatefulSet)
+					err = k8sClient.Get(ctx, types.NamespacedName{Name: natsObjectName, Namespace: namespace}, existingStatefulSet)
 					return err != nil
 				}).Should(BeTrue())
 			}
@@ -124,7 +128,7 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			statefulSet := &v1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-					Name:      defaultNamespace,
+					Name:      natsObjectName,
 				},
 				Spec: v1.StatefulSetSpec{
 					Replicas: &broker.Spec.Size,

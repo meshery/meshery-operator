@@ -1,7 +1,6 @@
+# Only the conversion webhook Service is needed (the conversion webhook is served
+# by the manager on /convert). There are no admission (mutating/validating)
+# webhooks, so no manifests.yaml is generated or referenced.
 namePrefix: meshery-
 resources:
-- manifests.yaml
 - service.yaml
-
-configurations:
-- kustomizeconfig.yaml

@@ -1,0 +1,101 @@
+# Meshery NATS broker — values for the official NATS Helm chart (nats/nats).
+#
+# The rendered output is vendored (not applied by Helm at runtime): the operator
+# embeds pkg/broker/manifests/nats.gen.yaml via go:embed and applies it with
+# Server-Side Apply. Regenerate after changing this file or bumping the chart:
+#
+#   make nats-manifests
+#
+# Scope: core NATS pub/sub, single-node, token auth from a Secret (no committed
+# JWT), no JetStream. The operator overlays per-Broker fields (size -> replicas,
+# spec.version -> image tag, spec.service.* -> the client Service).
+
+# No admin nats-box Deployment/Secret.
+natsBox:
+  enabled: false
+
+# Single-replica broker; no PodDisruptionBudget (keeps the operator's RBAC
+# surface off the policy API).
+podDisruptionBudget:
+  enabled: false
+
+# The NATS Prometheus exporter sidecar is off; the operator's own metrics are
+# served separately (TLS + authz). Can be enabled later for broker metrics.
+promExporter:
+  enabled: false
+
+config:
+  cluster:
+    enabled: false
+  jetstream:
+    enabled: false
+  monitor:
+    enabled: true
+  merge:
+    # Token authorization; the token is supplied at runtime from the
+    # meshery-nats-auth Secret the operator generates (never committed).
+    authorization:
+      token: << $NATS_TOKEN >>
+
+# Pod-level hardening: non-root with a runtime seccomp profile. The NATS server
+# only reads config and writes its PID to an emptyDir, so nothing needs root;
+# fsGroup keeps the shared volumes writable for both containers.
+podTemplate:
+  merge:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+
+container:
+  env:
+    NATS_TOKEN:
+      valueFrom:
+        secretKeyRef:
+          name: meshery-nats-auth
+          key: token
+  merge:
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: "1"
+        memory: 256Mi
+
+reloader:
+  enabled: true
+  merge:
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+service:
+  # Expose the monitoring port on the client Service: MeshSync's startup
+  # connectivity test pings http://<broker-host>:8222/connz before it connects,
+  # and the broker host it derives from BROKER_URL is this Service.
+  ports:
+    monitor:
+      enabled: true
+  merge:
+    metadata:
+      annotations:
+        meshery/component-type: management-plane

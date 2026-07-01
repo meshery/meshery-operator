@@ -28,6 +28,7 @@ import (
 func TestDeriveEndpoint(t *testing.T) {
 	const apiServerURL = "https://10.20.30.40:6443"
 	const clusterIPInternal = "10.96.0.10:4222"
+	const monitorPortName = "monitor"
 
 	svc := func(typ corev1.ServiceType, clusterIP string, ports []corev1.ServicePort, ingress ...corev1.LoadBalancerIngress) *corev1.Service {
 		s := &corev1.Service{

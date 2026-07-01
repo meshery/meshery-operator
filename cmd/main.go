@@ -21,6 +21,7 @@ import (
 	"os"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	mesheryv1alpha2 "github.com/meshery/meshery-operator/api/v1alpha2"
 	"github.com/meshery/meshery-operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -29,9 +30,16 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
+
+// RBAC for the controller-runtime metrics authn/authz filter: it delegates
+// bearer-token authentication and SubjectAccessReview authorization to the API
+// server, so the operator's ServiceAccount must be allowed to create both.
+// +kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
+// +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
 
 var (
 	scheme   = runtime.NewScheme()
@@ -48,12 +56,13 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(mesheryv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(mesheryv1alpha2.AddToScheme(scheme))
 }
 
 func main() {
 	var metricsAddr, probeAddr, namespace string
 	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-addr", ":8443", "The address the metric endpoint binds to (served over TLS with authn/authz).")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the health probe endpoint binds to.")
 	flag.StringVar(&namespace, "namespace", "meshery", "The namespace operator is deployed to.")
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
@@ -66,6 +75,12 @@ func main() {
 		Scheme: scheme,
 		Metrics: server.Options{
 			BindAddress: metricsAddr,
+			// Serve metrics over TLS (controller-runtime self-signs when no
+			// CertDir is provided) and gate access behind the API server's
+			// authn + SubjectAccessReview authz, replacing the retired
+			// kube-rbac-proxy sidecar (WS-5).
+			SecureServing:  true,
+			FilterProvider: filters.WithAuthenticationAndAuthorization,
 		},
 		HealthProbeBindAddress: probeAddr,
 		WebhookServer: webhook.NewServer(webhook.Options{
@@ -109,6 +124,21 @@ func main() {
 	if err = bReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Broker")
 		os.Exit(1)
+	}
+
+	// Register the conversion webhook for the v1alpha2 hub so the served
+	// v1alpha1 CRs round-trip through the /convert endpoint. Gated by
+	// ENABLE_WEBHOOKS so `make run` (no serving certs) can opt out; in-cluster it
+	// is required because the CRDs declare conversion strategy Webhook.
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = ctrl.NewWebhookManagedBy(mgr).For(&mesheryv1alpha2.Broker{}).Complete(); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Broker")
+			os.Exit(1)
+		}
+		if err = ctrl.NewWebhookManagedBy(mgr).For(&mesheryv1alpha2.MeshSync{}).Complete(); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "MeshSync")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 

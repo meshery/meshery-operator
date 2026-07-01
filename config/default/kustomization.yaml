@@ -19,11 +19,11 @@ resources:
 - ../crd
 - ../rbac
 - ../manager
-# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
-# crd/kustomization.yaml
-#- ../webhook
-# [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'. 'WEBHOOK' components are required.
-#- ../certmanager
+# [WEBHOOK] Conversion webhook Service (v1alpha1 <-> v1alpha2 hub).
+- ../webhook
+# [CERTMANAGER] Self-signed Issuer + serving Certificate for the webhook. Requires
+# cert-manager to be installed in the cluster.
+- ../certmanager
 # [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
 #- ../prometheus
 
@@ -32,17 +32,8 @@ resources:
 # sidecar pattern is deprecated); WS-5 reintroduces metrics protection via the
 # controller-runtime authn/authz filter and cert-manager-issued TLS.
 
-# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
-# crd/kustomization.yaml
-#patches:
-#- path: manager_webhook_patch.yaml
-
-# [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'.
-# Uncomment 'CERTMANAGER' sections in crd/kustomization.yaml to enable the CA injection in the admission webhooks.
-# 'CERTMANAGER' needs to be enabled to use ca injection
-#- path: webhookcainjection_patch.yaml
-
-# [CERTMANAGER] To enable cert-manager, uncomment the following replacements to
-# inject the cert-manager-issued CA into the CRD conversion/webhook configs.
-# (kustomize v5 'replacements' supersede the deprecated 'vars'.)
-#replacements: []
+# [WEBHOOK] Mount the cert-manager-issued serving cert into the manager and expose
+# the webhook port. (No admission webhooks exist, so webhookcainjection_patch.yaml
+# is not used; the CRD conversion CA is injected via the cainjection CRD patches.)
+patches:
+- path: manager_webhook_patch.yaml

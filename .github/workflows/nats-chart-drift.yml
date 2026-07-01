@@ -1,0 +1,45 @@
+name: NATS chart drift
+
+# Fails if the vendored NATS server manifests (pkg/broker/manifests/nats.gen.yaml)
+# no longer match a fresh `helm template` of the pinned chart + values.yaml, so the
+# embedded, SSA-applied manifests can never silently drift from upstream. Helm is a
+# build-time tool here (never a runtime/go.mod dependency); it is pinned to the
+# exact version used to render the committed output so the diff is byte-stable.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "pkg/broker/chart/**"
+      - "pkg/broker/manifests/**"
+      - "Makefile"
+      - ".github/workflows/nats-chart-drift.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "pkg/broker/chart/**"
+      - "pkg/broker/manifests/**"
+      - "Makefile"
+      - ".github/workflows/nats-chart-drift.yml"
+
+permissions: read-all
+
+jobs:
+  drift:
+    name: Vendored NATS manifests match the pinned chart
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+      - name: Install helm (pinned to the render version)
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: v4.1.4
+      - name: Re-render the vendored NATS manifests
+        run: make nats-manifests
+      - name: Verify no drift
+        run: |
+          if ! git diff --exit-code pkg/broker/manifests/; then
+            echo "::error::pkg/broker/manifests/nats.gen.yaml is out of sync with the pinned NATS chart and pkg/broker/chart/values.yaml. Run 'make nats-manifests' and commit the result."
+            exit 1
+          fi

@@ -47,9 +47,30 @@ make integration-tests-run
 make integration-tests-cleanup
 ```
 
+### Fast local iteration (build → deploy → test → repeat)
+
+```bash
+make e2e-dev                    # reuse the kind cluster, rebuild + reload +
+                                # restart the operator, re-run all assertions
+```
+
+Environment knobs (all optional):
+
+| Variable | Effect |
+|----------|--------|
+| `REUSE_CLUSTER=1` | Keep the existing kind cluster; reload images and restart the workloads instead of recreating everything. |
+| `MESHSYNC_VERSION=<tag>` | Pin the MeshSync CR to `meshery/meshsync:<tag>`. Point it at a locally built tag to test cross-repo meshsync changes end-to-end before they are published (locally present images are side-loaded, not pulled). |
+| `NO_CACHE=1` | Force a cold operator image build (layer cache is used by default). |
+| `KIND_NODE_IMAGE=<image>` | Pin the kind node (Kubernetes) version; CI pins this explicitly. |
+| `CERT_MANAGER_VERSION=<ver>` | Override the pinned cert-manager release used for the conversion webhook. |
+
 The harness pre-loads the workload images into the kind node so pod startup is
 not gated on first-time image pulls, and it uses portable shell (works on GNU
-and BSD/macOS).
+and BSD/macOS). Beyond workload readiness, the assertions verify the contract
+that matters: `BROKER_URL` carries no literal credential (token flows through a
+`secretKeyRef`), and MeshSync holds a **live client connection on the NATS
+server** (checked via the broker's `connz` monitoring endpoint) — deployments
+being Available proves nothing about broker connectivity.
 
 > The current e2e harness is bash-on-kind with a single Service-type path. A
 > richer matrix (ClusterIP/NodePort/LoadBalancer, networking reconfiguration,

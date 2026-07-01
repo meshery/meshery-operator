@@ -11,3 +11,9 @@ metadata:
     meshery/component-type: management-plane
 spec:
   size: 1
+  # ClusterIP is the recommended in-cluster default: it works on every cluster
+  # (kind, minikube, bare-metal, cloud) and MeshSync reaches the broker over the
+  # internal endpoint. NodePort/LoadBalancer are explicit opt-ins for external
+  # access; networking is reconcilable in place (see integration-tests).
+  service:
+    type: ClusterIP

@@ -2,7 +2,7 @@
 # More document can be found at https://docs.cert-manager.io
 # WARNING: Targets CertManager 0.11 check https://docs.cert-manager.io/en/latest/tasks/upgrading/index.html for 
 # breaking changes
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: selfsigned-issuer
@@ -10,16 +10,17 @@ metadata:
 spec:
   selfSigned: {}
 ---
-apiVersion: cert-manager.io/v1alpha2
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: serving-cert  # this name should match the one appeared in kustomizeconfig.yaml
   namespace: meshery
 spec:
-  # $(SERVICE_NAME) and $(SERVICE_NAMESPACE) will be substituted by kustomize
+  # DNS names of the webhook Service (meshery-webhook-service in namespace
+  # meshery). The Certificate itself is namePrefixed to meshery-serving-cert.
   dnsNames:
-  - $(SERVICE_NAME).$(SERVICE_NAMESPACE).svc
-  - $(SERVICE_NAME).$(SERVICE_NAMESPACE).svc.cluster.local
+  - meshery-webhook-service.meshery.svc
+  - meshery-webhook-service.meshery.svc.cluster.local
   issuerRef:
     kind: Issuer
     name: selfsigned-issuer

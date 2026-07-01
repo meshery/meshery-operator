@@ -68,8 +68,8 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 						Namespace: defaultNamespace,
 					},
 					Data: map[string]string{
-						"blacklist": "",
-						"whitelist": "[{\"Resource\":\"namespaces.v1.\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"MODIFIED\"]}]",
+						"blacklist":  "",
+						whitelistKey: "[{\"Resource\":\"namespaces.v1.\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"MODIFIED\"]}]",
 					},
 				},
 			},
@@ -123,8 +123,8 @@ var _ = Describe("The test case for the meshsync CRDs", func() {
 					Namespace: defaultNamespace,
 				},
 				Data: map[string]string{
-					"blacklist": "",
-					"whitelist": "[{\"Resource\":\"namespaces.v1.\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"MODIFIED\"]}]",
+					"blacklist":  "",
+					whitelistKey: "[{\"Resource\":\"namespaces.v1.\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"replicasets.v1.apps\",\"Events\":[\"ADDED\",\"DELETE\"]},{\"Resource\":\"pods.v1.\",\"Events\":[\"MODIFIED\"]}]",
 				},
 			}
 			Expect(configMap).To(Equal(expectedConfigMap))
