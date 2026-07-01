@@ -27,7 +27,6 @@ import (
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	kubeerror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +36,7 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -53,6 +53,10 @@ const (
 	brokerFinalizer = "broker.meshery.io/finalizer"
 	// brokerControllerName labels this controller's reconciliation metrics.
 	brokerControllerName = "broker"
+	// brokerFieldManager is the stable Server-Side Apply field manager for all
+	// broker-owned objects. It must not change across releases, or the API
+	// server would treat previously-applied fields as orphaned.
+	brokerFieldManager = "meshery-operator-broker"
 )
 
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch;create;update;patch;delete
@@ -92,7 +96,7 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 
 	// main reconciliation
-	return r.performReconciliation(ctx, log, baseResource, req)
+	return r.performReconciliation(ctx, log, baseResource)
 }
 
 // handleGetError handles errors from fetching the broker resource
@@ -162,14 +166,14 @@ func (r *BrokerReconciler) ensureFinalizer(ctx context.Context, log logr.Logger,
 }
 
 // performReconciliation performs the main broker reconciliation logic
-func (r *BrokerReconciler) performReconciliation(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.Broker, req ctrl.Request) (ctrl.Result, error) {
+func (r *BrokerReconciler) performReconciliation(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.Broker) (ctrl.Result, error) {
 	// Set initial status to processing
 	if err := r.updateStatusCondition(ctx, baseResource, "Processing", v1.ConditionTrue, "Reconciling", "Reconciling broker"); err != nil {
 		log.Error(err, "Failed to update broker status to Processing")
 	}
 
 	// Deploy broker resources
-	if result, err := r.deployBrokerResources(ctx, log, baseResource, req); err != nil {
+	if result, err := r.deployBrokerResources(ctx, log, baseResource); err != nil {
 		return result, err
 	}
 
@@ -194,15 +198,13 @@ func (r *BrokerReconciler) performReconciliation(ctx context.Context, log logr.L
 }
 
 // deployBrokerResources deploys the broker controller and resources
-func (r *BrokerReconciler) deployBrokerResources(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.Broker, req ctrl.Request) (ctrl.Result, error) {
-	result, err := r.reconcileBroker(ctx, true, baseResource, req)
-	if err != nil {
-		err = ErrReconcileBroker(err)
+func (r *BrokerReconciler) deployBrokerResources(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.Broker) (ctrl.Result, error) {
+	if err := r.reconcileBroker(ctx, baseResource); err != nil {
 		log.Error(err, "Broker reconciliation failed")
 		_ = r.updateStatusCondition(ctx, baseResource, "Ready", v1.ConditionFalse, "ReconciliationFailed", err.Error())
 		return ctrl.Result{}, err
 	}
-	return result, nil
+	return ctrl.Result{}, nil
 }
 
 // checkBrokerHealth checks if the broker controller is healthy
@@ -271,9 +273,14 @@ func (r *BrokerReconciler) updateStatusCondition(ctx context.Context, broker *me
 }
 
 func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Own the Service and ConfigMaps in addition to the StatefulSet so that a
+	// Service type/port edit or a late LoadBalancer IP assignment re-enqueues the
+	// Broker and the endpoint is recomputed (WS-3 §4.3 #15, WS-4 §6.2.1).
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.Broker{}).
 		Owns(&appsv1.StatefulSet{}).
+		Owns(&corev1.Service{}).
+		Owns(&corev1.ConfigMap{}).
 		Complete(r)
 }
 
@@ -298,140 +305,34 @@ func (r *BrokerReconciler) Cleanup(ctx context.Context, baseResource *mesheryv1a
 	return nil
 }
 
-func (r *BrokerReconciler) reconcileBroker(ctx context.Context, enable bool, baseResource *mesheryv1alpha1.Broker, req ctrl.Request) (ctrl.Result, error) {
-	objects := brokerpackage.GetObjects(baseResource)
-	for _, object := range objects {
+// reconcileBroker drives every broker-owned object to its desired state with a
+// single Server-Side Apply per object. SSA reconciles only the operator-owned
+// fields and leaves server-defaulted fields (clusterIP, nodePort,
+// healthCheckNodePort, StatefulSet/Pod defaults) untouched, which eliminates the
+// read-modify-DeepEqual hot-loop the old sync helpers caused (WS-3 §4.3 #13,
+// §6.2.2). Applying the full ordered object set every reconcile also removes the
+// "return after first Create" partial-progress behaviour (#16).
+func (r *BrokerReconciler) reconcileBroker(ctx context.Context, baseResource *mesheryv1alpha1.Broker) error {
+	for _, object := range brokerpackage.GetObjects(baseResource) {
 		object.SetNamespace(baseResource.Namespace)
-		desired := object.DeepCopyObject().(brokerpackage.Object)
-		err := r.Get(ctx,
-			types.NamespacedName{
-				Name:      object.GetName(),
-				Namespace: object.GetNamespace(),
-			},
-			object,
-		)
-		switch {
-		case err != nil && kubeerror.IsNotFound(err) && enable:
-			_ = ctrl.SetControllerReference(baseResource, desired, r.Scheme)
-			er := r.Create(ctx, desired)
-			if er != nil {
-				return ctrl.Result{}, ErrCreateBroker(er)
-			}
-			// .Owns will trigger an even here
-			return ctrl.Result{}, nil
-		case err != nil && enable:
-			return ctrl.Result{}, ErrGetBroker(err)
-		case err == nil && !kubeerror.IsNotFound(err) && !enable:
-			er := r.Delete(ctx, object)
-			if er != nil {
-				return ctrl.Result{}, ErrDeleteBroker(er)
-			}
-			return ctrl.Result{RequeueAfter: time.Second}, nil
+		if err := ctrl.SetControllerReference(baseResource, object, r.Scheme); err != nil {
+			return ErrReconcileBroker(err)
 		}
-
-		if !enable {
-			continue
-		}
-		if syncBrokerObject(object, desired) {
-			if err := r.Update(ctx, object); err != nil {
-				return ctrl.Result{}, ErrUpdateResource(err)
-			}
+		if err := r.apply(ctx, object); err != nil {
+			return ErrReconcileBroker(err)
 		}
 	}
-
-	return ctrl.Result{}, nil
+	return nil
 }
 
-func syncBrokerObject(existing, desired brokerpackage.Object) bool {
-	switch desiredObject := desired.(type) {
-	case *appsv1.StatefulSet:
-		existingObject, ok := existing.(*appsv1.StatefulSet)
-		if !ok {
-			return false
-		}
-		return syncBrokerStatefulSet(existingObject, desiredObject)
-	case *corev1.Service:
-		existingObject, ok := existing.(*corev1.Service)
-		if !ok {
-			return false
-		}
-		return syncBrokerService(existingObject, desiredObject)
-	case *corev1.ConfigMap:
-		existingObject, ok := existing.(*corev1.ConfigMap)
-		if !ok {
-			return false
-		}
-		return syncBrokerConfigMap(existingObject, desiredObject)
-	default:
-		return false
+// apply performs a Server-Side Apply of a single owned object using a stable
+// field manager. The object's GroupVersionKind must be populated for SSA, so it
+// is resolved from the scheme.
+func (r *BrokerReconciler) apply(ctx context.Context, obj client.Object) error {
+	gvk, err := apiutil.GVKForObject(obj, r.Scheme)
+	if err != nil {
+		return err
 	}
-}
-
-func syncBrokerStatefulSet(existing, desired *appsv1.StatefulSet) bool {
-	changed := false
-
-	if !apiequality.Semantic.DeepEqual(existing.Labels, desired.Labels) {
-		existing.Labels = desired.Labels
-		changed = true
-	}
-	if !apiequality.Semantic.DeepEqual(existing.Annotations, desired.Annotations) {
-		existing.Annotations = desired.Annotations
-		changed = true
-	}
-	if !apiequality.Semantic.DeepEqual(existing.Spec, desired.Spec) {
-		existing.Spec = desired.Spec
-		changed = true
-	}
-
-	return changed
-}
-
-func syncBrokerService(existing, desired *corev1.Service) bool {
-	changed := false
-
-	if !apiequality.Semantic.DeepEqual(existing.Labels, desired.Labels) {
-		existing.Labels = desired.Labels
-		changed = true
-	}
-	if !apiequality.Semantic.DeepEqual(existing.Annotations, desired.Annotations) {
-		existing.Annotations = desired.Annotations
-		changed = true
-	}
-	if !apiequality.Semantic.DeepEqual(existing.Spec.Ports, desired.Spec.Ports) {
-		existing.Spec.Ports = desired.Spec.Ports
-		changed = true
-	}
-	if !apiequality.Semantic.DeepEqual(existing.Spec.Selector, desired.Spec.Selector) {
-		existing.Spec.Selector = desired.Spec.Selector
-		changed = true
-	}
-	if existing.Spec.Type != desired.Spec.Type {
-		existing.Spec.Type = desired.Spec.Type
-		changed = true
-	}
-
-	return changed
-}
-
-func syncBrokerConfigMap(existing, desired *corev1.ConfigMap) bool {
-	changed := false
-
-	if !apiequality.Semantic.DeepEqual(existing.Labels, desired.Labels) {
-		existing.Labels = desired.Labels
-		changed = true
-	}
-	if !apiequality.Semantic.DeepEqual(existing.Annotations, desired.Annotations) {
-		existing.Annotations = desired.Annotations
-		changed = true
-	}
-	if !apiequality.Semantic.DeepEqual(existing.Data, desired.Data) {
-		existing.Data = desired.Data
-		changed = true
-	}
-	if !apiequality.Semantic.DeepEqual(existing.BinaryData, desired.BinaryData) {
-		existing.BinaryData = desired.BinaryData
-		changed = true
-	}
-
-	return changed
+	obj.GetObjectKind().SetGroupVersionKind(gvk)
+	return r.Patch(ctx, obj, client.Apply, client.FieldOwner(brokerFieldManager), client.ForceOwnership)
 }

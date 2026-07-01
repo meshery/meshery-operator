@@ -40,7 +40,7 @@ var _ = Describe("Broker funtions test cases", func() {
 	})
 
 	Context("Test for GetObjects function", func() {
-		It("should return the map of objects", func() {
+		It("should return the ordered slice of objects", func() {
 			m := &mesheryv1alpha1.Broker{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
@@ -50,25 +50,29 @@ var _ = Describe("Broker funtions test cases", func() {
 					Size: 1,
 				},
 			}
-			obj := GetObjects(m)
-			Expect(obj).ToNot(BeNil())
+			objs := GetObjects(m)
+			Expect(objs).To(HaveLen(4))
 
-			By("checking server config")
-			Expect(obj[ServerConfig]).ToNot(BeNil())
+			By("ConfigMaps and Service must precede the StatefulSet")
+			_, lastIsStatefulSet := objs[len(objs)-1].(*v1.StatefulSet)
+			Expect(lastIsStatefulSet).To(BeTrue())
 
-			By("checking account config")
-			Expect(obj[AccountConfig]).ToNot(BeNil())
-
-			By("checking server object, namespace and name, replicas")
-			Expect(obj[ServerObject]).ToNot(BeNil())
-			Expect(obj[ServerObject].GetNamespace()).To(Equal(m.Namespace))
-			Expect(obj[ServerObject].GetName()).To(Equal(m.Name))
+			By("the StatefulSet must carry the Broker name and namespace")
+			var sts *v1.StatefulSet
+			for _, o := range objs {
+				Expect(o).ToNot(BeNil())
+				if s, ok := o.(*v1.StatefulSet); ok {
+					sts = s
+				}
+			}
+			Expect(sts).ToNot(BeNil())
+			Expect(sts.GetName()).To(Equal(m.Name))
+			Expect(sts.GetNamespace()).To(Equal(m.Namespace))
 		})
 	})
 
 	Context("Test for CheckHealth function", func() {
-		It("should return nil", func() {
-
+		It("should be unhealthy until ReadyReplicas reaches the desired count", func() {
 			namespace := defaultNamespace
 			name := defaultNamespace
 			m := &mesheryv1alpha1.Broker{
@@ -81,7 +85,6 @@ var _ = Describe("Broker funtions test cases", func() {
 				},
 			}
 
-			// create a statefulSet object in the cluster
 			s := &v1.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
@@ -102,9 +105,6 @@ var _ = Describe("Broker funtions test cases", func() {
 							},
 						},
 						Spec: corev1.PodSpec{
-							// A pod template must declare at least one container;
-							// the apiserver rejects an empty container list with a
-							// 422 (spec.template.spec.containers: Required value).
 							Containers: []corev1.Container{
 								{
 									Name:  "nats",
@@ -115,18 +115,24 @@ var _ = Describe("Broker funtions test cases", func() {
 					},
 				},
 			}
-			By("Creating statefulset resources for testing broker")
-			err := k8sClient.Create(ctx, s)
-			Expect(err).ToNot(HaveOccurred())
-			By("Checking if the broker is healthy, it should be successful")
-			Expect(CheckHealth(ctx, m, k8sClient)).To(Succeed())
+			By("Creating the statefulset (no ready replicas yet)")
+			Expect(k8sClient.Create(ctx, s)).To(Succeed())
 
+			By("Health must fail while ReadyReplicas is 0")
+			Expect(CheckHealth(ctx, m, k8sClient)).ToNot(Succeed())
+
+			By("Driving the StatefulSet status to ready via the status subresource")
+			s.Status.Replicas = 1
+			s.Status.ReadyReplicas = 1
+			Expect(k8sClient.Status().Update(ctx, s)).To(Succeed())
+
+			By("Health must now succeed")
+			Expect(CheckHealth(ctx, m, k8sClient)).To(Succeed())
 		})
 	})
 
 	Context("Test for GetEndpoint function", func() {
-		It("should return the endpoint", func() {
-
+		It("should derive the endpoint from a NodePort Service without network I/O", func() {
 			name := defaultNamespace
 			namespace := defaultNamespace
 			m := &mesheryv1alpha1.Broker{
@@ -139,7 +145,7 @@ var _ = Describe("Broker funtions test cases", func() {
 				},
 			}
 
-			By("Create service first")
+			By("Create the broker Service first")
 			s := &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -148,27 +154,19 @@ var _ = Describe("Broker funtions test cases", func() {
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeNodePort,
 					Ports: []corev1.ServicePort{
-						{
-							Name: "http",
-							Port: 8080,
-						},
-						{
-							NodePort: 30002,
-							Name:     "grpc",
-							Port:     8082,
-						},
+						{Name: clientPortName, Port: 4222, NodePort: 30002},
+						{Name: monitorPortName, Port: 8222},
 					},
 				},
 			}
-			err := k8sClient.Create(ctx, s)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(k8sClient.Create(ctx, s)).To(Succeed())
 
-			url := "http://localhost:8080"
-			Expect(GetEndpoint(ctx, m, k8sClient, url)).ShouldNot(HaveOccurred())
+			apiServerURL := "http://localhost:8080"
+			Expect(GetEndpoint(ctx, m, k8sClient, apiServerURL)).To(Succeed())
 
 			By("checking m.status.endpoint")
 			Expect(m.Status.Endpoint.External).To(Equal("localhost:30002"))
-			Expect(m.Status.Endpoint.Internal).Should(ContainSubstring("8082"))
+			Expect(m.Status.Endpoint.Internal).To(ContainSubstring(":4222"))
 		})
 	})
 })

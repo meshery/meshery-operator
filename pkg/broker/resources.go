@@ -14,6 +14,7 @@ const (
 	brokerComponent   = "broker"
 	natsServiceName   = "meshery-nats"
 	clientPortName    = "client"
+	monitorPortName   = "monitor"
 	configVolumeName  = "config-volume"
 	pidVolumeName     = "pid"
 )
@@ -102,7 +103,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 					Port: val6222,
 				},
 				{
-					Name: "monitor",
+					Name: monitorPortName,
 					Port: val8222,
 				},
 				{
@@ -206,7 +207,7 @@ ACSU3Q6LTLBVLGAQUONAGXJHVNWGSKKAUA7IY5TB4Z7PLEKSR5O6JTGR: eyJ0eXAiOiJqd3QiLCJhbG
 							ContainerPort: val7522,
 						},
 						{
-							Name: "monitor",
+							Name: monitorPortName,
 
 							ContainerPort: val8222,
 						},
