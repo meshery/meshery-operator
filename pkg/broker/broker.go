@@ -34,8 +34,18 @@ func GetObjects(m *mesheryv1alpha1.Broker) []Object {
 		getServerConfig(),
 		getAccountConfig(),
 		getServiceObject(m.Namespace, m.Name),
-		getServerObject(m.Namespace, m.Name, m.Spec.Size),
+		getServerObject(m.Namespace, m.Name, desiredReplicas(m)),
 	}
+}
+
+// desiredReplicas defaults an unset spec.size to one replica so an omitted
+// size never applies a zero-replica StatefulSet that CheckHealth (which
+// expects one ready replica) would report unhealthy forever.
+func desiredReplicas(m *mesheryv1alpha1.Broker) int32 {
+	if m.Spec.Size > 0 {
+		return m.Spec.Size
+	}
+	return 1
 }
 
 func getServerObject(namespace, name string, replicas int32) Object {
@@ -76,10 +86,7 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.Broker, c client.Client
 		return ErrGettingBrokerResource(err)
 	}
 
-	desired := int32(1)
-	if m.Spec.Size > 0 {
-		desired = m.Spec.Size
-	}
+	desired := desiredReplicas(m)
 	if obj.Status.ReadyReplicas != desired {
 		return ErrBrokerReplicasNotReady(fmt.Sprintf("%d of %d replicas ready", obj.Status.ReadyReplicas, desired))
 	}

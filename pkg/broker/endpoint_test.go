@@ -27,6 +27,7 @@ import (
 // every Service type. It performs no network or apiserver I/O.
 func TestDeriveEndpoint(t *testing.T) {
 	const apiServerURL = "https://10.20.30.40:6443"
+	const clusterIPInternal = "10.96.0.10:4222"
 
 	svc := func(typ corev1.ServiceType, clusterIP string, ports []corev1.ServicePort, ingress ...corev1.LoadBalancerIngress) *corev1.Service {
 		s := &corev1.Service{
@@ -38,7 +39,7 @@ func TestDeriveEndpoint(t *testing.T) {
 	}
 	clientPort := []corev1.ServicePort{
 		{Name: clientPortName, Port: 4222, NodePort: 30422},
-		{Name: "monitor", Port: 8222},
+		{Name: monitorPortName, Port: 8222},
 	}
 
 	cases := []struct {
@@ -51,31 +52,31 @@ func TestDeriveEndpoint(t *testing.T) {
 		{
 			name:         "ClusterIP exposes internal only",
 			svc:          svc(corev1.ServiceTypeClusterIP, "10.96.0.10", clientPort),
-			wantInternal: "10.96.0.10:4222",
+			wantInternal: clusterIPInternal,
 			wantExternal: "",
 		},
 		{
 			name:         "NodePort uses the API server host and node port",
 			svc:          svc(corev1.ServiceTypeNodePort, "10.96.0.10", clientPort),
-			wantInternal: "10.96.0.10:4222",
+			wantInternal: clusterIPInternal,
 			wantExternal: "10.20.30.40:30422",
 		},
 		{
 			name:         "LoadBalancer with an ingress IP",
 			svc:          svc(corev1.ServiceTypeLoadBalancer, "10.96.0.10", clientPort, corev1.LoadBalancerIngress{IP: "203.0.113.7"}),
-			wantInternal: "10.96.0.10:4222",
+			wantInternal: clusterIPInternal,
 			wantExternal: "203.0.113.7:4222",
 		},
 		{
 			name:         "LoadBalancer with an ingress hostname",
 			svc:          svc(corev1.ServiceTypeLoadBalancer, "10.96.0.10", clientPort, corev1.LoadBalancerIngress{Hostname: "nats.lb.example.com"}),
-			wantInternal: "10.96.0.10:4222",
+			wantInternal: clusterIPInternal,
 			wantExternal: "nats.lb.example.com:4222",
 		},
 		{
 			name:         "LoadBalancer pending ingress",
 			svc:          svc(corev1.ServiceTypeLoadBalancer, "10.96.0.10", clientPort),
-			wantInternal: "10.96.0.10:4222",
+			wantInternal: clusterIPInternal,
 			wantExternal: "",
 			wantPending:  true,
 		},
@@ -87,7 +88,7 @@ func TestDeriveEndpoint(t *testing.T) {
 		},
 		{
 			name:         "missing client port falls back to the first port",
-			svc:          svc(corev1.ServiceTypeClusterIP, "10.96.0.10", []corev1.ServicePort{{Name: "monitor", Port: 8222}}),
+			svc:          svc(corev1.ServiceTypeClusterIP, "10.96.0.10", []corev1.ServicePort{{Name: monitorPortName, Port: 8222}}),
 			wantInternal: "10.96.0.10:8222",
 			wantExternal: "",
 		},

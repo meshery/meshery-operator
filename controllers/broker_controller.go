@@ -319,7 +319,7 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, baseResource *me
 			return ErrReconcileBroker(err)
 		}
 		if err := r.apply(ctx, object); err != nil {
-			return ErrCreateBroker(err)
+			return ErrReconcileBroker(err)
 		}
 	}
 	return nil

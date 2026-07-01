@@ -343,7 +343,7 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, baseResource
 		return ErrReconcileMeshsync(err)
 	}
 	if err := r.apply(ctx, desired); err != nil {
-		return ErrCreateMeshsync(err)
+		return ErrReconcileMeshsync(err)
 	}
 	return nil
 }

@@ -155,7 +155,7 @@ var _ = Describe("Broker funtions test cases", func() {
 					Type: corev1.ServiceTypeNodePort,
 					Ports: []corev1.ServicePort{
 						{Name: clientPortName, Port: 4222, NodePort: 30002},
-						{Name: "monitor", Port: 8222},
+						{Name: monitorPortName, Port: 8222},
 					},
 				},
 			}

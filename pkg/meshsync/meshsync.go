@@ -55,7 +55,8 @@ func GetServerObject(m *mesheryv1alpha1.MeshSync) Object {
 	Deployment.DeepCopyInto(obj)
 	obj.Namespace = m.Namespace
 	obj.Name = m.Name
-	obj.Spec.Replicas = &m.Spec.Size
+	size := desiredReplicas(m)
+	obj.Spec.Replicas = &size
 	if len(obj.Spec.Template.Spec.Containers) > 0 {
 		setBrokerURL(&obj.Spec.Template.Spec.Containers[0], m.Status.PublishingTo)
 	}
@@ -78,6 +79,16 @@ func setBrokerURL(container *corev1.Container, rawURL string) {
 	container.Env = append(container.Env, corev1.EnvVar{Name: brokerURLEnv, Value: value})
 }
 
+// desiredReplicas defaults an unset spec.size to one replica so an omitted
+// size never applies a zero-replica Deployment that CheckHealth (which
+// expects one ready replica) would report unhealthy forever.
+func desiredReplicas(m *mesheryv1alpha1.MeshSync) int32 {
+	if m.Spec.Size > 0 {
+		return m.Spec.Size
+	}
+	return 1
+}
+
 // ensureNatsScheme prefixes a bare host:port with nats://, while leaving an
 // already-schemed URL (nats://, tls://, …) untouched.
 func ensureNatsScheme(raw string) string {
@@ -95,10 +106,7 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, c client.Clie
 		return ErrGettingMeshsyncResource(err)
 	}
 
-	desired := int32(1)
-	if m.Spec.Size > 0 {
-		desired = m.Spec.Size
-	}
+	desired := desiredReplicas(m)
 	if obj.Status.ReadyReplicas != desired {
 		return ErrMeshsyncReplicasNotReady(fmt.Sprintf("%d of %d replicas ready", obj.Status.ReadyReplicas, desired))
 	}

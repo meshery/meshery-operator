@@ -45,16 +45,12 @@ func TestGetObjects(t *testing.T) {
 
 func TestEnsureNatsScheme(t *testing.T) {
 	cases := map[string]string{
-		"":                   "",
 		"meshery-nats:4222":  "nats://meshery-nats:4222",
 		"10.0.0.1:4222":      "nats://10.0.0.1:4222",
 		"nats://broker:4222": "nats://broker:4222",
 		"tls://broker:4222":  "tls://broker:4222",
 	}
 	for in, want := range cases {
-		if in == "" {
-			continue // ensureNatsScheme is only called for non-empty URLs
-		}
 		if got := ensureNatsScheme(in); got != want {
 			t.Errorf("ensureNatsScheme(%q) = %q, want %q", in, got, want)
 		}
