@@ -64,13 +64,17 @@ The manager image is multi-stage and distroless (`gcr.io/distroless/static:nonro
 ## Release artifact propagation
 
 Publishing a GitHub release (release-drafter draft → publish, which pushes the
-`v*` tag) fires three release workflows:
+`v*` tag) fires the release workflows below. Releases in this repo are
+**immutable once published** — assets cannot be added afterwards — so the CRD
+bundles are attached to the *draft* on every master push by
+`release-drafter.yml`:
 
 | Workflow | What it does |
 |---|---|
+| `release-drafter.yml` | Maintains the draft release on master pushes and refreshes `crds.yaml` + `crds-webhook-conversion.yaml` (rendered by `make crds`) on it, so a published release is born with current assets. |
 | `multi-platform.yml` | Builds, pushes, and cosign-signs the multi-arch manager image. |
 | `sbom.yml` | Attaches an SPDX SBOM to the release. |
-| `sync-downstream.yml` | Attaches `crds.yaml` + `crds-webhook-conversion.yaml` (rendered by `make crds`) to the release, syncs CRDs/chart versions into `meshery/meshery`'s `install/kubernetes/helm` charts via `hack/sync-downstream.sh` (pushed as `l5io`, PR fallback), then fires a `meshery-operator-released` repository_dispatch so `meshery/meshery` publishes the version-matched `meshery-operator` chart to https://meshery.io/charts. |
+| `sync-downstream.yml` | Syncs CRDs/chart versions into `meshery/meshery`'s `install/kubernetes/helm` charts via `hack/sync-downstream.sh` (pushed as `l5io`, PR fallback), then fires a `meshery-operator-released` repository_dispatch so `meshery/meshery` publishes the version-matched `meshery-operator` chart to https://meshery.io/charts. Best-effort backfills CRD assets onto still-mutable releases. |
 
 The two CRD bundle variants:
 
