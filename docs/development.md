@@ -60,3 +60,37 @@ make deploy IMG=meshery/meshery-operator:dev
 
 The manager image is multi-stage and distroless (`gcr.io/distroless/static:nonroot`,
 `CGO_ENABLED=0`, `TARGETOS`/`TARGETARCH`), so it builds for both amd64 and arm64.
+
+## Release artifact propagation
+
+Publishing a GitHub release (release-drafter draft → publish, which pushes the
+`v*` tag) fires three release workflows:
+
+| Workflow | What it does |
+|---|---|
+| `multi-platform.yml` | Builds, pushes, and cosign-signs the multi-arch manager image. |
+| `sbom.yml` | Attaches an SPDX SBOM to the release. |
+| `sync-downstream.yml` | Attaches `crds.yaml` + `crds-webhook-conversion.yaml` (rendered by `make crds`) to the release, syncs CRDs/chart versions into `meshery/meshery`'s `install/kubernetes/helm` charts via `hack/sync-downstream.sh` (pushed as `l5io`, PR fallback), then fires a `meshery-operator-released` repository_dispatch so `meshery/meshery` publishes the version-matched `meshery-operator` chart to https://meshery.io/charts. |
+
+The two CRD bundle variants:
+
+- **`dist/crds.yaml`** — plain `config/crd/bases` output; conversion strategy
+  `None`. This is what the meshery-operator Helm chart ships. It is correct
+  **only while the `v1alpha1` and `v1alpha2` schemas are field-identical**
+  (the apiserver serves both versions from storage without field mapping).
+  When the schemas diverge, the chart must move to webhook conversion — see
+  the comment in `api/v1alpha1/conversion.go`.
+- **`dist/crds-webhook-conversion.yaml`** — `kustomize build config/crd`; the
+  same rendering the operator's own kustomize deployment applies. Conversion
+  is wired to the `meshery-webhook-service` Service in the `meshery` namespace
+  with cert-manager CA injection, so it requires both.
+
+To dry-run the downstream sync locally against a `meshery/meshery` checkout:
+
+```bash
+make crds
+hack/sync-downstream.sh ~/code/meshery 1.0.0   # bare version, no leading v
+```
+
+The script is idempotent; run it twice and the second run reports
+`sync: no changes`.

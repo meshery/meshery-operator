@@ -26,7 +26,11 @@ import (
 // v1alpha1 is a conversion spoke; v1alpha2 is the hub (storage) version. The two
 // schemas are currently field-identical, so conversion is a lossless JSON
 // round-trip of the spec and status (ObjectMeta is copied directly). When
-// v1alpha2 later diverges, replace the round-trip with explicit field mapping.
+// v1alpha2 later diverges, replace the round-trip with explicit field mapping
+// AND flip the meshery/meshery meshery-operator chart to webhook conversion
+// (webhook.enabled=true default): the chart ships the plain `make crds` bundle
+// with conversion strategy None, which is only correct while the schemas stay
+// field-identical. See docs/development.md ("Release artifact propagation").
 
 // convertJSON copies in -> out via JSON, which is lossless while the two
 // versions share identical JSON tags.

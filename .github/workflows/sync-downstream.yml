@@ -1,0 +1,108 @@
+# Propagates release artifacts downstream on every published release:
+#   1. Renders the CRD bundles (make crds) and attaches them to the GitHub
+#      release, so `kubectl apply -f` users have a per-release artifact.
+#   2. Syncs the CRDs + chart versions into meshery/meshery's
+#      install/kubernetes/helm charts via hack/sync-downstream.sh, pushed
+#      directly as l5io (same convention as error-ref-publisher.yaml), with
+#      a PR fallback when master is not fast-forwardable.
+#   3. Fires a repository_dispatch (meshery-operator-released) so
+#      meshery/meshery publishes the version-matched meshery-operator chart
+#      to meshery.io/charts (.github/workflows/release-operator-chart.yml
+#      over there guards that its chart appVersion matches before publishing).
+name: Sync release artifacts downstream
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release-ver:
+        description: "Existing release tag to (re-)sync, e.g. v1.0.0"
+        required: true
+
+permissions:
+  contents: write # gh release upload
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Resolve release tag
+        id: ver
+        env:
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ github.event.inputs.release-ver }}
+        run: |
+          TAG="${EVENT_TAG:-$INPUT_TAG}"
+          if [ -z "$TAG" ]; then echo "::error::no release tag"; exit 1; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the released ref
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ steps.ver.outputs.tag }}
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+
+      - name: Render CRD bundles
+        run: make crds
+
+      - name: Attach CRD bundles to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ steps.ver.outputs.tag }}" \
+            dist/crds.yaml dist/crds-webhook-conversion.yaml --clobber
+
+      - name: Checkout meshery/meshery
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: meshery/meshery
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          path: meshery
+          fetch-depth: 1
+
+      - name: Sync charts and CRDs
+        run: |
+          helm version # preinstalled on ubuntu-24.04 runners; needed for dependency update
+          hack/sync-downstream.sh meshery "${{ steps.ver.outputs.version }}"
+
+      - name: Commit and push (PR fallback)
+        id: push
+        working-directory: meshery
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          git config user.name l5io
+          git config user.email ci@meshery.io
+          git add install/kubernetes/helm
+          if git diff --cached --quiet; then
+            echo "nothing to sync"; echo "pushed=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git commit --signoff \
+            -m "chore(operator): sync CRDs and chart from meshery-operator v${VERSION}"
+          if git push origin master; then
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          else
+            BRANCH="operator-sync/v${VERSION}"
+            git checkout -b "$BRANCH"
+            git push -f origin "$BRANCH"
+            gh pr create --repo meshery/meshery --base master --head "$BRANCH" \
+              --title "Sync operator CRDs + chart from meshery-operator v${VERSION}" \
+              --body "Automated sync from meshery/meshery-operator release v${VERSION} (sync-downstream workflow). Merge, then run the release-operator-chart workflow with release-ver=${VERSION} to publish the chart." \
+              || true
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Dispatch chart publish
+        if: steps.push.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+        run: |
+          gh api repos/meshery/meshery/dispatches \
+            -f event_type=meshery-operator-released \
+            -F 'client_payload[version]=${{ steps.ver.outputs.version }}'
