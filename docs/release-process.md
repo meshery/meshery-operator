@@ -20,13 +20,20 @@ running deployments, and the invariants that keep the pipeline honest.
 | `sbom.yml` | Attaches an SPDX SBOM to the release. |
 | `sync-downstream.yml` | Steps 1–3 below. |
 
+The CRD bundle assets (`crds.yaml`, `crds-webhook-conversion.yaml`) are
+attached to the **draft** release by `release-drafter.yml` on every master
+push — releases here can publish **immutable** (v1.0.0 and v1.0.1 both did),
+and immutable releases reject asset uploads after publish, so the draft is
+the only reliable attach point.
+
 `sync-downstream.yml` (also runnable via `workflow_dispatch` with
 `release-ver` to re-sync an existing tag):
 
-1. **Release assets** — renders `make crds` and uploads `crds.yaml` (plain,
-   conversion strategy `None`) and `crds-webhook-conversion.yaml` (kustomize
-   rendering with webhook conversion + cert-manager CA injection) to the
-   release.
+1. **Release assets (best-effort backfill)** — renders `make crds` and
+   attempts to upload both bundles to the release; on an immutable release
+   this warns and continues (the canonical asset path is the draft attach
+   above — this step only backfills still-mutable releases and must never
+   block the sync below).
 2. **Downstream sync** — checks out `meshery/meshery` and runs
    `hack/sync-downstream.sh`, which updates the `meshery-operator` chart's
    `crds/crds.yaml` + `files/crds.yaml`, stamps the chart's
@@ -99,10 +106,12 @@ operator image under the server-stamped stream.
 - **CRD updates flow through the chart's update Job**, not Helm's `crds/`
   directory (which Helm applies only on first install). Disabling the
   webhook must reset conversion to `None` explicitly (the Job does this).
-- **Immutable releases**: the repo setting is now off, but immutability is
-  stamped per-release at publish time — `v1.0.0` was published while the
-  setting was on and remains permanently sealed (no assets can ever be
-  attached to it). Releases published since accept assets normally.
+- **Immutable releases**: releases in this repo publish immutable (verified
+  empirically on both `v1.0.0` and `v1.0.1`, the latter after the setting was
+  believed disabled — treat immutability as the operative assumption).
+  Sealed releases reject asset uploads forever, so assets must land on the
+  draft (`release-drafter.yml`), and any post-publish upload must be
+  best-effort.
 - **Storage-version migration debt**: clusters upgraded from `v1alpha1`
   storage keep `status.storedVersions: [v1alpha1, v1alpha2]`. Until a
   migration (rewrite stored objects, prune `storedVersions`) runs, `v1alpha1`
