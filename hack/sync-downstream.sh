@@ -45,6 +45,11 @@ if grep -q '^appVersion:' "$OPERATOR_CHART/Chart.yaml"; then
 else
   printf 'appVersion: "%s"\n' "$VERSION" >> "$OPERATOR_CHART/Chart.yaml"
 fi
+# Pin the manager image tag explicitly (2-space-indented `tag:` under image:).
+# helm-chart-releaser re-stamps appVersion with the *Meshery Server* tag when
+# it republishes charts at server releases, so an appVersion-derived image tag
+# would point at a nonexistent operator image under that publish path.
+perl -pi -e "s/^  tag: \"[^\"]*\"/  tag: \"$VERSION\"/" "$OPERATOR_CHART/values.yaml"
 
 # 3. Parent chart dependency bump + re-vendor. The dependency block is matched by
 #    the adjacent name key so only the meshery-operator entry's version changes.
