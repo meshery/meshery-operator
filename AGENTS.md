@@ -16,7 +16,8 @@ into concrete workloads:
   `Deployment`.
 
 For depth beyond this file, see `docs/architecture.md`, `docs/development.md`,
-`docs/testing.md`, `docs/errors.md`, `docs/metrics.md`, and
+`docs/testing.md`, `docs/errors.md`, `docs/metrics.md`,
+`docs/release-process.md` (release flow + downstream chart/CRD sync), and
 `docs/proposals/operator-modernization-plan.md` — the active roadmap. Code
 comments referencing `WS-N` (e.g. `WS-3`) point at that plan's workstreams.
 

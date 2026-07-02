@@ -63,16 +63,12 @@ The manager image is multi-stage and distroless (`gcr.io/distroless/static:nonro
 
 ## Release artifact propagation
 
-Publishing a GitHub release (release-drafter draft → publish, which pushes the
-`v*` tag) fires three release workflows:
+The full release flow — what fires on publish, how CRDs/charts sync into
+`meshery/meshery`, chart version streams, and the release checklist — is
+documented in [release-process.md](release-process.md). The local tooling:
 
-| Workflow | What it does |
-|---|---|
-| `multi-platform.yml` | Builds, pushes, and cosign-signs the multi-arch manager image. |
-| `sbom.yml` | Attaches an SPDX SBOM to the release. |
-| `sync-downstream.yml` | Attaches `crds.yaml` + `crds-webhook-conversion.yaml` (rendered by `make crds`) to the release, syncs CRDs/chart versions into `meshery/meshery`'s `install/kubernetes/helm` charts via `hack/sync-downstream.sh` (pushed as `l5io`, PR fallback), then fires a `meshery-operator-released` repository_dispatch so `meshery/meshery` publishes the version-matched `meshery-operator` chart to https://meshery.io/charts. |
-
-The two CRD bundle variants:
+`make crds` renders the two distributable CRD bundle variants into `dist/`
+(gitignored):
 
 - **`dist/crds.yaml`** — plain `config/crd/bases` output; conversion strategy
   `None`. This is what the meshery-operator Helm chart ships. It is correct
