@@ -43,29 +43,30 @@ the only reliable attach point.
    committed as `l5io <ci@meshery.io>` with `--signoff` and pushed to master
    (same convention as `error-ref-publisher.yaml`). If the push is rejected
    (e.g. branch protection), it opens an automated PR instead.
-3. **Chart publish dispatch** — fires
-   `repository_dispatch: meshery-operator-released` at `meshery/meshery`,
-   whose `release-operator-chart.yml` publishes **only** the
-   `meshery-operator` chart to https://meshery.io/charts at the operator's
-   version. That workflow refuses to publish unless master's chart
-   `appVersion` equals the dispatched version, so a publish can never precede
-   its sync commit. The dispatch is skipped when the PR fallback was taken —
-   after merging the sync PR, run `Release Meshery Operator Chart` manually
-   with `release-ver: <version>`.
+3. **Operator-versioned chart publish (OCI)** — packages the just-synced
+   chart at the operator's version and pushes it to
+   `oci://ghcr.io/meshery/charts/meshery-operator`. Consumers:
+   `helm install meshery-operator oci://ghcr.io/meshery/charts/meshery-operator --version <version>`.
+   The push is best-effort (a registry-permission failure warns without
+   failing the sync).
 
-## Two chart version streams on meshery.io/charts
+## Two chart version streams — two channels
 
-- **Server-stamped** (pre-existing): `meshery/meshery`'s
+- **Server-stamped, on meshery.io/charts** (pre-existing): `meshery/meshery`'s
   `helm-chart-releaser.yml` republishes every chart under
   `install/kubernetes/helm/` at each **Meshery Server** release, stamping
-  `chart_version`/`app_version` with the *server* tag. Meshery Server's
-  meshkit deployment path (`ApplyHelmChart{Chart: "meshery-operator",
-  Version: <server release>}`) looks up exactly these.
-- **Operator-versioned** (added by this pipeline): `release-operator-chart.yml`
-  publishes the operator chart at the operator's own version. These are
-  additive index entries for standalone `helm install` consumers and
-  version-pinned deployments. **Never remove the server-stamped path** —
-  meshkit's lookup depends on it.
+  `chart_version`/`app_version` with the *server* tag (v-prefixed). Meshery
+  Server's meshkit deployment path (`ApplyHelmChart{Chart: "meshery-operator",
+  Version: <server release>}`) looks up exactly these. **Never remove this
+  path** — meshkit's lookup depends on it.
+- **Operator-versioned, on ghcr.io** (this pipeline): pushed as OCI artifacts
+  for standalone `helm install` consumers and version-pinned deployments.
+  These deliberately do NOT go into the shared meshery.io/charts index:
+  helm's semver treats the index's historical server-stamped versions
+  (`v1.0.1`, `v1.0.50`, …) and operator versions (`1.0.1`, …) as the same
+  version space, and `helm repo index --merge` silently drops colliding
+  entries — verified empirically when operator `1.0.1` collided with the
+  historical server-stamped `v1.0.1`.
 
 Because the server-stamped publish rewrites `appVersion` with the server tag,
 the chart's manager image tag is pinned **explicitly** in `values.yaml`
@@ -122,9 +123,8 @@ operator image under the server-stamped stream.
 1. Merge everything intended for the release; CI green on master.
 2. Publish the release draft (creates the tag).
 3. Watch the three release workflows; confirm the l5io sync commit landed on
-   `meshery/meshery` master (or merge the fallback PR + dispatch the chart
-   publish manually).
-4. Spot-check https://meshery.io/charts index for the new operator-versioned
-   chart entry.
+   `meshery/meshery` master (or merge the fallback PR).
+4. Spot-check the OCI chart:
+   `helm pull oci://ghcr.io/meshery/charts/meshery-operator --version <version>`.
 5. If the typed client changed, follow up with the `go.mod` bump in
    `meshery/meshery`.
