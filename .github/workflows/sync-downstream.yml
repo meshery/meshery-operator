@@ -1,14 +1,15 @@
 # Propagates release artifacts downstream on every published release:
-#   1. Renders the CRD bundles (make crds) and attaches them to the GitHub
-#      release, so `kubectl apply -f` users have a per-release artifact.
+#   1. Renders the CRD bundles (make crds) and best-effort attaches them to
+#      the GitHub release (the canonical asset path is the draft attach in
+#      release-drafter.yml — releases here publish immutable).
 #   2. Syncs the CRDs + chart versions into meshery/meshery's
 #      install/kubernetes/helm charts via hack/sync-downstream.sh, pushed
 #      directly as l5io (same convention as error-ref-publisher.yaml), with
 #      a PR fallback when master is not fast-forwardable.
-#   3. Fires a repository_dispatch (meshery-operator-released) so
-#      meshery/meshery publishes the version-matched meshery-operator chart
-#      to meshery.io/charts (.github/workflows/release-operator-chart.yml
-#      over there guards that its chart appVersion matches before publishing).
+#   3. Publishes the operator-versioned chart to oci://ghcr.io/meshery/charts.
+#      (NOT the shared meshery.io/charts index: helm's semver equates its
+#      historical server-stamped versions with operator versions and drops
+#      colliding entries on index merge.)
 name: Sync release artifacts downstream
 on:
   release:
@@ -21,6 +22,7 @@ on:
 
 permissions:
   contents: write # gh release upload
+  packages: write # helm push to ghcr.io/meshery/charts
 
 jobs:
   sync:
@@ -99,16 +101,29 @@ jobs:
             git push -f origin "$BRANCH"
             gh pr create --repo meshery/meshery --base master --head "$BRANCH" \
               --title "Sync operator CRDs + chart from meshery-operator v${VERSION}" \
-              --body "Automated sync from meshery/meshery-operator release v${VERSION} (sync-downstream workflow). Merge, then run the release-operator-chart workflow with release-ver=${VERSION} to publish the chart." \
+              --body "Automated sync from meshery/meshery-operator release v${VERSION} (sync-downstream workflow). The operator-versioned chart was published to oci://ghcr.io/meshery/charts regardless of this PR." \
               || true
             echo "pushed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Dispatch chart publish
-        if: steps.push.outputs.pushed == 'true'
+      # Operator-versioned charts go to an OCI registry, NOT the shared
+      # meshery.io/charts index: helm's semver treats the index's historical
+      # server-stamped versions (v1.0.1, v1.0.50, ...) and operator versions
+      # (1.0.1, ...) as the same version space, so `helm repo index --merge`
+      # silently drops colliding entries (verified with operator 1.0.1 vs the
+      # historical server v1.0.1). OCI tags have no such collision — and the
+      # server-stamped publish path in meshery/meshery is untouched.
+      - name: Publish operator-versioned chart (OCI)
         env:
-          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gh api repos/meshery/meshery/dispatches \
-            -f event_type=meshery-operator-released \
-            -F 'client_payload[version]=${{ steps.ver.outputs.version }}'
+          STAGE=$(mktemp -d)
+          helm package meshery/install/kubernetes/helm/meshery-operator \
+            --version "$VERSION" --app-version "$VERSION" -d "$STAGE"
+          echo "$GH_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          if helm push "$STAGE/meshery-operator-$VERSION.tgz" oci://ghcr.io/meshery/charts; then
+            echo "published oci://ghcr.io/meshery/charts/meshery-operator:$VERSION"
+          else
+            echo "::warning::OCI chart push failed (org package permissions?). The sync itself succeeded; publish manually with: helm push meshery-operator-$VERSION.tgz oci://ghcr.io/meshery/charts"
+          fi
