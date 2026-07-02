@@ -50,12 +50,18 @@ jobs:
       - name: Render CRD bundles
         run: make crds
 
-      - name: Attach CRD bundles to the release
+      - name: Attach CRD bundles to the release (best-effort)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${{ steps.ver.outputs.tag }}" \
-            dist/crds.yaml dist/crds-webhook-conversion.yaml --clobber
+          # This repo publishes immutable releases, so post-publish uploads 422.
+          # The canonical asset path is release-drafter.yml, which attaches the
+          # bundles to the draft before publish; this step only backfills
+          # releases that are still mutable and must not block the sync below.
+          if ! gh release upload "${{ steps.ver.outputs.tag }}" \
+              dist/crds.yaml dist/crds-webhook-conversion.yaml --clobber; then
+            echo "::warning::could not attach CRD bundles (immutable release). Drafts get assets via release-drafter.yml."
+          fi
 
       - name: Checkout meshery/meshery
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
