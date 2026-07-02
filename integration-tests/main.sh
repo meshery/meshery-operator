@@ -485,8 +485,24 @@ debug_output() {
   kubectl get replicaset -n "$OPERATOR_NAMESPACE" || true
   echo "=== Pod describe ==="
   kubectl describe pods -n "$OPERATOR_NAMESPACE" || true
-  echo "=== Pod logs ==="
+  echo "=== Operator logs ==="
   kubectl logs deployment/meshery-operator -n "$OPERATOR_NAMESPACE" --tail=100 || true
+
+  # Workload container logs, including the previous instance for anything
+  # crash-looping: a CrashLoopBackOff without its container's stderr is
+  # undebuggable from CI artifacts alone.
+  for c in nats reloader; do
+    echo "=== Broker container '$c' logs (current) ==="
+    kubectl logs meshery-nats-0 -c "$c" -n "$OPERATOR_NAMESPACE" --tail=50 2>&1 || true
+    echo "=== Broker container '$c' logs (previous instance) ==="
+    kubectl logs meshery-nats-0 -c "$c" -n "$OPERATOR_NAMESPACE" --previous --tail=50 2>&1 || true
+  done
+  echo "=== MeshSync logs (current) ==="
+  kubectl logs deployment/meshery-meshsync -n "$OPERATOR_NAMESPACE" --tail=50 2>&1 || true
+  echo "=== MeshSync logs (previous instance) ==="
+  kubectl logs deployment/meshery-meshsync -n "$OPERATOR_NAMESPACE" --previous --tail=50 2>&1 || true
+  echo "=== Warning events (most recent last) ==="
+  kubectl get events -n "$OPERATOR_NAMESPACE" --field-selector type=Warning --sort-by=.lastTimestamp 2>&1 | tail -20 || true
 }
 
 print_help() {

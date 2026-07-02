@@ -1,0 +1,13 @@
+# Justified exclusions for Trivy's Kubernetes misconfiguration checks against
+# pkg/broker/manifests/nats.gen.yaml (helm-rendered, vendored NATS manifests
+# that the operator embeds and applies itself).
+#
+# KSV-0110 (workloads in the default namespace): the rendered manifests carry
+# no metadata.namespace on purpose — the operator sets the namespace of every
+# object to the Broker CR's namespace at apply time (pkg/broker/broker.go
+# GetObjects -> SetNamespace).
+AVD-KSV-0110
+# KSV-0125 (untrusted registry): the images are the official upstream
+# docker.io/nats and docker.io/natsio artifacts pinned by tag through the
+# vendored chart; the project has no private registry mirror to point at.
+AVD-KSV-0125
