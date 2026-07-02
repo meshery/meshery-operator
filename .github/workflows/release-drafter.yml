@@ -24,36 +24,3 @@ jobs:
           config-name: release-drafter.yml
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_NOTES_PAT }}
-
-      # This repo publishes immutable releases: assets cannot be added after
-      # publish (the release-event upload in sbom.yml hit exactly this on
-      # v1.0.0). Attach the CRD bundles to the DRAFT on every master push
-      # instead, so a published release is born with current assets.
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - name: Set up Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
-        with:
-          go-version-file: go.mod
-      - name: Render CRD bundles
-        run: make crds
-      - name: Refresh CRD bundle assets on the draft
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_NOTES_PAT }}
-          RELEASE_ID: ${{ steps.release_drafter.outputs.id }}
-          UPLOAD_URL: ${{ steps.release_drafter.outputs.upload_url }}
-        run: |
-          for name in crds.yaml crds-webhook-conversion.yaml; do
-            # Drop a stale same-name asset from a previous draft refresh.
-            asset_id=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets" \
-              --jq ".[] | select(.name == \"${name}\") | .id" || true)
-            if [ -n "$asset_id" ]; then
-              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
-            fi
-            curl -sSf -X POST \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Content-Type: application/x-yaml" \
-              --data-binary "@dist/${name}" \
-              "${UPLOAD_URL%\{*}?name=${name}" >/dev/null
-            echo "attached ${name} to draft release ${RELEASE_ID}"
-          done
