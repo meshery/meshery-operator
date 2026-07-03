@@ -98,13 +98,25 @@ func applyServiceSpec(obj *corev1.Service, svc mesheryv1alpha1.BrokerServiceSpec
 	}
 }
 
-// GenerateToken returns a cryptographically random hex token for NATS auth.
+// tokenPrefix guarantees the generated token starts with a letter. The token is
+// injected into nats.conf unquoted (`token: $NATS_TOKEN`, see
+// pkg/broker/chart/values.yaml), and NATS re-lexes the substituted value. A bare
+// hex token that starts with digits and contains an `e` (e.g. "758e126b...") is
+// misparsed as scientific notation ("7.58e126") and the NATS server crashes on
+// startup with a config parse error, leaving the Broker permanently NotReady.
+// Quoting the value in the config is not an option because that disables NATS's
+// env-var expansion, so we make the token safe by construction: a leading letter
+// forces NATS to lex the whole token as a string.
+const tokenPrefix = "t"
+
+// GenerateToken returns a cryptographically random token for NATS auth, safe to
+// embed unquoted in nats.conf (always lexes as a string — see tokenPrefix).
 func GenerateToken() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(b), nil
+	return tokenPrefix + hex.EncodeToString(b), nil
 }
 
 // BuildAuthSecret constructs the meshery-nats-auth Secret holding the NATS token
