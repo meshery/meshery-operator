@@ -1,7 +1,8 @@
 # Error handling
 
 The operator uses **MeshKit structured errors**
-(`github.com/meshery/meshkit/errors`) as its error-handling convention. Every error
+(`github.com/meshery/meshkit/errors`) as its error-handling convention - never
+`fmt.Errorf` or `errors.New`. Every error
 returned from a controller or package is constructed with a stable code and rich,
 user-facing metadata so that Meshery Server and the meshkit error-reference tooling
 can surface actionable guidance instead of an opaque string.

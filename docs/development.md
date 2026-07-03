@@ -63,20 +63,20 @@ The manager image is multi-stage and distroless (`gcr.io/distroless/static:nonro
 
 ## Release artifact propagation
 
-The full release flow — what fires on publish, how CRDs/charts sync into
-`meshery/meshery`, chart version streams, and the release checklist — is
+The full release flow - what fires on publish, how CRDs/charts sync into
+`meshery/meshery`, chart version streams, and the release checklist - is
 documented in [release-process.md](release-process.md). The local tooling:
 
 `make crds` renders the two distributable CRD bundle variants into `dist/`
 (gitignored):
 
-- **`dist/crds.yaml`** — plain `config/crd/bases` output; conversion strategy
+- **`dist/crds.yaml`** - plain `config/crd/bases` output; conversion strategy
   `None`. This is what the meshery-operator Helm chart ships. It is correct
   **only while the `v1alpha1` and `v1alpha2` schemas are field-identical**
   (the apiserver serves both versions from storage without field mapping).
-  When the schemas diverge, the chart must move to webhook conversion — see
+  When the schemas diverge, the chart must move to webhook conversion - see
   the comment in `api/v1alpha1/conversion.go`.
-- **`dist/crds-webhook-conversion.yaml`** — `kustomize build config/crd`; the
+- **`dist/crds-webhook-conversion.yaml`** - `kustomize build config/crd`; the
   same rendering the operator's own kustomize deployment applies. Conversion
   is wired to the `meshery-webhook-service` Service in the `meshery` namespace
   with cert-manager CA injection, so it requires both.

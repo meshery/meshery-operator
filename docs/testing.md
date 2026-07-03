@@ -69,7 +69,7 @@ not gated on first-time image pulls, and it uses portable shell (works on GNU
 and BSD/macOS). Beyond workload readiness, the assertions verify the contract
 that matters: `BROKER_URL` carries no literal credential (token flows through a
 `secretKeyRef`), and MeshSync holds a **live client connection on the NATS
-server** (checked via the broker's `connz` monitoring endpoint) — deployments
+server** (checked via the broker's `connz` monitoring endpoint) - deployments
 being Available proves nothing about broker connectivity.
 
 > The current e2e harness is bash-on-kind with a single Service-type path. A
