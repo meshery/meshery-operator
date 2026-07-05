@@ -74,11 +74,15 @@ manager with leader election (stable lease `meshery-operator-leader.meshery.io`)
 
 ## Resource builders (`pkg/broker`, `pkg/meshsync`)
 
-Workload manifests are hand-authored Go structs (no Helm / embedded YAML):
+Workload manifests are produced two different ways, one per CRD:
 
-- `pkg/broker/resources.go` - the NATS `StatefulSet`, client `Service`, and the
-  `nats.conf`/accounts `ConfigMap`s.
-- `pkg/meshsync/resources.go` - the MeshSync `Deployment`.
+- `pkg/broker/` - the NATS `StatefulSet`, client `Service`, and `nats.conf`/accounts
+  `ConfigMap`s are **not** hand-authored. They are rendered from the official
+  `nats/nats` Helm chart into `pkg/broker/manifests/nats.gen.yaml` at build time
+  (`make nats-manifests`), embedded via `go:embed` (`pkg/broker/embed.go`), then
+  decoded once and Server-Side-Applied by the controller (details below).
+- `pkg/meshsync/resources.go` - the MeshSync `Deployment` is a hand-authored Go
+  struct (no Helm, no embedded YAML).
 
 `pkg/broker/broker.go` derives the broker endpoint and checks health via
 `ReadyReplicas`. `pkg/meshsync/meshsync.go` injects the broker URL and checks
