@@ -66,7 +66,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 .PHONY: all
-all: build
+all: build ## Default target: build the manager binary.
 
 ##@ General
 
@@ -112,7 +112,7 @@ crds: manifests kustomize ## Render distributable CRD bundles into dist/ (plain 
 NATS_CHART_VERSION ?= 2.14.2
 
 .PHONY: nats-manifests
-nats-manifests: ## Re-render the vendored NATS server manifests from the official chart. Requires the helm CLI (a build/dev tool only — NOT a runtime/go.mod dependency); the operator embeds and SSA-applies the rendered output.
+nats-manifests: ## Re-render the vendored NATS server manifests from the official chart. Requires the helm CLI (a build/dev tool only - NOT a runtime/go.mod dependency); the operator embeds and SSA-applies the rendered output.
 	helm repo add nats https://nats-io.github.io/k8s/helm/charts/ >/dev/null 2>&1 || true
 	helm repo update nats >/dev/null
 	@printf '%s\n' \
@@ -322,9 +322,8 @@ catalog-build: opm ## Build a catalog image.
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 
-# Test coverage
 .PHONY: coverage
-coverage: test-env
+coverage: test-env ## Run tests and write an HTML coverage report to cover.html.
 	go test -v ./... -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
 
@@ -348,45 +347,37 @@ $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION):
 	@GOBIN=$(BIN_DIR) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETUP_ENVTEST_VERSION)
 	@mv $(BIN_DIR)/setup-envtest $(BIN_DIR)/setup-envtest-$(SETUP_ENVTEST_VERSION)
 
-# Setting test envrioment
 .PHONY: test-env
-test-env:
+test-env: ## Provision the envtest control-plane binaries used by `make test` and `make coverage`.
 	make bin/setup-envtest
 	bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR)
 
 ##@ Integration Tests
 
 .PHONY: integration-tests-check-dependencies
-## Runs integration tests check dependencies (if docker, kind, kubectl are present)
-integration-tests-check-dependencies:
+integration-tests-check-dependencies: ## Check integration-test dependencies are present (docker, kind, kubectl).
 	./integration-tests/main.sh check_dependencies
 
 .PHONY: integration-tests-setup
-## Runs integration tests set up (creates kind cluster, builds and deploys operator)
-integration-tests-setup:
+integration-tests-setup: ## Set up integration tests (create kind cluster, build and deploy the operator).
 	./integration-tests/main.sh setup
 
 .PHONY: integration-tests-cleanup
-## Runs integration tests clean up (stops cluster and removes operator image)
-integration-tests-cleanup:
+integration-tests-cleanup: ## Clean up integration tests (stop the cluster, remove the operator image).
 	./integration-tests/main.sh cleanup
 
 .PHONY: integration-tests-run
-## Runs integration tests (validates that meshsync and broker are deployed properly)
-integration-tests-run:
+integration-tests-run: ## Run integration tests (assert Broker and MeshSync deploy properly).
 	./integration-tests/main.sh assert
 
 .PHONY: integration-tests-setup-debug-output
-## Debug integration tests by outputting cluster state
-integration-tests-setup-debug-output:
+integration-tests-setup-debug-output: ## Dump cluster state to help debug integration tests.
 	./integration-tests/main.sh debug
 
 .PHONY: integration-tests
-## Runs integration tests full cycle (setup, run validation, cleanup)
-integration-tests: integration-tests-setup integration-tests-run integration-tests-cleanup
+integration-tests: integration-tests-setup integration-tests-run integration-tests-cleanup ## Run the full integration-test cycle (setup, run, cleanup).
 
 .PHONY: e2e-dev
-## Fast local e2e loop: reuse the kind cluster, rebuild/reload the operator, re-assert
-e2e-dev:
+e2e-dev: ## Fast local e2e loop: reuse the kind cluster, rebuild/reload the operator, re-assert.
 	REUSE_CLUSTER=1 ./integration-tests/main.sh setup
 	./integration-tests/main.sh assert

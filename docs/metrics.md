@@ -18,14 +18,14 @@ single `controller` label (`"broker"` or `"meshsync"`):
 | `meshery_operator_reconcile_duration_seconds` | `HistogramVec` | Reconciliation wall-clock latency per controller (default Prometheus buckets). |
 
 All three carry the `meshery_operator_` prefix and the same `controller` label,
-so they line up in queries — e.g. the per-controller error ratio is
+so they line up in queries - e.g. the per-controller error ratio is
 `rate(meshery_operator_reconcile_errors_total[5m]) /
 rate(meshery_operator_reconcile_total[5m])`, and a latency SLI is
 `histogram_quantile(0.99, rate(meshery_operator_reconcile_duration_seconds_bucket[5m]))`.
 
 These sit alongside the controller-runtime built-ins (`controller_runtime_*`,
 `workqueue_*`, `rest_client_*`, Go runtime/process metrics) that the manager
-already exposes — our metrics describe *our* reconcile bodies, the built-ins
+already exposes - our metrics describe *our* reconcile bodies, the built-ins
 describe the queue and client machinery underneath them.
 
 ## How it is wired
@@ -33,13 +33,13 @@ describe the queue and client machinery underneath them.
 There is no manual registration or HTTP wiring to maintain. Two mechanisms do the
 work:
 
-1. **Registration** — `pkg/metrics/metrics.go` registers the three vectors with
+1. **Registration** - `pkg/metrics/metrics.go` registers the three vectors with
    the **controller-runtime** registry (`sigs.k8s.io/controller-runtime/pkg/metrics`)
    in its `init()` via `ctrlmetrics.Registry.MustRegister(...)`. That registry is
    the one the manager already serves, so registering there means the metrics
    appear on the existing endpoint automatically.
 
-2. **Exposure** — `cmd/main.go` configures the manager's metrics server
+2. **Exposure** - `cmd/main.go` configures the manager's metrics server
    (`server.Options{BindAddress: metricsAddr}`), which defaults to `:8080` and is
    overridable with `--metrics-addr`. The metrics are scraped from
    `http://<pod>:8080/metrics`.
@@ -47,7 +47,7 @@ work:
    > Today this endpoint is plain HTTP (insecure). Metrics TLS + `authn/authz`
    > hardening, and shipping the (currently commented-out) `config/prometheus`
    > `ServiceMonitor`, are tracked under **WS-5** in the
-   > [modernization plan](proposals/operator-modernization-plan.md) — until then,
+   > [modernization plan](proposals/operator-modernization-plan.md) - until then,
    > scraping is via direct pod access, not a `ServiceMonitor`.
 
 ### Instrumentation in the controllers
@@ -75,11 +75,11 @@ Why this shape:
 - **One defer, every exit path.** Reconcile has several early returns (not found,
   finalizer requeue, reconcile error). A single deferred closure records the count
   and duration on *all* of them and bumps the error counter only when
-  `reconcileErr` is non-nil — no per-return bookkeeping to forget.
+  `reconcileErr` is non-nil - no per-return bookkeeping to forget.
 - **Named returns are required for it to work.** The closure reads `reconcileErr`
   after the body has set it. Switching to named returns is the only control-flow
   change; it also means an inner `result` variable (e.g. from `ensureFinalizer`)
-  must be renamed (`res`) to avoid shadowing the named return — `govet`'s shadow
+  must be renamed (`res`) to avoid shadowing the named return - `govet`'s shadow
   analyzer flags this.
 - **Controller name is a constant.** `brokerControllerName` / `meshsyncControllerName`
   are declared next to each controller's other constants. They double as the label
@@ -90,13 +90,13 @@ Why this shape:
 1. Define the metric vector in `pkg/metrics/metrics.go` as a package-level `var`,
    with a `meshery_operator_` name prefix and a clear `Help` string. Reuse the
    `controllerLabel` constant if it is per-controller; introduce a new label
-   constant if you need a different dimension (keep cardinality bounded — labels
+   constant if you need a different dimension (keep cardinality bounded - labels
    must be a small, closed set, never user input or resource names).
 2. Add it to the `MustRegister(...)` call in `init()`.
 3. Record from the relevant code path. For per-reconcile signals, extend the
    existing `defer` closure rather than scattering new call sites.
 4. Add a case to `pkg/metrics/metrics_test.go` (see below). New behavior gets a
-   test case in the existing suite, not a new file — same convention as the rest
+   test case in the existing suite, not a new file - same convention as the rest
    of the repo ([testing.md](testing.md)).
 
 ## Tests
@@ -107,7 +107,7 @@ three things:
 - **Counters increment** independently per `controller` label
   (`testutil.ToFloat64`).
 - **The histogram records** observations (`testutil.CollectAndCount`).
-- **Registration** — the acceptance criterion. It gathers from the
+- **Registration** - the acceptance criterion. It gathers from the
   controller-runtime registry (`ctrlmetrics.Registry.Gather()`) and asserts all
   three metric families are present, because registering with *that* registry is
   exactly what exposes them on the operator's endpoint.
