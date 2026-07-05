@@ -156,8 +156,12 @@ func TestGenerateToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(a) != 64 { // 32 random bytes hex-encoded
-		t.Errorf("token length = %d, want 64", len(a))
+	// tokenPrefix (see broker.go) + 32 random bytes, hex-encoded. Derived from
+	// tokenPrefix so it tracks the constant instead of drifting when the prefix
+	// changes (it was added after this test and silently broke the old literal 64).
+	const wantLen = len(tokenPrefix) + 64
+	if len(a) != wantLen {
+		t.Errorf("token length = %d, want %d", len(a), wantLen)
 	}
 	b, _ := GenerateToken()
 	if a == b {
