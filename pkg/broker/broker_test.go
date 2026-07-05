@@ -137,4 +137,24 @@ var _ = Describe("Broker funtions test cases", func() {
 			Expect(m.Status.Endpoint.Internal).To(ContainSubstring(":4222"))
 		})
 	})
+
+	Context("Test for GenerateToken function", func() {
+		It("should produce a token that is safe to embed unquoted in nats.conf", func() {
+			// Regression: the token is injected unquoted (`token: $NATS_TOKEN`) and
+			// NATS re-lexes it. A token that starts with a digit can be misparsed as
+			// a number (e.g. "758e126b..." -> scientific notation), crashing NATS.
+			// The token must therefore always start with a letter so NATS lexes it
+			// as a string. Run many iterations since the failure was token-dependent.
+			for i := 0; i < 500; i++ {
+				token, err := GenerateToken()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(token).NotTo(BeEmpty())
+				first := token[0]
+				Expect(first >= '0' && first <= '9').To(
+					BeFalse(),
+					"token %q must not start with a digit (NATS may misparse it as a number)", token,
+				)
+			}
+		})
+	})
 })
