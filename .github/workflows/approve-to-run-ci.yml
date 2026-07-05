@@ -84,8 +84,10 @@ jobs:
             run: make build
 
     # Fail the build if committed generated artifacts (DeepCopy, CRDs, RBAC,
-    # webhook manifests) drift from the Go source. Bundle regeneration is not
-    # gated here because it requires the operator-sdk binary; see WS-1/WS-8.
+    # webhook manifests, and the flat operator install manifest fetched by
+    # mesheryctl) drift from the Go source and the config/ kustomize tree.
+    # Bundle regeneration is not gated here because it requires the operator-sdk
+    # binary; see WS-1/WS-8.
     manifests-drift:
         name: Generated manifests drift gate
         runs-on: ubuntu-24.04
@@ -99,11 +101,14 @@ jobs:
               go-version-file: go.mod
               cache: true
               cache-dependency-path: go.sum
-          - name: Regenerate manifests and DeepCopy
-            run: make manifests generate
+          # operator-manifest depends on manifests + kustomize, so this also
+          # regenerates CRDs/RBAC/webhook manifests and re-renders
+          # config/manifests/default.yaml from config/default.
+          - name: Regenerate manifests, DeepCopy, and the flat operator manifest
+            run: make manifests generate operator-manifest
           - name: Verify no drift
             run: |
               if ! git diff --exit-code; then
-                echo "::error::Generated files are out of date. Run 'make manifests generate' and commit the result."
+                echo "::error::Generated files are out of date. Run 'make manifests generate operator-manifest' and commit the result."
                 exit 1
               fi
