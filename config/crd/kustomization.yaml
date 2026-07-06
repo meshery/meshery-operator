@@ -6,15 +6,17 @@ resources:
 - bases/meshery.io_brokers.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
-patchesStrategicMerge:
+# Each patch is a strategic-merge patch keyed on the CRD's own apiVersion/kind/name
+# (kustomize v5 matches target-less `patches` entries by the patch file's metadata).
+patches:
 # [WEBHOOK] Enable the conversion webhook for each CRD (v1alpha1 <-> v1alpha2).
-- patches/webhook_in_meshsyncs.yaml
-- patches/webhook_in_brokers.yaml
+- path: patches/webhook_in_meshsyncs.yaml
+- path: patches/webhook_in_brokers.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] Enable cert-manager CA injection into each CRD's conversion config.
-- patches/cainjection_in_meshsyncs.yaml
-- patches/cainjection_in_brokers.yaml
+- path: patches/cainjection_in_meshsyncs.yaml
+- path: patches/cainjection_in_brokers.yaml
 # +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # the following config is for teaching kustomize how to do kustomization for CRDs.
