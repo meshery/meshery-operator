@@ -86,7 +86,13 @@ Workload manifests are produced two different ways, one per CRD:
 
 `pkg/broker/broker.go` derives the broker endpoint and checks health via
 `ReadyReplicas`. `pkg/meshsync/meshsync.go` injects the broker URL and checks
-health.
+health. MeshSync's container probes are version-gated (`applyProbes`): pods
+running MeshSync ≥ v1.0.1 - the first release that serves `/healthz` (liveness)
+and `/readyz` (readiness, 503 until the broker connects) on the client port -
+get httpGet probes, while older images, moving channel tags (e.g. the default
+`stable-latest`), and unparseable versions keep an exec liveness probe as the
+version-skew-safe fallback (an httpGet probe against an image without the
+endpoints would connection-refuse and crashloop it).
 
 ### Vendored NATS chart (`pkg/broker/chart/`, `pkg/broker/manifests/nats.gen.yaml`)
 

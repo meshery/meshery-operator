@@ -31,6 +31,11 @@ const (
 	meshsyncName    = "meshery-meshsync"
 	meshsyncService = "meshsync"
 
+	// clientPortName names the container port MeshSync listens on. It carries
+	// the broker client traffic and, as of v1.0.1, also serves the /healthz and
+	// /readyz HTTP health endpoints, so the httpGet probes target it by name.
+	clientPortName = "client"
+
 	// meshsyncImageRepo is the image repository spec.version tags resolve
 	// against.
 	meshsyncImageRepo = "meshery/meshsync"
@@ -99,7 +104,7 @@ var (
 							// No HostPort: pinning a host port would limit
 							// scheduling to one MeshSync per node for a port
 							// nothing external needs to reach.
-							Name:          "client",
+							Name:          clientPortName,
 							ContainerPort: val11000,
 						},
 					},
@@ -122,16 +127,24 @@ var (
 							corev1.ResourceMemory: MemoryLimit,
 						},
 					},
-					// MeshSync serves no HTTP health endpoint (its ping targets
-					// the broker's monitoring port), so the only probe available
-					// is exec'ing the binary — and `meshsync -h` only proves the
-					// binary can fork, nothing about sync health. During the
-					// initial full-cluster sync that fork can exceed any sane
-					// timeout on CPU-constrained nodes, marking a working pod
-					// unready forever. No Service routes to MeshSync, so a
-					// readiness probe gates nothing: it is intentionally absent.
-					// Liveness keeps a relaxed exec probe purely to restart a
-					// wedged container.
+					// Exec liveness is the version-skew-safe fallback baked into
+					// the template. As of v1.0.1 MeshSync serves HTTP /healthz
+					// (always 200) and /readyz (503 until it has connected to the
+					// broker once, then a permanent 200) on the client port, and
+					// applyProbes upgrades pods whose spec.version is a pinned
+					// semver >= that release to httpGet probes. Everything else
+					// keeps this exec probe: spec.version is user-settable and the
+					// default stable-latest (like every other moving tag) can't be
+					// proven to carry the endpoints, so an httpGet probe against an
+					// image that serves nothing on the client port would
+					// connection-refuse and crashloop an otherwise-healthy pod.
+					// `-h` only proves the binary can fork - nothing about sync
+					// health - and that fork can exceed a tight timeout during the
+					// initial full-cluster sync on CPU-starved nodes, so the probe
+					// stays deliberately relaxed. No readiness probe is attached
+					// for the same version-skew reason (and no Service routes to
+					// MeshSync, so readiness would gate no traffic); applyProbes
+					// adds one only for versions known to serve /readyz.
 					LivenessProbe: &corev1.Probe{
 						InitialDelaySeconds: 60,
 						PeriodSeconds:       30,

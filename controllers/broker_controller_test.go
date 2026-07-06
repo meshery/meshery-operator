@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 )
@@ -160,16 +161,32 @@ var _ = Describe("The test cases for customize resource: Broker's controller ", 
 			}
 
 			By("Creating statefulset resources for testing broker")
+			// The BrokerReconciler runs against this same "default" Broker CR and
+			// server-side-applies the meshery-nats StatefulSet on every reconcile,
+			// so it can recreate the object in the window between the delete above
+			// and this create. Adopt the existing StatefulSet on AlreadyExists
+			// rather than racing the controller (previously a flaky 409 here).
 			err = k8sClient.Create(ctx, statefulSet)
+			if apierrors.IsAlreadyExists(err) {
+				err = k8sClient.Get(ctx, types.NamespacedName{Name: natsObjectName, Namespace: namespace}, statefulSet)
+			}
 			Expect(err).ToNot(HaveOccurred())
 
 			By("Health must still fail until ReadyReplicas reaches the desired count")
 			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(HaveOccurred())
 
 			By("Driving the StatefulSet to ready via the status subresource (no kubelet)")
-			statefulSet.Status.Replicas = broker.Spec.Size
-			statefulSet.Status.ReadyReplicas = broker.Spec.Size
-			Expect(k8sClient.Status().Update(ctx, statefulSet)).To(Succeed())
+			// Re-fetch before each attempt: a concurrent controller reconcile can
+			// bump the StatefulSet's resourceVersion and make a one-shot status
+			// update conflict.
+			Eventually(func() error {
+				if err := k8sClient.Get(ctx, types.NamespacedName{Name: natsObjectName, Namespace: namespace}, statefulSet); err != nil {
+					return err
+				}
+				statefulSet.Status.Replicas = broker.Spec.Size
+				statefulSet.Status.ReadyReplicas = broker.Spec.Size
+				return k8sClient.Status().Update(ctx, statefulSet)
+			}, 2*time.Second, 100*time.Millisecond).Should(Succeed())
 
 			By("Checking if the broker is healthy, it should be successful")
 			Expect(brokerpackage.CheckHealth(ctx, broker, k8sClient)).To(Succeed())

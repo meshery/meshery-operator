@@ -22,12 +22,14 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -47,7 +49,22 @@ const (
 	// defaultBrokerURL is the template placeholder BROKER_URL, left in place
 	// until the operator derives the real broker endpoint.
 	defaultBrokerURL = "nats://localhost:4222"
+
+	// minHealthEndpointsVersion is the first released MeshSync version that
+	// serves the /healthz and /readyz HTTP endpoints on the client port
+	// (meshsync v1.0.1). Images at or above it get httpGet probes; older or
+	// unprovable versions keep the exec liveness baked into the template.
+	minHealthEndpointsVersion = "v1.0.1"
+	// healthzPath is MeshSync's liveness endpoint: always 200 while the process
+	// is alive. readyzPath is its readiness endpoint: 503 until MeshSync has
+	// connected to the broker at least once, then a permanent 200.
+	healthzPath = "/healthz"
+	readyzPath  = "/readyz"
 )
+
+// minHealthEndpoints is the parsed form of minHealthEndpointsVersion, compared
+// against spec.version to decide the probe strategy.
+var minHealthEndpoints = semver.MustParse(minHealthEndpointsVersion)
 
 type Object interface {
 	runtime.Object
@@ -74,6 +91,7 @@ func GetServerObject(m *mesheryv1alpha1.MeshSync, tokenSecret string) Object {
 	obj.Spec.Replicas = &size
 	if len(obj.Spec.Template.Spec.Containers) > 0 {
 		applyVersion(&obj.Spec.Template.Spec.Containers[0], m.Spec.Version)
+		applyProbes(&obj.Spec.Template.Spec.Containers[0], m.Spec.Version)
 		setBrokerURL(&obj.Spec.Template.Spec.Containers[0], m.Status.PublishingTo, tokenSecret)
 	}
 	return obj
@@ -92,6 +110,65 @@ func applyVersion(c *corev1.Container, version string) {
 	} else {
 		c.ImagePullPolicy = corev1.PullIfNotPresent
 	}
+}
+
+// applyProbes selects the container's health probes from the deployed MeshSync
+// version. Versions that serve the HTTP health endpoints (>= v1.0.1) get a
+// cheap httpGet /healthz liveness probe (no binary fork, so no false restarts
+// under the CPU pressure of the initial full-cluster sync) plus an httpGet
+// /readyz readiness probe that holds the pod NotReady until MeshSync has
+// connected to the broker once. Every other version - older images, moving
+// channel tags such as the default stable-latest, and unparseable tags - keeps
+// the exec liveness baked into the template and gets no readiness probe:
+// probing an image that serves nothing on the client port over HTTP would
+// connection-refuse and crashloop an otherwise-healthy pod (version skew,
+// since spec.version is user-settable).
+//
+// /readyz is a one-shot latch (it never flips back to 503 once connected), so
+// the readiness probe cannot wedge a running pod on a transient broker blip -
+// which is why it is safe here even though an earlier exec-based readiness
+// probe was removed for stalling rollout on CPU-starved nodes.
+func applyProbes(c *corev1.Container, version string) {
+	if !servesHealthEndpoints(version) {
+		// Keep the template's exec liveness; attach no readiness probe.
+		return
+	}
+	port := intstr.FromString(clientPortName)
+	c.LivenessProbe = &corev1.Probe{
+		InitialDelaySeconds: 10,
+		PeriodSeconds:       30,
+		TimeoutSeconds:      5,
+		FailureThreshold:    5,
+		ProbeHandler: corev1.ProbeHandler{
+			HTTPGet: &corev1.HTTPGetAction{Path: healthzPath, Port: port},
+		},
+	}
+	c.ReadinessProbe = &corev1.Probe{
+		InitialDelaySeconds: 5,
+		PeriodSeconds:       10,
+		TimeoutSeconds:      5,
+		FailureThreshold:    3,
+		ProbeHandler: corev1.ProbeHandler{
+			HTTPGet: &corev1.HTTPGetAction{Path: readyzPath, Port: port},
+		},
+	}
+}
+
+// servesHealthEndpoints reports whether spec.version is a pinned semantic
+// version at or above minHealthEndpointsVersion, i.e. an image known to serve
+// /healthz and /readyz. Moving channel tags (stable-latest, edge-latest, ""),
+// commit-sha tags, and versions predating the endpoints are unparseable or
+// lower and return false, so their pods stay on the exec liveness probe. The
+// gate is deliberately conservative: an unprovable version - including a
+// pre-release of the boundary version such as v1.0.1-rc.1, which sorts below
+// v1.0.1 and may predate the endpoint commit - is treated as lacking the
+// endpoints rather than risking an httpGet crashloop.
+func servesHealthEndpoints(version string) bool {
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return false
+	}
+	return !v.LessThan(minHealthEndpoints)
 }
 
 // setBrokerURL sets the BROKER_URL env var by name, leaving the template default

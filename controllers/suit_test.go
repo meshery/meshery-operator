@@ -17,8 +17,9 @@ limitations under the License.
 package controllers
 
 import (
-	"os"
+	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,6 +52,11 @@ var (
 	testEnv   *envtest.Environment
 	mgr       ctrl.Manager
 	clientSet *kubernetes.Clientset
+	// mgrCancel stops the manager; mgrDone closes once mgr.Start has returned.
+	// AfterSuite cancels then waits on mgrDone so the manager releases its
+	// apiserver watches before testEnv.Stop() tears down the control plane.
+	mgrCancel context.CancelFunc
+	mgrDone   chan struct{}
 )
 
 var _ = BeforeSuite(func(ctx SpecContext) {
@@ -136,11 +142,17 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(err).ToNot(HaveOccurred())
 
 	// +kubebuilder:scaffold:builder
+	// Drive the manager with a cancellable context - not ctrl.SetupSignalHandler,
+	// which only stops on an OS signal - so AfterSuite can stop it deterministically
+	// before testEnv.Stop(). mgr.Start returns nil once the context is cancelled.
+	var mgrCtx context.Context
+	mgrCtx, mgrCancel = context.WithCancel(context.Background())
+	mgrDone = make(chan struct{})
 	go func() {
 		defer GinkgoRecover()
+		defer close(mgrDone)
 		ctrl.Log.Info("starting manager")
-		err = mgr.Start(ctrl.SetupSignalHandler())
-		Expect(err).ToNot(HaveOccurred())
+		Expect(mgr.Start(mgrCtx)).To(Succeed(), "manager exited with an error")
 	}()
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: mgr.GetScheme()})
@@ -158,8 +170,28 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 })
 
 var _ = AfterSuite(func() {
-	err := testEnv.Stop()
-	if err != nil {
-		os.Exit(1)
+	By("tearing down the test environment")
+	// Stop the manager and wait for it to fully drain before stopping the control
+	// plane. Draining releases the apiserver watches while the apiserver is still
+	// up; stopping the control plane out from under a live manager instead leaves
+	// testEnv.Stop() blocking on in-flight connections until it times out.
+	if mgrCancel != nil {
+		mgrCancel()
+	}
+	if mgrDone != nil {
+		Eventually(mgrDone, 30*time.Second, 100*time.Millisecond).Should(BeClosed(),
+			"manager did not shut down within the grace period")
+	}
+	// A control-plane stop timeout is a cleanup-phase artifact - seen with the
+	// darwin envtest binaries, where kube-apiserver does not exit on the stop
+	// signal. The specs have already run and the orphaned processes are reaped
+	// when this test binary exits, so it must not fail an otherwise-green suite;
+	// log it and move on. Every other Stop error is surfaced normally.
+	if err := testEnv.Stop(); err != nil {
+		if strings.Contains(err.Error(), "timeout waiting for process") {
+			GinkgoWriter.Printf("AfterSuite: control plane did not stop cleanly (ignored): %v\n", err)
+			return
+		}
+		Expect(err).NotTo(HaveOccurred())
 	}
 })
