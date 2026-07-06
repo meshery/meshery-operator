@@ -17,8 +17,8 @@ limitations under the License.
 package broker
 
 import (
-	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -103,8 +103,17 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 })
 
 var _ = AfterSuite(func() {
-	err := testEnv.Stop()
-	if err != nil {
-		os.Exit(1)
+	By("tearing down the test environment")
+	// A control-plane stop timeout is a cleanup-phase artifact - seen with the
+	// darwin envtest binaries, where kube-apiserver does not exit on the stop
+	// signal. The specs have already run and the orphaned processes are reaped
+	// when this test binary exits, so it must not fail an otherwise-green suite;
+	// log it and move on. Every other Stop error is surfaced normally.
+	if err := testEnv.Stop(); err != nil {
+		if strings.Contains(err.Error(), "timeout waiting for process") {
+			GinkgoWriter.Printf("AfterSuite: control plane did not stop cleanly (ignored): %v\n", err)
+			return
+		}
+		Expect(err).NotTo(HaveOccurred())
 	}
 })
