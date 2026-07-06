@@ -34,7 +34,7 @@ jobs:
                   go run github.com/meshery/meshkit/cmd/errorutil -d . update --skip-dirs meshery -i ./helpers -o ./helpers
             # to update errorutil* files in meshery-operator repo
             - name: Commit changes
-              uses: stefanzweifel/git-auto-commit-action@b863ae1933cb653a53c021fe36dbb774e1fb9403 # v5.2.0
+              uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
               with:
                   commit_user_name: l5io
                   commit_user_email: ci@meshery.io
