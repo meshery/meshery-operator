@@ -3,7 +3,7 @@ module github.com/meshery/meshery-operator
 go 1.26.4
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/go-logr/logr v1.4.3
 	github.com/meshery/meshkit v1.0.20
 	github.com/onsi/ginkgo/v2 v2.32.0
