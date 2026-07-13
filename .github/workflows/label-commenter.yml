@@ -23,4 +23,4 @@ jobs:
           ref: master # Set your default branch
 
       - name: Label Commenter
-        uses: peaceiris/actions-label-commenter@c74c602750041f04c2bb68d200fc2fdae169a044 # v1.10.0
+        uses: peaceiris/actions-label-commenter@f0dbbef043eb1b150b566db36b0bdc8b7f505579 # v1.10.0
