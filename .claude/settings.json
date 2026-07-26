@@ -1,0 +1,5 @@
+{
+  "enabledPlugins": {
+    "kubernetes-operator@claude-code-skills": true
+  }
+}
