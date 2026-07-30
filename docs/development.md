@@ -10,6 +10,38 @@ All other tooling (`controller-gen`, `kustomize`, `setup-envtest`, `kind`,
 `golangci-lint`, `opm`) is installed on demand into `./bin` by the Makefile at
 pinned versions - you do not need them on your `PATH`.
 
+## Claude Code agent configuration
+
+`.claude/` is split by ownership:
+
+- **`.claude/settings.json`** is tracked and shared. It registers the hook scripts in
+  `.claude/hooks/` - including the no-AI-attribution guard that
+  [AGENTS.md](../AGENTS.md) advertises - so a fresh clone gets every guard with no
+  further setup. Shared, repo-level agent configuration belongs here.
+- **`.claude/settings.local.json`** is git-ignored per-developer state
+  (`enabledMcpjsonServers`, `disabledMcpjsonServers`, `additionalDirectories`,
+  `permissions`). Claude Code rewrites it on every session, so tracking it makes an
+  unrelated branch dirty on each run and risks a truncated copy landing in someone
+  else's PR. Never re-add it to git.
+
+### Migrating a clone made before the split
+
+`.claude/settings.local.json` went from tracked to git-ignored, so:
+
+1. **Back up `.claude/settings.local.json` before you pull.** Otherwise the pull aborts
+   with "Your local changes to the following files would be overwritten by merge", or -
+   if your copy still matches the old tracked blob - silently removes it, taking your
+   `enabledMcpjsonServers`, `permissions`, and `additionalDirectories` with it.
+2. After pulling, delete the `hooks` block from your local file. Those registrations now
+   come from the tracked `.claude/settings.json`. A local `hooks` block does not override
+   the tracked one, it merges additively, so every promoted hook fires twice - doubled
+   SessionStart output and duplicate deny reasons with no obvious cause.
+3. Keep everything else in the local file. Those keys are per-machine and belong there.
+4. Drop the `PostToolUse` registration pointing at `tools/hooks/helm-chart-audit.py` if
+   your copy still carries it. That script exists nowhere in this repo, and the dead
+   registration is gone from the tracked config; removing it locally stops it firing on
+   your machine.
+
 ## Project layout
 
 The project uses the Kubebuilder **`go.kubebuilder.io/v4`** layout (see
