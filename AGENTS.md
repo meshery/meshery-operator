@@ -81,8 +81,10 @@ for its package, not a new test file. envtest caveats and e2e knobs: [docs/testi
 
 No AI attribution means: no "Co-Authored-By" trailers naming an AI vendor, no
 "Generated with/by" boilerplate naming an AI tool, and no links to an AI vendor's share
-domains. A local hook in this repo blocks any Bash command (including `git commit`) or
-file write matching these patterns.
+domains. A hook registered in the tracked `.claude/settings.json` blocks any Bash command
+(including `git commit`) or file write matching these patterns, so it applies to a fresh
+clone with no further setup. Shared agent configuration belongs in that tracked file;
+`.claude/settings.local.json` is per-developer state and is git-ignored.
 
 ## Detailed documentation
 
