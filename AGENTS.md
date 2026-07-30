@@ -81,13 +81,19 @@ for its package, not a new test file. envtest caveats and e2e knobs: [docs/testi
 
 No AI attribution means: no "Co-Authored-By" trailers naming an AI vendor, no
 "Generated with/by" boilerplate naming an AI tool, and no links to an AI vendor's share
-domains. A local hook in this repo blocks any Bash command (including `git commit`) or
-file write matching these patterns.
+domains. A hook registered in the tracked `.claude/settings.json` blocks any Bash command
+(including `git commit`) or file write matching these patterns, so it applies to a fresh
+clone with no further setup. Shared agent configuration belongs in that tracked file;
+`.claude/settings.local.json` is per-developer state and is git-ignored.
+
+Cloned this repo before that split? Migrating your local file has a data-loss trap and a
+double-firing trap - follow
+[docs/development.md](docs/development.md#migrating-a-clone-made-before-the-split).
 
 ## Detailed documentation
 
 - [docs/architecture.md](docs/architecture.md) - CRDs, conversion hub/webhook, controller shape, resource builders, vendored NATS chart, typed client, packaging, known structural debt. Read before structural changes.
-- [docs/development.md](docs/development.md) - local setup, Makefile targets, tool pinning, CRD release artifacts.
+- [docs/development.md](docs/development.md) - local setup, `.claude/` agent configuration, Makefile targets, tool pinning, CRD release artifacts.
 - [docs/testing.md](docs/testing.md) - the three test tiers in detail, envtest caveats, kind e2e environment knobs.
 - [docs/errors.md](docs/errors.md) - the full MeshKit error convention, example constructor, and per-file code registries.
 - [docs/metrics.md](docs/metrics.md) - reconciliation metrics and why named returns are required.
