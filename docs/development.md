@@ -26,21 +26,73 @@ pinned versions - you do not need them on your `PATH`.
 
 ### Migrating a clone made before the split
 
-`.claude/settings.local.json` went from tracked to git-ignored, so:
+Untracking deletes the file: pulling that change removes `.claude/settings.local.json`
+from your clone, along with the per-developer keys it holds.
 
-1. **Back up `.claude/settings.local.json` before you pull.** Otherwise the pull aborts
-   with "Your local changes to the following files would be overwritten by merge", or -
-   if your copy still matches the old tracked blob - silently removes it, taking your
-   `enabledMcpjsonServers`, `permissions`, and `additionalDirectories` with it.
-2. After pulling, delete the `hooks` block from your local file. Those registrations now
-   come from the tracked `.claude/settings.json`. A local `hooks` block does not override
-   the tracked one, it merges additively, so every promoted hook fires twice - doubled
-   SessionStart output and duplicate deny reasons with no obvious cause.
-3. Keep everything else in the local file. Those keys are per-machine and belong there.
-4. Drop the `PostToolUse` registration pointing at `tools/hooks/helm-chart-audit.py` if
-   your copy still carries it. That script exists nowhere in this repo, and the dead
-   registration is gone from the tracked config; removing it locally stops it firing on
-   your machine.
+**Only recover if `.claude/settings.local.json` is already gone.**
+
+If it is still on disk you have not pulled yet - skip to the note at the end of this
+section. The recovery command below deliberately lands in a private throwaway file,
+because a shell applies `>` before git runs: aimed straight at the live path it would
+truncate your settings to zero bytes and only then fail, since on a pre-split checkout
+the lookup resolves to the commit that *added* the file and its parent holds no copy to
+print. Do not retarget the redirect.
+
+**Recover the deleted file.** This reads the copy from the parent of the commit that
+deleted it, so it does not depend on reflog position:
+
+```bash
+RECOVERED=$(mktemp)
+git show "$(git rev-list -1 HEAD -- .claude/settings.local.json)^:.claude/settings.local.json" > "$RECOVERED"
+```
+
+`mktemp` is used rather than a fixed name in `/tmp`: it creates an unpredictable path
+readable only by you, so nothing else on the machine can be truncated through it and your
+per-machine config is not left sitting in a shared directory. That matters because it is
+the same destroy-by-redirect hazard the gate above guards against, merely aimed elsewhere
+- an earlier draft of this guide hardened the live path and then reintroduced the trap by
+recovering into a predictable `/tmp` name, where a planted symlink turns `>` into a write
+primitive. Check that the result looks like your settings, then put it in place and clean
+up:
+
+```bash
+[ -s "$RECOVERED" ] && cp "$RECOVERED" .claude/settings.local.json && rm -f "$RECOVERED"
+```
+
+The `[ -s ... ]` guard is load-bearing, not defensive habit: if the `git show` above failed
+for any reason it leaves `$RECOVERED` empty, and an unguarded `cp` would then overwrite
+your live settings with nothing - destroying the file this section exists to save.
+
+If your copy was untouched since you cloned, that is byte-identical to what you had. If a
+Claude Code session had rewritten it - the abort case below, which you may have already
+resolved yourself with `git checkout --`, `git stash`, or `git reset` - you get the last
+tracked version instead, so re-add any per-machine keys that changed after that point.
+
+**Then prune the `hooks` block** from the recovered file: the entire `"hooks": { ... }`
+object, including any dead `tools/hooks/helm-chart-audit.py` `PostToolUse` entry your copy
+carries. Order matters - recovering a whole pre-split copy reinstates the stale block, so
+pruning before recovering is undone. Those registrations now come from the tracked
+`.claude/settings.json`, which a local `hooks` block does not override but merges into
+additively: every promoted hook fires twice, giving doubled SessionStart output and
+duplicate deny reasons with no obvious cause.
+
+Keep everything else - `enabledMcpjsonServers`, `disabledMcpjsonServers`,
+`additionalDirectories`, and `permissions` are per-machine and belong in the local file.
+
+> **Not pulled yet?** A backup is optional - once the file is gone the recovery above
+> works regardless - and it only preserves session drift the recovered copy cannot carry.
+> Pull first, then recover. If you do want a backup, keep the name repo-scoped, because
+> sibling repos ship this same note and a shared filename would restore one clone's
+> settings into another:
+> `cp .claude/settings.local.json ~/meshery-operator-settings.local.json.bak`
+>
+> If the pull aborts with "Your local changes to the following files would be overwritten
+> by merge", discard your copy and pull again:
+> `git checkout -- .claude/settings.local.json && git pull`.
+>
+> Restoring from that backup is `cp ~/meshery-operator-settings.local.json.bak
+> .claude/settings.local.json` - use it instead of the recovery command above, then prune
+> the `hooks` block exactly as described.
 
 ## Project layout
 
