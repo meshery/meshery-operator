@@ -89,6 +89,16 @@ Keep everything else - `enabledMcpjsonServers`, `disabledMcpjsonServers`,
 > reader above no longer has: whether to preserve it. Which answer is right turns entirely
 > on whether a Claude Code session has rewritten it since you cloned.
 >
+> Do not try to remember - before the split the file is still tracked, so git answers it:
+>
+> ```bash
+> git status --porcelain .claude/settings.local.json
+> ```
+>
+> No output means untouched. ` M .claude/settings.local.json` means a session rewrote it
+> and you are in the drifted case. This only works before you pull; afterwards the file is
+> gone and the question is moot.
+>
 > **Untouched since you cloned.** A backup is optional - the pull deletes the file and the
 > recovery above brings it back byte-for-byte regardless. Pull first, then recover.
 >
@@ -103,9 +113,14 @@ Keep everything else - `enabledMcpjsonServers`, `disabledMcpjsonServers`,
 > cp .claude/settings.local.json ~/meshery-operator-settings.local.json.bak
 > ```
 >
-> With that backup on disk, if the pull aborts with "Your local changes to the following
-> files would be overwritten by merge", discard the working copy, pull, then restore - all
-> three steps, not the first two:
+> If the pull has already aborted with "Your local changes to the following files would be
+> overwritten by merge" and you have no backup, you are not stuck: an aborted pull refuses
+> the merge and leaves your file untouched on disk, so take the backup now, before anything
+> below. That abort is itself proof you are in this case - it only happens when your copy
+> differs from the tracked one.
+>
+> With that backup on disk, discard the working copy, pull, then restore - all three steps,
+> not the first two:
 >
 > ```bash
 > git checkout -- .claude/settings.local.json && git pull
