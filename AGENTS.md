@@ -86,6 +86,25 @@ domains. A hook registered in the tracked `.claude/settings.json` blocks any Bas
 clone with no further setup. Shared agent configuration belongs in that tracked file;
 `.claude/settings.local.json` is per-developer state and is git-ignored.
 
+Already cloned this repo before that split? `.claude/settings.local.json` goes from
+tracked to ignored, so migrate it:
+
+1. **Back up `.claude/settings.local.json` before you pull.** Otherwise the pull aborts
+   with "Your local changes to the following files would be overwritten by merge", or -
+   if your copy still matches the old tracked blob - silently removes it, taking your
+   `enabledMcpjsonServers`, `permissions`, and `additionalDirectories` with it.
+2. After pulling, delete the `hooks` block from your local file. Those registrations now
+   come from the tracked `.claude/settings.json`. A local `hooks` block does not override
+   the tracked one, it merges additively, so every promoted hook fires twice - doubled
+   SessionStart output and duplicate deny reasons with no obvious cause.
+3. Keep everything else in the local file: `enabledMcpjsonServers`,
+   `disabledMcpjsonServers`, `additionalDirectories`, `permissions`. Those are
+   per-machine and belong there.
+4. Drop the `PostToolUse` registration pointing at `tools/hooks/helm-chart-audit.py` if
+   your copy still carries it. That script exists nowhere in this repo; this change
+   removed the dead registration from the tracked config, and removing it locally stops
+   it firing on your machine.
+
 ## Detailed documentation
 
 - [docs/architecture.md](docs/architecture.md) - CRDs, conversion hub/webhook, controller shape, resource builders, vendored NATS chart, typed client, packaging, known structural debt. Read before structural changes.
