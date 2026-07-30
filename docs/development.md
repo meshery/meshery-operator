@@ -29,6 +29,10 @@ pinned versions - you do not need them on your `PATH`.
 Untracking deletes the file: pulling that change removes `.claude/settings.local.json`
 from your clone, along with the per-developer keys it holds.
 
+This section serves two different populations - a reader whose file is already gone, and a
+reader who has not pulled yet and whose copy has drifted - and advice that is safe for one
+destroys the other's data, so keep the two paths separate when editing.
+
 **Only recover if `.claude/settings.local.json` is already gone.**
 
 If it is still on disk you have not pulled yet - skip to the note at the end of this
@@ -66,7 +70,9 @@ your live settings with nothing - destroying the file this section exists to sav
 If your copy was untouched since you cloned, that is byte-identical to what you had. If a
 Claude Code session had rewritten it - the abort case below, which you may have already
 resolved yourself with `git checkout --`, `git stash`, or `git reset` - you get the last
-tracked version instead, so re-add any per-machine keys that changed after that point.
+tracked version instead, so re-add any per-machine keys that changed after that point. If
+you resolved it with `git stash`, do not retype them: the stash still holds your drifted
+copy verbatim, so read them back off `git stash show -p`.
 
 **Then prune the `hooks` block** from the recovered file: the entire `"hooks": { ... }`
 object, including any dead `tools/hooks/helm-chart-audit.py` `PostToolUse` entry your copy
@@ -79,20 +85,36 @@ duplicate deny reasons with no obvious cause.
 Keep everything else - `enabledMcpjsonServers`, `disabledMcpjsonServers`,
 `additionalDirectories`, and `permissions` are per-machine and belong in the local file.
 
-> **Not pulled yet?** A backup is optional - once the file is gone the recovery above
-> works regardless - and it only preserves session drift the recovered copy cannot carry.
-> Pull first, then recover. If you do want a backup, keep the name repo-scoped, because
-> sibling repos ship this same note and a shared filename would restore one clone's
-> settings into another:
-> `cp .claude/settings.local.json ~/meshery-operator-settings.local.json.bak`
+> **Not pulled yet?** Your copy is still on disk, so you have a choice the deleted-file
+> reader above no longer has: whether to preserve it. Which answer is right turns entirely
+> on whether a Claude Code session has rewritten it since you cloned.
 >
-> If the pull aborts with "Your local changes to the following files would be overwritten
-> by merge", discard your copy and pull again:
-> `git checkout -- .claude/settings.local.json && git pull`.
+> **Untouched since you cloned.** A backup is optional - the pull deletes the file and the
+> recovery above brings it back byte-for-byte regardless. Pull first, then recover.
 >
-> Restoring from that backup is `cp ~/meshery-operator-settings.local.json.bak
-> .claude/settings.local.json` - use it instead of the recovery command above, then prune
-> the `hooks` block exactly as described.
+> **Rewritten by a session.** A backup is *not* optional. It is the only thing that
+> preserves your drifted state, because the recovery above yields the last *tracked*
+> version rather than yours. This is also the case that makes the pull abort, so take the
+> backup before you go anywhere near the pull. Keep the name repo-scoped - sibling repos
+> ship this same note, and a shared filename would restore one clone's settings into
+> another:
+>
+> ```bash
+> cp .claude/settings.local.json ~/meshery-operator-settings.local.json.bak
+> ```
+>
+> With that backup on disk, if the pull aborts with "Your local changes to the following
+> files would be overwritten by merge", discard the working copy, pull, then restore - all
+> three steps, not the first two:
+>
+> ```bash
+> git checkout -- .claude/settings.local.json && git pull
+> cp ~/meshery-operator-settings.local.json.bak .claude/settings.local.json
+> ```
+>
+> Use the backup rather than the recovery command here: the recovery command would hand
+> you back the tracked version you just took a backup to avoid. Then prune the `hooks`
+> block from the restored file exactly as described above.
 
 ## Project layout
 
