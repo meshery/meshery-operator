@@ -35,7 +35,10 @@ destroys the other's data. Earlier drafts tried to route the two apart with a fi
 test, and no such test exists: untracking is precisely what removes the file from git's
 view, so after the pull a copy a Claude Code session recreated is indistinguishable from
 one you never pulled over. The section is therefore built so that guessing wrong is
-harmless, rather than so that you have to guess right.
+harmless, rather than so that you have to guess right. When editing it, note that an
+instruction appearing more than once must carry its caveats in every copy - a duplicate that
+kept only one of them has been the most common defect here, and a check that asks only
+whether a fact appears somewhere in the document cannot see it.
 
 **Which side of the pull are you on?** History answers it, and a recreated file cannot
 fool history:
@@ -97,7 +100,8 @@ and then nothing has been lost and there was nothing to recover: your
 result before the pull, not a failure - the copy you are trying to rescue only becomes
 rescuable once the pull deletes it. The history hint above tells you which case you are in:
 the subject that *added* the file means you have not pulled, so pull first and come back
-here. If it shows the untracking commit you have pulled, and an empty result then points at
+here, or follow the note at the end of this section if the pull aborts. If it shows the
+untracking commit you have pulled, and an empty result then points at
 running the command outside the repository root or from a shallow clone - re-run it from the
 root of a full clone.
 
