@@ -26,21 +26,134 @@ pinned versions - you do not need them on your `PATH`.
 
 ### Migrating a clone made before the split
 
-`.claude/settings.local.json` went from tracked to git-ignored, so:
+Untracking deletes the file: pulling that change removes `.claude/settings.local.json`
+from your clone, along with the per-developer keys it holds.
 
-1. **Back up `.claude/settings.local.json` before you pull.** Otherwise the pull aborts
-   with "Your local changes to the following files would be overwritten by merge", or -
-   if your copy still matches the old tracked blob - silently removes it, taking your
-   `enabledMcpjsonServers`, `permissions`, and `additionalDirectories` with it.
-2. After pulling, delete the `hooks` block from your local file. Those registrations now
-   come from the tracked `.claude/settings.json`. A local `hooks` block does not override
-   the tracked one, it merges additively, so every promoted hook fires twice - doubled
-   SessionStart output and duplicate deny reasons with no obvious cause.
-3. Keep everything else in the local file. Those keys are per-machine and belong there.
-4. Drop the `PostToolUse` registration pointing at `tools/hooks/helm-chart-audit.py` if
-   your copy still carries it. That script exists nowhere in this repo, and the dead
-   registration is gone from the tracked config; removing it locally stops it firing on
-   your machine.
+This section serves two different populations - a reader whose file is already gone, and a
+reader who has not pulled yet and whose copy has drifted - and advice that is safe for one
+destroys the other's data. Earlier drafts tried to route the two apart with a file-based
+test, and no such test exists: untracking is precisely what removes the file from git's
+view, so after the pull a copy a Claude Code session recreated is indistinguishable from
+one you never pulled over. The section is therefore built so that guessing wrong is
+harmless, rather than so that you have to guess right. When editing it, note that an
+instruction appearing more than once must carry its caveats in every copy - a duplicate that
+kept only one of them has been the most common defect here, and a check that asks only
+whether a fact appears somewhere in the document cannot see it.
+
+**Which side of the pull are you on?** History answers it, and a recreated file cannot
+fool history:
+
+```bash
+git log -1 --oneline -- .claude/settings.local.json
+```
+
+That prints the subject of the last commit to touch the file. `chore: untrack
+settings.local.json, promote shared hooks to settings.json` means you have already pulled
+the change. The subject that *added* the file means you have not: pull first - the pull is
+what deletes the file - then recover below, or follow the note at the end of this section
+if the pull aborts. Treat this as a hint about what to expect, not a gate; no command below
+is conditional on it, and the guarded move is what protects you if it is wrong, so a wrong
+answer costs you a confusing paragraph and nothing else.
+
+**Recover the pre-split copy.** This reads it from the parent of the commit that deleted
+the file, so it does not depend on reflog position, and it writes a sidecar rather than the
+live path, so it is safe to run in any state:
+
+```bash
+git show "$(git rev-list -1 HEAD -- .claude/settings.local.json)^:.claude/settings.local.json" > ~/meshery-operator-settings.local.json.recovered
+```
+
+The sidecar lands in your home directory for two reasons: outside the repo, because
+`.gitignore` covers the exact path and not a `.recovered` suffix, so a routine `git add -A`
+would otherwise stage your `permissions` and `enabledMcpjsonServers` into someone else's PR
+- the exact leak the split exists to close; and outside `/tmp`, because a predictable name
+in a world-writable directory is a symlink target, and a planted symlink turns `>` into a
+write primitive aimed at whatever it points to. The name is repo-scoped for the same reason
+the backup below is.
+
+Read it before you do anything with it - empty output means nothing was recovered and there
+is nothing to move, which the paragraph after the move explains:
+
+```bash
+cat ~/meshery-operator-settings.local.json.recovered
+```
+
+**Put it in place.** Both guards are mechanical protection rather than defensive habit, and
+they cover different failures: `[ ! -e ]` stops the move overwriting a live file, which is
+what makes guessing wrong above harmless, and `[ -s ]` stops a failed `git show` installing
+an empty sidecar as a 0-byte `.claude/settings.local.json` that Claude Code cannot parse.
+Keep both.
+
+```bash
+{ [ ! -e .claude/settings.local.json ] && [ -s ~/meshery-operator-settings.local.json.recovered ] && mv ~/meshery-operator-settings.local.json.recovered .claude/settings.local.json; } || echo "not moved - a live .claude/settings.local.json is already there, or the recovered file is empty"
+```
+
+Silence means it installed. The `echo` exists because both guards refuse silently otherwise,
+and it names both reasons because it cannot tell which applied - the `cat` above can. A
+failing `mv` lands there too, but prints its own error beside it.
+
+Two things can make it refuse and both can be true at once, so read the sidecar first.
+
+If the sidecar is empty, the most likely reason is that you have not pulled this change yet,
+and then nothing has been lost and there was nothing to recover: your
+`.claude/settings.local.json` is still on disk exactly as it was. That is the expected
+result before the pull, not a failure - the copy you are trying to rescue only becomes
+rescuable once the pull deletes it. The history hint above tells you which case you are in:
+the subject that *added* the file means you have not pulled, so pull first and come back
+here, or follow the note at the end of this section if the pull aborts. If it shows the
+untracking commit, you have pulled; an empty result then points at running the command
+outside the repository root or from a shallow clone - re-run it from the root of a full
+clone.
+
+If a live `.claude/settings.local.json` exists - a session recreated it after your pull, or
+you have not pulled yet - that refusal is the no-op by design. Your current file is
+untouched, and where the sidecar has content it holds the last tracked copy: merge across
+whatever per-machine keys you want by hand, then
+`rm ~/meshery-operator-settings.local.json.recovered`. There is deliberately no command here
+that copies the sidecar over an existing file.
+
+If your copy was untouched since you cloned, what you recovered is byte-identical to what
+you had. If a Claude Code session had rewritten it - the abort case below, which you may
+have already resolved yourself with `git checkout --`, `git stash`, or `git reset` - you
+get the last tracked version instead, so re-add any per-machine keys that changed after
+that point. If you resolved it with `git stash`, do not retype them: the stash still holds
+your drifted copy verbatim, so read them back off `git stash show -p`.
+
+**Then prune the `hooks` block** from the local file: the entire `"hooks": { ... }` object,
+including any dead `tools/hooks/helm-chart-audit.py` `PostToolUse` entry your copy carries.
+Order matters - recovering a whole pre-split copy reinstates the stale block, so pruning
+before the file is back in place is undone. Those registrations now come from the tracked
+`.claude/settings.json`, which a local `hooks` block does not override but merges into
+additively: every promoted hook fires twice, giving doubled SessionStart output and
+duplicate deny reasons with no obvious cause.
+
+Keep everything else - `enabledMcpjsonServers`, `disabledMcpjsonServers`,
+`additionalDirectories`, and `permissions` are per-machine and belong in the local file.
+
+> **If the pull aborts** with "Your local changes to the following files would be
+> overwritten by merge", you are the drifted reader by definition - that abort only happens
+> when your copy differs from the tracked one - and the refused merge leaves your file
+> untouched on disk, so the drift is still there to save. Back it up first. That backup is
+> not optional and the recovery above is not a substitute for it: recovery yields the last
+> *tracked* version, and the backup is the only thing preserving yours. Keep the name
+> repo-scoped - sibling repos ship this same note, and a shared filename would restore one
+> clone's settings into another:
+>
+> ```bash
+> cp .claude/settings.local.json ~/meshery-operator-settings.local.json.bak
+> ```
+>
+> Then discard the working copy, pull, and restore - all three steps, not the first two:
+>
+> ```bash
+> [ -s ~/meshery-operator-settings.local.json.bak ] && git checkout -- .claude/settings.local.json && git pull
+> cp ~/meshery-operator-settings.local.json.bak .claude/settings.local.json
+> ```
+>
+> That guard is mechanical too, not defensive habit: it refuses to discard your drift until
+> the backup is really on disk and non-empty, so arriving here without having run the `cp`
+> above costs you a command that does nothing rather than your settings. Then prune the
+> `hooks` block from the restored file exactly as described above.
 
 ## Project layout
 
