@@ -101,9 +101,9 @@ result before the pull, not a failure - the copy you are trying to rescue only b
 rescuable once the pull deletes it. The history hint above tells you which case you are in:
 the subject that *added* the file means you have not pulled, so pull first and come back
 here, or follow the note at the end of this section if the pull aborts. If it shows the
-untracking commit you have pulled, and an empty result then points at
-running the command outside the repository root or from a shallow clone - re-run it from the
-root of a full clone.
+untracking commit, you have pulled; an empty result then points at running the command
+outside the repository root or from a shallow clone - re-run it from the root of a full
+clone.
 
 If a live `.claude/settings.local.json` exists - a session recreated it after your pull, or
 you have not pulled yet - that refusal is the no-op by design. Your current file is
