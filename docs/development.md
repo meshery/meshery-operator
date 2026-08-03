@@ -41,51 +41,54 @@ harmless, rather than so that you have to guess right.
 fool history:
 
 ```bash
-git rev-list -1 HEAD -- .claude/settings.local.json
+git log -1 --oneline -- .claude/settings.local.json
 ```
 
-If that resolves to the commit that untracked the file (`chore: untrack
-settings.local.json, promote shared hooks to settings.json`), you have already pulled the
-change. If it resolves to the commit that added it, you have not: pull first - the pull is
+That prints the subject of the last commit to touch the file. `chore: untrack
+settings.local.json, promote shared hooks to settings.json` means you have already pulled
+the change. The subject that *added* the file means you have not: pull first - the pull is
 what deletes the file - then recover below, or follow the note at the end of this section
-if the pull aborts. Treat this as a hint about what to expect, not a gate; nothing below is
-safe only because you read it correctly, so a wrong answer costs you a confusing paragraph
-and nothing else.
+if the pull aborts. Treat this as a hint about what to expect, not a gate; no command below
+is conditional on it, and the guarded move is what protects you if it is wrong, so a wrong
+answer costs you a confusing paragraph and nothing else.
 
 **Recover the pre-split copy.** This reads it from the parent of the commit that deleted
 the file, so it does not depend on reflog position, and it writes a sidecar rather than the
 live path, so it is safe to run in any state:
 
 ```bash
-git show "$(git rev-list -1 HEAD -- .claude/settings.local.json)^:.claude/settings.local.json" > .claude/settings.local.json.recovered
+git show "$(git rev-list -1 HEAD -- .claude/settings.local.json)^:.claude/settings.local.json" > ~/meshery-operator-settings.local.json.recovered
 ```
 
-The sidecar sits next to its target instead of in `/tmp` because a predictable name in a
-world-writable directory is a symlink target, and a planted symlink turns `>` into a write
-primitive aimed at whatever it points to; inside `.claude/` that hazard does not exist. The
-sidecar is untracked and not ignored, so `git status` lists it until you consume or delete
-it below.
+The sidecar lands in your home directory for two reasons: outside the repo, because
+`.gitignore` covers the exact path and not a `.recovered` suffix, so a routine `git add -A`
+would otherwise stage your `permissions` and `enabledMcpjsonServers` into someone else's PR
+- the exact leak the split exists to close; and outside `/tmp`, because a predictable name
+in a world-writable directory is a symlink target, and a planted symlink turns `>` into a
+write primitive aimed at whatever it points to. The name is repo-scoped for the same reason
+the backup below is.
 
-Read it before you do anything with it - empty output means the `git show` failed and there
-is nothing to move:
+Read it before you do anything with it:
 
 ```bash
-cat .claude/settings.local.json.recovered
+cat ~/meshery-operator-settings.local.json.recovered
 ```
 
-**Put it in place.** The guard is mechanical protection rather than defensive habit: it
-makes this step incapable of overwriting a live file, which is exactly what lets a reader
-who guessed wrong above run it anyway.
+**Put it in place.** Both guards are mechanical protection rather than defensive habit, and
+they cover different failures: `[ ! -e ]` stops the move overwriting a live file, which is
+what makes guessing wrong above harmless, and `[ -s ]` stops a failed `git show` installing
+an empty sidecar as a 0-byte `.claude/settings.local.json` that Claude Code cannot parse.
+Keep both.
 
 ```bash
-[ ! -e .claude/settings.local.json ] && mv .claude/settings.local.json.recovered .claude/settings.local.json
+[ ! -e .claude/settings.local.json ] && [ -s ~/meshery-operator-settings.local.json.recovered ] && mv ~/meshery-operator-settings.local.json.recovered .claude/settings.local.json
 ```
 
 If a live `.claude/settings.local.json` exists - a session recreated it after your pull, or
 you have not pulled yet - the move is a no-op by design. Your current file is untouched and
 the sidecar holds the last tracked copy: merge across whatever per-machine keys you want by
-hand, then `rm .claude/settings.local.json.recovered`. There is deliberately no command
-here that copies the sidecar over an existing file.
+hand, then `rm ~/meshery-operator-settings.local.json.recovered`. There is deliberately no
+command here that copies the sidecar over an existing file.
 
 If your copy was untouched since you cloned, what you recovered is byte-identical to what
 you had. If a Claude Code session had rewritten it - the abort case below, which you may
