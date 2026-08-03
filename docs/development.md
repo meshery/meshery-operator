@@ -68,7 +68,8 @@ in a world-writable directory is a symlink target, and a planted symlink turns `
 write primitive aimed at whatever it points to. The name is repo-scoped for the same reason
 the backup below is.
 
-Read it before you do anything with it:
+Read it before you do anything with it - empty output means the `git show` failed and there
+is nothing to move:
 
 ```bash
 cat ~/meshery-operator-settings.local.json.recovered
@@ -81,14 +82,19 @@ an empty sidecar as a 0-byte `.claude/settings.local.json` that Claude Code cann
 Keep both.
 
 ```bash
-[ ! -e .claude/settings.local.json ] && [ -s ~/meshery-operator-settings.local.json.recovered ] && mv ~/meshery-operator-settings.local.json.recovered .claude/settings.local.json
+{ [ ! -e .claude/settings.local.json ] && [ -s ~/meshery-operator-settings.local.json.recovered ] && mv ~/meshery-operator-settings.local.json.recovered .claude/settings.local.json; } || echo "not moved - a live .claude/settings.local.json is already there, or the recovered file is empty"
 ```
 
+Silence means it installed. The `echo` exists because both guards refuse silently otherwise,
+and it names both reasons because it cannot tell which applied - the `cat` above can.
+
 If a live `.claude/settings.local.json` exists - a session recreated it after your pull, or
-you have not pulled yet - the move is a no-op by design. Your current file is untouched and
-the sidecar holds the last tracked copy: merge across whatever per-machine keys you want by
-hand, then `rm ~/meshery-operator-settings.local.json.recovered`. There is deliberately no
-command here that copies the sidecar over an existing file.
+you have not pulled yet - that refusal is the no-op by design. Your current file is
+untouched and the sidecar holds the last tracked copy: merge across whatever per-machine
+keys you want by hand, then `rm ~/meshery-operator-settings.local.json.recovered`. There is
+deliberately no command here that copies the sidecar over an existing file. If the sidecar
+was empty instead, nothing was recovered to move: re-run the `git show` from the repository
+root of a full clone.
 
 If your copy was untouched since you cloned, what you recovered is byte-identical to what
 you had. If a Claude Code session had rewritten it - the abort case below, which you may
