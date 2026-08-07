@@ -333,8 +333,16 @@ func TestSyncDownstreamReVendorsOnContentChange(t *testing.T) {
 	if out, err := runSync(t, checkout, stampVersion); err != nil {
 		t.Fatalf("first run failed: %v\n%s", err, out)
 	}
-	if calls := helmCalls(t, checkout); len(calls) != 1 {
-		t.Fatalf("a stamp that rewrote the chart must re-vendor it; helm calls: %v", calls)
+	// Assert the invocation, not just that one happened: the count alone would
+	// stay green if step 3 regressed to a wrong subcommand or re-vendored the
+	// wrong chart, which is exactly the contract worth pinning here.
+	wantCall := "dependency update " + filepath.Join(checkout, helmDir, "meshery")
+	calls := helmCalls(t, checkout)
+	if len(calls) != 1 {
+		t.Fatalf("a stamp that rewrote the chart must re-vendor it exactly once; helm calls: %v", calls)
+	}
+	if calls[0] != wantCall {
+		t.Errorf("re-vendored with %q, want %q", calls[0], wantCall)
 	}
 
 	// A genuine no-op re-run must still skip, or every re-sync churns the
@@ -344,6 +352,28 @@ func TestSyncDownstreamReVendorsOnContentChange(t *testing.T) {
 	}
 	if calls := helmCalls(t, checkout); len(calls) != 1 {
 		t.Errorf("a no-op re-run re-vendored; step 3 must skip an unchanged chart; helm calls: %v", calls)
+	}
+}
+
+// TestSyncDownstreamReVendorsOnVersionChange is the other half of step 3's
+// trigger. Content is what the previous test varies; here the chart is
+// unstamped-but-unvendored, so only the version signal can fire.
+func TestSyncDownstreamReVendorsOnVersionChange(t *testing.T) {
+	checkout := newCheckout(t, stampVersion)
+
+	// Stamp once so the chart content settles, then move to a different version:
+	// the tree is now vendored at the old version and nothing but the version
+	// bump can drive the repackage.
+	if out, err := runSync(t, checkout, stampVersion); err != nil {
+		t.Fatalf("first run failed: %v\n%s", err, out)
+	}
+	before := len(helmCalls(t, checkout))
+
+	if out, err := runSync(t, checkout, prereleaseVersion); err != nil {
+		t.Fatalf("version bump failed: %v\n%s", err, out)
+	}
+	if got := len(helmCalls(t, checkout)) - before; got != 1 {
+		t.Errorf("a version bump must re-vendor exactly once, got %d further helm calls", got)
 	}
 }
 
