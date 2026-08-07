@@ -117,10 +117,17 @@ jobs:
           # it was never rendered for - the ImagePullBackOff/crashloop class of
           # broken install this pin exists to prevent (#769, docs/release-process.md).
           # Every one of these is stamped by hack/stamp-operator-version.sh.
+          # The pattern mirrors pkg/utils.MovingTag, which is the authority:
+          # a tag is moving when it IS "latest" or ENDS IN "-latest". The tag
+          # is bounded by end-of-line, whitespace, a quote or a comma, so
+          # ":latest-stable" (an ordinary immutable tag) is not a false hit.
+          # It deliberately does not require an `image:` key: a moving tag is
+          # just as harmful in a Makefile assignment (`IMG ?= repo:stable-latest`
+          # feeds `make bundle`) as in a rendered manifest.
           - name: Verify rendered artifacts pin an immutable image tag
             run: |
-              if grep -rnE 'image: *[^ ]+:([a-z]+-)?latest' \
+              if grep -rnE ':([A-Za-z0-9._]+-)?latest([[:space:]"'"'"',]|$)' \
                    config/ bundle/ Makefile; then
-                echo "::error::A rendered artifact references a moving image tag. Pin a published release with 'make stamp-release OPERATOR_RELEASE_VERSION=<version>'."
+                echo "::error::A moving image tag was found. Pin a published release with 'make stamp-release OPERATOR_RELEASE_VERSION=<version>'."
                 exit 1
               fi

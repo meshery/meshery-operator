@@ -59,7 +59,10 @@ jobs:
         run: |
           URL="https://hub.docker.com/v2/repositories/meshery/meshery-operator/tags/$VERSION"
           for attempt in $(seq 1 30); do
-            if [ "$(curl -sSL -o /dev/null -w '%{http_code}' "$URL")" = "200" ]; then
+            # Bounded: an unbounded curl can stall for the whole job timeout,
+            # swallowing the retries this loop exists to provide.
+            if [ "$(curl -sSL --connect-timeout 10 --max-time 30 \
+                      -o /dev/null -w '%{http_code}' "$URL")" = "200" ]; then
               echo "meshery/meshery-operator:$VERSION is published"; exit 0
             fi
             echo "attempt $attempt/30: not yet published, retrying in 60s"
@@ -102,11 +105,23 @@ jobs:
           if git push origin master; then
             echo "stamped master to v${VERSION}"
           else
+            # The push lost; the fallback PR is now the ONLY thing that can
+            # advance the pin, so its failure must fail the job. Swallowing it
+            # would leave master unstamped with no PR and a green workflow -
+            # the pin would silently stop moving, which is the exact rot this
+            # automation exists to prevent. An already-open PR for this branch
+            # is the one benign case.
             BRANCH="operator-pin/v${VERSION}"
             git checkout -b "$BRANCH"
             git push -f origin "$BRANCH"
-            gh pr create --repo meshery/meshery-operator --base master --head "$BRANCH" \
-              --title "Pin rendered artifacts to meshery-operator v${VERSION}" \
-              --body "Automated stamp from the v${VERSION} release (stamp-release workflow). Advances the pinned manager image in config/manager, config/manifests/default.yaml, and the OLM bundle CSV." \
-              || true
+            OPEN=$(gh pr list --repo meshery/meshery-operator --head "$BRANCH" \
+                     --state open --json number --jq 'length')
+            if [ "$OPEN" != "0" ]; then
+              echo "::notice::a pin PR for v${VERSION} is already open; branch updated"
+            else
+              gh pr create --repo meshery/meshery-operator --base master --head "$BRANCH" \
+                --title "Pin rendered artifacts to meshery-operator v${VERSION}" \
+                --body "Automated stamp from the v${VERSION} release (stamp-release workflow). Advances the pinned manager image in config/manager, config/manifests/default.yaml, and the OLM bundle CSV."
+            fi
+            echo "::warning::could not push to master; opened/updated $BRANCH instead. Merge it to advance the pin."
           fi

@@ -360,7 +360,26 @@ setup() {
     echo "❌ could not read defaultMeshSyncVersion from pkg/meshsync/resources.go"
     exit 1
   fi
-  MESHSYNC_IMAGE="meshery/meshsync:${MESHSYNC_VERSION:-$MESHSYNC_DEFAULT}"
+  # Preload the tag the operator will ACTUALLY request, not the raw override.
+  # pkg/utils.NormalizeImageTag strips a leading "v" from an otherwise-semver
+  # spec.version, so MESHSYNC_VERSION=v1.0.3 makes the Deployment request
+  # meshery/meshsync:1.0.3. Preloading the raw "v1.0.3" would side-load an image
+  # the cluster never asks for and leave the real one to a runtime pull - the
+  # silent miss this whole preload step exists to avoid. Mirror that one rule.
+  MESHSYNC_TAG="${MESHSYNC_VERSION:-$MESHSYNC_DEFAULT}"
+  case "$MESHSYNC_TAG" in
+    v[0-9]*) MESHSYNC_TAG="${MESHSYNC_TAG#v}" ;;
+  esac
+  # Both images, when they differ: the sample CR is applied before
+  # spec.version is patched (the patch needs the CR to exist), so the operator
+  # reconciles the DEFAULT image first and only then rolls to the override.
+  # Preloading just the override would leave that first rollout pulling at
+  # runtime.
+  MESHSYNC_IMAGES="meshery/meshsync:$MESHSYNC_TAG"
+  if [ "$MESHSYNC_TAG" != "$MESHSYNC_DEFAULT" ]; then
+    MESHSYNC_IMAGES="$MESHSYNC_IMAGES
+meshery/meshsync:$MESHSYNC_DEFAULT"
+  fi
   # The rendered chart lists the NATS server and config-reloader images.
   NATS_IMAGES=$(sed -n 's/^ *image: \(.*\)$/\1/p' \
     "$PROJECT_ROOT/pkg/broker/manifests/nats.gen.yaml" | sort -u)
@@ -369,10 +388,10 @@ setup() {
     exit 1
   fi
   echo "Pre-loading workload images into KinD cluster..."
-  # NATS_IMAGES is intentionally unquoted: it is a newline-separated list that
-  # must word-split into one loop iteration per image.
+  # Both lists are intentionally unquoted: they are newline-separated and must
+  # word-split into one loop iteration per image.
   for img in \
-    "$MESHSYNC_IMAGE" \
+    $MESHSYNC_IMAGES \
     $NATS_IMAGES; do
     # A locally built image (e.g. a cross-repo meshsync build) is used as-is;
     # only pull what is not already present.

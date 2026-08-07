@@ -84,7 +84,9 @@ jobs:
         env:
           LATEST: ${{ steps.ver.outputs.latest }}
         run: |
-          CODE=$(curl -sSL -o /dev/null -w '%{http_code}' \
+          # Bounded so an unreachable registry skips this weekly run promptly
+          # instead of stalling until the job timeout.
+          CODE=$(curl -sSL --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' \
             "https://hub.docker.com/v2/repositories/meshery/meshsync/tags/$LATEST")
           if [ "$CODE" != "200" ]; then
             echo "::notice::meshery/meshsync:$LATEST is not on Docker Hub yet (HTTP $CODE); skipping this run"
