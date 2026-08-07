@@ -31,7 +31,7 @@
 #
 # Called by .github/workflows/stamp-release.yml on every published release, so
 # master always names the newest release that actually exists. Run it by hand
-# with `make stamp-release VERSION=<version>`.
+# with `make stamp-release OPERATOR_RELEASE_VERSION=<version>`.
 set -euo pipefail
 
 VERSION="${1:?usage: hack/stamp-operator-version.sh <version>}"

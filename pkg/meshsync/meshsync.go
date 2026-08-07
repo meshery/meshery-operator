@@ -55,6 +55,14 @@ const (
 	// serves the /healthz and /readyz HTTP endpoints on the client port
 	// (meshsync v1.0.1). Images at or above it get httpGet probes; older or
 	// unprovable versions keep the exec liveness baked into the template.
+	//
+	// The boundary does double duty, and that is what makes gating readiness on
+	// a broker connection safe. meshery/meshsync#562 added the health endpoints
+	// AND fixed the broker URL host parsing in one change, and v1.0.1 is the
+	// release that shipped it. So every image that qualifies for the httpGet
+	// probes necessarily also parses the nats:// BROKER_URL correctly and can
+	// reach the broker - /readyz latching on a connection cannot strand a pod
+	// on a version that was never able to connect in the first place.
 	minHealthEndpointsVersion = "v1.0.1"
 	// healthzPath is MeshSync's liveness endpoint: always 200 while the process
 	// is alive. readyzPath is its readiness endpoint: 503 until MeshSync has
@@ -141,7 +149,10 @@ func applyVersion(c *corev1.Container, version string) {
 // /readyz is a one-shot latch (it never flips back to 503 once connected), so
 // the readiness probe cannot wedge a running pod on a transient broker blip -
 // which is why it is safe here even though an earlier exec-based readiness
-// probe was removed for stalling rollout on CPU-starved nodes.
+// probe was removed for stalling rollout on CPU-starved nodes. Gating readiness
+// (and through it CheckHealth) on an actual broker connection is only sound
+// because the same release that introduced the endpoints also fixed broker URL
+// parsing; see minHealthEndpointsVersion.
 func applyProbes(c *corev1.Container, version string) {
 	if !servesHealthEndpoints(version) {
 		// Keep the template's exec liveness; attach no readiness probe.

@@ -250,13 +250,10 @@ assert_conversion_webhook() {
 # broker's monitoring endpoint via port-forward and looks for the client
 # connection named "meshsync" (set by meshkit's ConnectionName).
 #
-# TEMPORARY (meshery/meshery-operator#821): this is currently a NON-FATAL warning
-# rather than a hard failure. The operator-side contract is verified correct (the
-# other asserts cover endpoint derivation, BROKER_URL shape, and token-from-Secret),
-# but meshery/meshsync:stable-latest still mis-handles the nats:// broker URL and
-# never connects — the fix exists only as an unreleased dev build. A fixed meshsync
-# still hits the ✅ success path below. Once the fix ships to stable-latest, restore
-# the hard check by changing the timeout branch's `return 0` back to `exit 1`.
+# Fatal by design: the deployed MeshSync is a pinned release at or above v1.0.1
+# (pkg/meshsync/resources.go defaultMeshSyncVersion), which carries the broker
+# URL parsing fix from meshery/meshsync#562, so an image that never connects is
+# a real regression rather than a known-broken downstream build.
 assert_meshsync_broker_connectivity() {
   echo "🔍 Asserting MeshSync is CONNECTED to the broker (connz)..."
 
@@ -278,18 +275,13 @@ assert_meshsync_broker_connectivity() {
     timeout=$((timeout - 5))
   done
 
-  echo "⚠️  MeshSync never connected to the broker within ${timeout_start}s."
-  echo "⚠️  Non-fatal: operator-side contract (endpoint, BROKER_URL, token-from-Secret)"
-  echo "⚠️  is verified by the other asserts; this needs the MeshSync connection fix"
-  echo "⚠️  (unreleased in stable-latest). Tracking: meshery/meshery-operator#821."
+  echo "❌ MeshSync never connected to the broker within ${timeout_start}s."
   echo "--- broker connz:"
   printf '%s\n' "$connz" | head -40
   echo "--- meshsync logs:"
   kubectl --namespace "$OPERATOR_NAMESPACE" logs deployment/meshery-meshsync --tail=50 || true
   kill $pf_pid 2>/dev/null || true
-  # TEMPORARY (#821): warn instead of fail. Change to `exit 1` once meshsync ships
-  # the connection fix to stable-latest.
-  return 0
+  exit 1
 }
 
 assert_resources() {

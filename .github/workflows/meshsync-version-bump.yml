@@ -46,16 +46,41 @@ jobs:
           # meshery/meshsync git tags are v-prefixed; its image tags are not.
           LATEST=$(gh release view --repo meshery/meshsync --json tagName --jq '.tagName')
           LATEST="${LATEST#v}"
+          echo "current pin: $CURRENT, latest release: $LATEST"
+
+          # The pin must be a bare release semver: pkg/meshsync gates the HTTP
+          # health probes on a parseable version, and both values are spliced
+          # into the perl substitution below.
+          if ! printf '%s' "$CURRENT" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::defaultMeshSyncVersion '$CURRENT' is not a bare release semver"; exit 1
+          fi
+          if ! printf '%s' "$LATEST" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::notice::meshery/meshsync latest release '$LATEST' is not a bare release semver (pre-release or non-semver tag); skipping"
+            echo "newer=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Compare semantically, not as strings. GitHub resolves "latest" by
+          # the tag's created_at, so a backport patch cut on an older branch
+          # after the current pin reports as latest and would otherwise open a
+          # downgrade PR. Both values are pure X.Y.Z here, so `sort -V` is exact.
+          if [ "$LATEST" = "$CURRENT" ] ||
+             [ "$(printf '%s\n%s\n' "$CURRENT" "$LATEST" | sort -V | tail -1)" != "$LATEST" ]; then
+            echo "::notice::latest release $LATEST is not newer than the current pin $CURRENT; skipping"
+            echo "newer=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
           echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
-          echo "current pin: $CURRENT, latest release: $LATEST"
+          echo "newer=true" >> "$GITHUB_OUTPUT"
 
       # A GitHub release exists before its image finishes building, and some
       # releases never publish an image at all. Pinning to a tag that does not
       # resolve would recreate the ImagePullBackOff this pin exists to prevent.
       - name: Verify the image exists on Docker Hub
         id: exists
-        if: steps.ver.outputs.latest != steps.ver.outputs.current
+        if: steps.ver.outputs.newer == 'true'
         env:
           LATEST: ${{ steps.ver.outputs.latest }}
         run: |

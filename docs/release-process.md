@@ -116,13 +116,20 @@ Three independent pins, three mechanisms:
 | Pin | Where | Advanced by |
 |---|---|---|
 | Manager image | `Makefile` `OPERATOR_RELEASE_VERSION` → `IMG`, `config/manager/{manager.yaml,kustomization.yaml}`, `config/manifests/default.yaml`, `bundle/manifests/*.clusterserviceversion.yaml` | `stamp-release.yml` on publish (`hack/stamp-operator-version.sh`, or `make stamp-release OPERATOR_RELEASE_VERSION=<version>` by hand) |
-| MeshSync image | `pkg/meshsync/resources.go` `defaultMeshSyncVersion` | `meshsync-version-bump.yml` opens a weekly bump PR when meshery/meshsync publishes a newer release whose image is on Docker Hub |
+| MeshSync image | `pkg/meshsync/resources.go` `defaultMeshSyncVersion` | `meshsync-version-bump.yml` opens a weekly bump PR when meshery/meshsync publishes a semantically newer release whose image is on Docker Hub (GitHub resolves "latest" by tag creation time, so the comparison is by version, and a pre-release or older backport is skipped with a notice) |
 | NATS image | the vendored chart, `pkg/broker/manifests/nats.gen.yaml` | bump `NATS_CHART_VERSION` and re-run `make nats-manifests` (drift-gated by `nats-chart-drift.yml`) |
 
 Guard rails, so a regression cannot land quietly:
 
 - `make stamp-release` refuses anything that is not a bare semver, so the
   manager pin cannot be set to a channel tag even by hand.
+- `make docker-push` and `make docker-buildx` refuse to run while `IMG` is
+  still the `OPERATOR_RELEASE_VERSION`-derived default, so a bare push cannot
+  overwrite a released image with a local build. Pass an explicit
+  `IMG=<registry>/<repo>:<tag>`; the release image itself is published by
+  `multi-platform.yml`, never by hand. `make docker-build` (local only) and
+  `make bundle` (which must stamp the pinned release into the CSV) keep the
+  default.
 - `stamp-release.yml` polls Docker Hub before stamping: master may only ever
   name an image that exists.
 - The `manifests-drift` CI job greps `config/`, `bundle/`, and the `Makefile`

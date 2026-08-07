@@ -34,7 +34,11 @@ permissions:
 jobs:
   stamp:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Must comfortably exceed the Docker Hub poll below (30 attempts x 60s = 30
+    # minutes) plus checkout, Go setup, the stamp render and the push. Set lower
+    # and the harness kills the job mid-poll with a generic timeout instead of
+    # the explicit "never appeared on Docker Hub" error.
+    timeout-minutes: 45
     steps:
       - name: Resolve release version
         id: ver
@@ -78,7 +82,9 @@ jobs:
       # Re-renders config/manifests/default.yaml from config/default, so the
       # result is exactly what the manifests-drift gate expects on the next PR.
       - name: Stamp the released version
-        run: make stamp-release OPERATOR_RELEASE_VERSION=${{ steps.ver.outputs.version }}
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: make stamp-release OPERATOR_RELEASE_VERSION="$VERSION"
 
       - name: Commit and push (PR fallback)
         env:
