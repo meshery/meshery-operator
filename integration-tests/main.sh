@@ -250,13 +250,10 @@ assert_conversion_webhook() {
 # broker's monitoring endpoint via port-forward and looks for the client
 # connection named "meshsync" (set by meshkit's ConnectionName).
 #
-# TEMPORARY (meshery/meshery-operator#821): this is currently a NON-FATAL warning
-# rather than a hard failure. The operator-side contract is verified correct (the
-# other asserts cover endpoint derivation, BROKER_URL shape, and token-from-Secret),
-# but meshery/meshsync:stable-latest still mis-handles the nats:// broker URL and
-# never connects — the fix exists only as an unreleased dev build. A fixed meshsync
-# still hits the ✅ success path below. Once the fix ships to stable-latest, restore
-# the hard check by changing the timeout branch's `return 0` back to `exit 1`.
+# Fatal by design: the deployed MeshSync is a pinned release at or above v1.0.1
+# (pkg/meshsync/resources.go defaultMeshSyncVersion), which carries the broker
+# URL parsing fix from meshery/meshsync#562, so an image that never connects is
+# a real regression rather than a known-broken downstream build.
 assert_meshsync_broker_connectivity() {
   echo "🔍 Asserting MeshSync is CONNECTED to the broker (connz)..."
 
@@ -278,18 +275,13 @@ assert_meshsync_broker_connectivity() {
     timeout=$((timeout - 5))
   done
 
-  echo "⚠️  MeshSync never connected to the broker within ${timeout_start}s."
-  echo "⚠️  Non-fatal: operator-side contract (endpoint, BROKER_URL, token-from-Secret)"
-  echo "⚠️  is verified by the other asserts; this needs the MeshSync connection fix"
-  echo "⚠️  (unreleased in stable-latest). Tracking: meshery/meshery-operator#821."
+  echo "❌ MeshSync never connected to the broker within ${timeout_start}s."
   echo "--- broker connz:"
   printf '%s\n' "$connz" | head -40
   echo "--- meshsync logs:"
   kubectl --namespace "$OPERATOR_NAMESPACE" logs deployment/meshery-meshsync --tail=50 || true
   kill $pf_pid 2>/dev/null || true
-  # TEMPORARY (#821): warn instead of fail. Change to `exit 1` once meshsync ships
-  # the connection fix to stable-latest.
-  return 0
+  exit 1
 }
 
 assert_resources() {
@@ -350,17 +342,57 @@ setup() {
   # cluster sync, starving the (exec) readiness probe and pushing readiness
   # well past the budget. Pulling here (on the runner, warm network) and
   # side-loading into kind removes that contention and makes startup
-  # deterministic. NOTE: the NATS image tags are duplicated from
-  # pkg/broker/resources.go; keep them in sync (WS-4 updates the NATS line).
+  # deterministic.
+  #
+  # Both tags are READ FROM SOURCE rather than duplicated here: the MeshSync
+  # default from pkg/meshsync/resources.go and the NATS images from the
+  # vendored chart render. A hardcoded copy silently rots the moment either pin
+  # moves - the pre-load then side-loads the wrong tag, every workload pulls at
+  # runtime, and the contention this whole step exists to remove comes back
+  # without any test failing to say so.
+  #
   # MESHSYNC_VERSION overrides the MeshSync image tag (spec.version on the CR).
   # Point it at a locally built meshery/meshsync:<tag> to test cross-repo
   # changes end-to-end before they are published.
-  MESHSYNC_IMAGE="meshery/meshsync:${MESHSYNC_VERSION:-stable-latest}"
+  MESHSYNC_DEFAULT=$(sed -n 's/.*defaultMeshSyncVersion = "\(.*\)".*/\1/p' \
+    "$PROJECT_ROOT/pkg/meshsync/resources.go")
+  if [ -z "$MESHSYNC_DEFAULT" ]; then
+    echo "❌ could not read defaultMeshSyncVersion from pkg/meshsync/resources.go"
+    exit 1
+  fi
+  # Preload the tag the operator will ACTUALLY request, not the raw override.
+  # pkg/utils.NormalizeImageTag strips a leading "v" from an otherwise-semver
+  # spec.version, so MESHSYNC_VERSION=v1.0.3 makes the Deployment request
+  # meshery/meshsync:1.0.3. Preloading the raw "v1.0.3" would side-load an image
+  # the cluster never asks for and leave the real one to a runtime pull - the
+  # silent miss this whole preload step exists to avoid. Mirror that one rule.
+  MESHSYNC_TAG="${MESHSYNC_VERSION:-$MESHSYNC_DEFAULT}"
+  case "$MESHSYNC_TAG" in
+    v[0-9]*) MESHSYNC_TAG="${MESHSYNC_TAG#v}" ;;
+  esac
+  # Both images, when they differ: the sample CR is applied before
+  # spec.version is patched (the patch needs the CR to exist), so the operator
+  # reconciles the DEFAULT image first and only then rolls to the override.
+  # Preloading just the override would leave that first rollout pulling at
+  # runtime.
+  MESHSYNC_IMAGES="meshery/meshsync:$MESHSYNC_TAG"
+  if [ "$MESHSYNC_TAG" != "$MESHSYNC_DEFAULT" ]; then
+    MESHSYNC_IMAGES="$MESHSYNC_IMAGES
+meshery/meshsync:$MESHSYNC_DEFAULT"
+  fi
+  # The rendered chart lists the NATS server and config-reloader images.
+  NATS_IMAGES=$(sed -n 's/^ *image: \(.*\)$/\1/p' \
+    "$PROJECT_ROOT/pkg/broker/manifests/nats.gen.yaml" | sort -u)
+  if [ -z "$NATS_IMAGES" ]; then
+    echo "❌ could not read any image from pkg/broker/manifests/nats.gen.yaml"
+    exit 1
+  fi
   echo "Pre-loading workload images into KinD cluster..."
+  # Both lists are intentionally unquoted: they are newline-separated and must
+  # word-split into one loop iteration per image.
   for img in \
-    "$MESHSYNC_IMAGE" \
-    nats:2.14.2-alpine \
-    natsio/nats-server-config-reloader:0.23.0; do
+    $MESHSYNC_IMAGES \
+    $NATS_IMAGES; do
     # A locally built image (e.g. a cross-repo meshsync build) is used as-is;
     # only pull what is not already present.
     if docker image inspect "$img" >/dev/null 2>&1 || docker pull "$img"; then
@@ -401,10 +433,17 @@ setup() {
   cd "$TEMP_CONFIG_DIR/manager" 
   "$PROJECT_ROOT/bin/kustomize" edit set image meshery/meshery-operator="$OPERATOR_IMAGE"
   
-  # Set imagePullPolicy to Never for integration tests (image is loaded into kind cluster).
+  # Set imagePullPolicy to Never for integration tests (image is loaded into
+  # kind cluster). Match on the key, not on a specific value: the committed
+  # policy is IfNotPresent now that the image is pinned, and a value-specific
+  # substitution would silently stop firing whenever that changes.
   # Use a portable in-place edit: GNU sed accepts a bare `-i`, but BSD/macOS sed
   # requires an explicit backup suffix, so pass one and delete the backup.
-  sed -i.bak 's/imagePullPolicy: Always/imagePullPolicy: Never/' manager.yaml && rm -f manager.yaml.bak
+  sed -i.bak 's/imagePullPolicy: .*/imagePullPolicy: Never/' manager.yaml && rm -f manager.yaml.bak
+  if ! grep -q 'imagePullPolicy: Never' manager.yaml; then
+    echo "❌ failed to force imagePullPolicy: Never in the temporary manager.yaml"
+    exit 1
+  fi
   
   cd "$PROJECT_ROOT"
   

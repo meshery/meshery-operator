@@ -8,4 +8,4 @@ namespace: meshery
 images:
 - name: meshery/meshery-operator
   newName: meshery/meshery-operator
-  newTag: stable-latest
+  newTag: 1.0.4

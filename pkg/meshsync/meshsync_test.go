@@ -17,9 +17,12 @@ limitations under the License.
 package meshsync
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +30,17 @@ import (
 
 // testObjName is the name/namespace used for MeshSync CR fixtures in this file.
 const testObjName = "test"
+
+// Representative MeshSync image tags: two moving channel tags, an immutable
+// release in both the registry's bare form and the v-prefixed form users copy
+// off a GitHub release, and a commit-sha tag.
+const (
+	tagStableLatest = "stable-latest"
+	tagEdgeLatest   = "edge-latest"
+	tagPinned       = "1.0.2"
+	tagPinnedV      = "v1.0.2"
+	tagSha          = "abc1234"
+)
 
 func TestGetObjects(t *testing.T) {
 	m := &mesheryv1alpha1.MeshSync{
@@ -123,14 +137,86 @@ func TestApplyVersion(t *testing.T) {
 		t.Errorf("empty version must leave the template untouched, got %s/%s", c.Image, c.ImagePullPolicy)
 	}
 
-	applyVersion(c, "v1.0.0")
-	if c.Image != "meshery/meshsync:v1.0.0" || c.ImagePullPolicy != corev1.PullIfNotPresent {
-		t.Errorf("pinned version = %s/%s, want meshery/meshsync:v1.0.0/IfNotPresent", c.Image, c.ImagePullPolicy)
+	applyVersion(c, "1.0.0")
+	if c.Image != "meshery/meshsync:1.0.0" || c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("pinned version = %s/%s, want meshery/meshsync:1.0.0/IfNotPresent", c.Image, c.ImagePullPolicy)
 	}
 
-	applyVersion(c, "edge-latest")
+	applyVersion(c, tagEdgeLatest)
 	if c.Image != "meshery/meshsync:edge-latest" || c.ImagePullPolicy != corev1.PullAlways {
 		t.Errorf("moving tag = %s/%s, want meshery/meshsync:edge-latest/Always", c.Image, c.ImagePullPolicy)
+	}
+}
+
+// TestDefaultMeshSyncVersionIsPinned is the regression gate for the class of
+// broken install that motivated the pin: a moving channel tag as the default
+// re-points under running clusters, so an install that worked yesterday pulls
+// a different MeshSync tomorrow. It fails against the previous
+// "stable-latest" default and against any future moving tag.
+func TestDefaultMeshSyncVersionIsPinned(t *testing.T) {
+	if utils.MovingTag(defaultMeshSyncVersion) {
+		t.Fatalf("defaultMeshSyncVersion = %q is a moving channel tag; pin a released version", defaultMeshSyncVersion)
+	}
+	v, err := semver.NewVersion(defaultMeshSyncVersion)
+	if err != nil {
+		t.Fatalf("defaultMeshSyncVersion = %q is not a semantic version: %v", defaultMeshSyncVersion, err)
+	}
+	// Registry convention: meshery/meshsync publishes bare-semver image tags,
+	// so a v-prefixed default would 404 at pull time.
+	if strings.HasPrefix(defaultMeshSyncVersion, "v") {
+		t.Errorf("defaultMeshSyncVersion = %q must be the bare form (%s); meshery/meshsync publishes no v-prefixed image tags", defaultMeshSyncVersion, v.String())
+	}
+	// The default must also be provably able to serve the health endpoints,
+	// otherwise pinning it silently downgrades every default install to the
+	// exec liveness fallback.
+	if !servesHealthEndpoints(defaultMeshSyncVersion) {
+		t.Errorf("defaultMeshSyncVersion = %q predates the /healthz and /readyz endpoints (%s)", defaultMeshSyncVersion, minHealthEndpointsVersion)
+	}
+}
+
+// TestResolveVersion locks in the one place spec.version becomes a tag: unset
+// falls back to the pinned default, an explicit pin is honoured, and a
+// v-prefixed semver is normalised to the bare tag the registry publishes.
+func TestResolveVersion(t *testing.T) {
+	cases := map[string]string{
+		"":              defaultMeshSyncVersion,
+		tagPinned:       tagPinned,
+		tagPinnedV:      tagPinned,
+		tagEdgeLatest:   tagEdgeLatest,
+		tagStableLatest: tagStableLatest,
+		tagSha:          tagSha,
+	}
+	for in, want := range cases {
+		if got := resolveVersion(in); got != want {
+			t.Errorf("resolveVersion(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// TestGetServerObjectImage proves the built Deployment - not just the helper -
+// carries a pinned image and the matching pull policy by default, and honours
+// spec.version when set.
+func TestGetServerObjectImage(t *testing.T) {
+	cases := []struct {
+		version    string
+		wantImage  string
+		wantPolicy corev1.PullPolicy
+	}{
+		{"", meshsyncImageRepo + ":" + defaultMeshSyncVersion, corev1.PullIfNotPresent},
+		{tagPinned, meshsyncImageRepo + ":1.0.2", corev1.PullIfNotPresent},
+		{tagPinnedV, meshsyncImageRepo + ":1.0.2", corev1.PullIfNotPresent},
+		{tagEdgeLatest, meshsyncImageRepo + ":edge-latest", corev1.PullAlways},
+	}
+	for _, tc := range cases {
+		t.Run(versionLabel(tc.version), func(t *testing.T) {
+			c := builtMeshSyncContainer(t, tc.version)
+			if c.Image != tc.wantImage {
+				t.Errorf("image = %q, want %q", c.Image, tc.wantImage)
+			}
+			if c.ImagePullPolicy != tc.wantPolicy {
+				t.Errorf("imagePullPolicy = %q, want %q", c.ImagePullPolicy, tc.wantPolicy)
+			}
+		})
 	}
 }
 
@@ -158,18 +244,18 @@ func TestServesHealthEndpoints(t *testing.T) {
 	cases := map[string]bool{
 		"v1.0.1":        true,  // first release with the endpoints
 		"1.0.1":         true,  // the leading "v" is optional
-		"v1.0.2":        true,  // later patch
+		tagPinnedV:      true,  // later patch
 		"v1.1.0":        true,  // later minor
 		"v2.0.0":        true,  // later major
 		"v1.1.0-beta.1": true,  // pre-release that still postdates v1.0.1
 		"v1.0.0":        false, // predates the endpoints
 		"v0.8.26":       false, // predates the endpoints
 		"v1.0.1-rc.1":   false, // pre-release of the boundary version, unprovable
-		"stable-latest": false, // moving channel tag, can't be proven
-		"edge-latest":   false, // moving channel tag, can't be proven
+		tagStableLatest: false, // moving channel tag, can't be proven
+		tagEdgeLatest:   false, // moving channel tag, can't be proven
 		"latest":        false, // moving tag
 		"":              false, // empty -> template default image
-		"abc1234":       false, // commit-sha tag
+		tagSha:          false, // commit-sha tag
 	}
 	for version, want := range cases {
 		if got := servesHealthEndpoints(version); got != want {
@@ -189,9 +275,18 @@ func TestGetServerObjectProbes(t *testing.T) {
 		assertHTTPGetProbe(t, "readiness", c.ReadinessProbe, readyzPath)
 	})
 
-	// Moving tags, pre-endpoint pins, and the empty default must all fall back
-	// to the exec liveness probe with no readiness probe.
-	for _, version := range []string{"stable-latest", "v1.0.0", ""} {
+	// The default is a pinned release past the endpoint boundary, so an unset
+	// spec.version now resolves to a provable version and gets the HTTP probes
+	// too - it no longer takes the unprovable fallback path.
+	t.Run("pinned default uses httpGet liveness and readiness", func(t *testing.T) {
+		c := builtMeshSyncContainer(t, "")
+		assertHTTPGetProbe(t, "liveness", c.LivenessProbe, healthzPath)
+		assertHTTPGetProbe(t, "readiness", c.ReadinessProbe, readyzPath)
+	})
+
+	// Explicitly pinned moving tags and pre-endpoint versions must still fall
+	// back to the exec liveness probe with no readiness probe.
+	for _, version := range []string{tagStableLatest, "v1.0.0"} {
 		version := version
 		t.Run("fallback keeps exec liveness and no readiness: "+versionLabel(version), func(t *testing.T) {
 			c := builtMeshSyncContainer(t, version)

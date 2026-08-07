@@ -41,6 +41,14 @@ const (
 	// container and the client port.
 	natsName = "nats"
 
+	// natsImageRepo is the image repository spec.version tags resolve against.
+	// The default tag is not declared here: it is whatever the vendored chart
+	// renders (manifests/nats.gen.yaml, pinned to NATS_CHART_VERSION and held
+	// there by the drift gate), which is already an immutable
+	// <version>-alpine tag. Keeping one source of truth avoids a second,
+	// silently divergent default.
+	natsImageRepo = "nats"
+
 	// AuthSecretName holds the NATS token that the vendored StatefulSet reads via
 	// the $NATS_TOKEN env var. The operator generates it at runtime; it is never
 	// committed to source (replacing the old committed account JWT).

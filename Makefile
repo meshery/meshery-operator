@@ -1,10 +1,20 @@
-# VERSION defines the project version for the bundle.
-# Update this value when you upgrade the version of your project.
-# To re-generate a bundle for another specific version without changing the standard setup, you can:
-# - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
-# - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-# Current Operator version
-VERSION ?= 0.0.1
+# VERSION is the OLM bundle's CSV version, and it must stay in lockstep with
+# the committed bundle (`meshery-operator.v0.1.0` / `version: 0.1.0` in
+# bundle/manifests/meshery-operator.clusterserviceversion.yaml). A stale default
+# is not inert: a bare `make bundle` regenerates the CSV at whatever this says,
+# so a lower value silently rewrites the bundle backwards and collapses the
+# upgrade graph OLM orders by (`replaces: meshery-operator.v0.0.1`,
+# `olm.skipRange: '>=0.0.1 <0.1.0'`) onto a CSV that replaces itself.
+#
+# Bumping it is part of regenerating the bundle at a new version - raise this
+# default, then set `replaces` to the previous CSV and widen `olm.skipRange`
+# (bundle/REGENERATION.md). It is distinct from OPERATOR_RELEASE_VERSION below,
+# which is the published *manager image* the bundle installs.
+#
+# A one-off render can still override it without editing here:
+# - as an arg of the bundle target (e.g make bundle VERSION=0.2.0)
+# - via the environment (e.g export VERSION=0.2.0)
+VERSION ?= 0.1.0
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 BIN_DIR := $(PROJECT_DIR)/bin
 
@@ -50,8 +60,29 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 	BUNDLE_GEN_FLAGS += --use-image-digests
 endif
 
-# Image URL to use all building/pushing image targets
-IMG ?= meshery/meshery-operator:stable-latest
+# OPERATOR_RELEASE_VERSION is the published manager release that the rendered
+# install artifacts pin to: config/manager (image + newTag), the flat
+# config/manifests/default.yaml mesheryctl fetches, and the OLM bundle CSV.
+#
+# It is NOT hand-edited: hack/stamp-operator-version.sh advances it (and every
+# artifact derived from it) and .github/workflows/stamp-release.yml runs that
+# script on every published release, so master always names an image that
+# exists. Never set this to a moving channel tag - `stable-latest` re-points
+# under running clusters, which is exactly how a months-old chart ended up
+# pulling a manager build it could not run (docs/release-process.md).
+OPERATOR_RELEASE_VERSION ?= 1.0.4
+
+# RELEASE_IMG is the published, immutable manager image the rendered artifacts
+# name. `make bundle` must stamp exactly this into the CSV, which is why IMG
+# defaults to it - but the push targets refuse it (see require-explicit-img):
+# pushing it would overwrite a released image with a local build, mutating the
+# immutability every pinned artifact depends on.
+RELEASE_IMG := $(IMAGE_TAG_BASE):$(OPERATOR_RELEASE_VERSION)
+
+# Image URL to use all building/pushing image targets. Overridden freely for
+# local builds (make docker-build IMG=me/meshery-operator:dev); the default is
+# the pinned release because `make bundle` stamps it into the bundle CSV.
+IMG ?= $(RELEASE_IMG)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -135,6 +166,10 @@ operator-manifest: manifests kustomize ## Re-render config/manifests/default.yam
 		> config/manifests/default.yaml
 	$(KUSTOMIZE) build config/default >> config/manifests/default.yaml
 
+.PHONY: stamp-release
+stamp-release: ## Pin every rendered artifact to a published operator release: make stamp-release OPERATOR_RELEASE_VERSION=1.0.5. Run by .github/workflows/stamp-release.yml on publish.
+	./hack/stamp-operator-version.sh "$(OPERATOR_RELEASE_VERSION)"
+
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...
@@ -186,8 +221,21 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: test ## Build docker image with the manager.
 	docker build -t ${IMG} .
 
+# Guards the two targets that publish to a registry. The release image is built
+# and pushed by .github/workflows/multi-platform.yml on release publish; a hand
+# push over that tag is never intended and would break every artifact pinned to
+# it.
+.PHONY: require-explicit-img
+require-explicit-img:
+	@if [ "$(IMG)" = "$(RELEASE_IMG)" ]; then \
+		echo "error: refusing to push $(IMG) - that is the published release image, which is immutable." >&2 ;\
+		echo "       The release image is published by the multi-platform release workflow, not by hand." >&2 ;\
+		echo "       Pass an explicit target, e.g. make docker-push IMG=<registry>/<repo>:<tag>" >&2 ;\
+		exit 1 ;\
+	fi
+
 .PHONY: docker-push
-docker-push: ## Push docker image with the manager.
+docker-push: require-explicit-img ## Push docker image with the manager. Requires an explicit IMG (the release tag is refused).
 	docker push ${IMG}
 
 # PLATFORMS defines the target platforms for  the manager image be build to provide support to multiple
@@ -198,7 +246,7 @@ docker-push: ## Push docker image with the manager.
 # To properly provided solutions that supports more than one platform you should use this option.
 PLATFORMS ?= linux/arm64,linux/amd64
 .PHONY: docker-buildx
-docker-buildx: test ## Build and push docker image for the manager for cross-platform support
+docker-buildx: require-explicit-img test ## Build and push docker image for the manager for cross-platform support. Requires an explicit IMG (the release tag is refused).
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	docker buildx create --name project-v3-builder --use
 	docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile .

@@ -44,6 +44,18 @@ Component map - full detail in [docs/architecture.md](docs/architecture.md) and 
 - `pkg/client/v1alpha1/` - typed clientset consumed by Meshery Server; any `v1alpha1` change must preserve this surface.
 - `config/` - Kustomize bases; `bundle/` - the OLM bundle generated from `config/manifests`.
 
+## No moving image tags
+
+**Nothing this repo ships may reference a moving channel tag** (`stable-latest`,
+`edge-latest`, `latest`) - not the manager image in `config/`/`bundle/`, not the
+managed-component defaults in `pkg/meshsync` and the vendored NATS chart. A
+moving tag is re-pointed in place, so an artifact a user applied months ago
+silently starts pulling a build it was never rendered against. Each pin has its
+own automation that advances it; do not hand-edit them. CI greps the rendered
+artifacts and `TestDefaultMeshSyncVersionIsPinned` guards the Go default.
+Mechanisms and the failure this closes: [docs/release-process.md § Pinned
+images](docs/release-process.md#pinned-images).
+
 ## Error handling
 
 All errors are MeshKit structured errors (`github.com/meshery/meshkit/errors`), never
@@ -97,5 +109,12 @@ the promoted hooks firing twice - recover it and prune them with
 - [docs/testing.md](docs/testing.md) - the three test tiers in detail, envtest caveats, kind e2e environment knobs.
 - [docs/errors.md](docs/errors.md) - the full MeshKit error convention, example constructor, and per-file code registries.
 - [docs/metrics.md](docs/metrics.md) - reconciliation metrics and why named returns are required.
-- [docs/release-process.md](docs/release-process.md) - release flow and downstream chart/CRD sync into `meshery/meshery`.
+- [docs/release-process.md](docs/release-process.md) - release flow, downstream chart/CRD sync into `meshery/meshery`, and the mechanisms behind [No moving image tags](#no-moving-image-tags) above.
 - [docs/proposals/operator-modernization-plan.md](docs/proposals/operator-modernization-plan.md) - the active roadmap; code comments referencing `WS-N` (e.g. `WS-3`) point at that plan's workstreams.
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.

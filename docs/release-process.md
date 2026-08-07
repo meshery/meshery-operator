@@ -19,6 +19,7 @@ running deployments, and the invariants that keep the pipeline honest.
 | `multi-platform.yml` | Builds and pushes the multi-arch manager image (`linux/amd64,linux/arm64`) with tags `<version>` (semver), `stable-<tag>`, `stable-<sha>`, `stable-latest`; signs it with cosign (keyless). |
 | `sbom.yml` | Attaches an SPDX SBOM to the release. |
 | `sync-downstream.yml` | Steps 1–3 below. |
+| `stamp-release.yml` | Waits for `meshery/meshery-operator:<version>` to appear on Docker Hub, then advances master's pinned manager image to it (see [Pinned images](#pinned-images)). |
 
 The CRD bundle assets (`crds.yaml`, `crds-webhook-conversion.yaml`) are
 attached to the **draft** release by `release-drafter.yml` on every master
@@ -97,6 +98,66 @@ operator image under the server-stamped stream.
   pinned version, not `stable-latest` + `pullPolicy: Always`, so operator
   updates are explicit and versioned - never a silent drift on pod restart.
 
+## Pinned images
+
+**No artifact this repo ships may name a moving tag.** A channel tag
+(`stable-latest`, `edge-latest`, `latest`) is re-pointed in place by the
+publisher, so an artifact a user applied months ago silently starts pulling a
+build it was never rendered against. That is not hypothetical: the
+`stable-latest` manager tag advanced to a master build requiring webhook
+serving certs, and every older chart - which mounts no such certs - crashlooped
+on `open /tmp/k8s-webhook-server/serving-certs/tls.crt: no such file or
+directory`. Pinned tags are immutable by convention, which is also what makes
+`imagePullPolicy: IfNotPresent` correct for them (and side-loaded kind images
+and air-gapped clusters work).
+
+Three independent pins, three mechanisms:
+
+| Pin | Where | Advanced by |
+|---|---|---|
+| Manager image | `Makefile` `OPERATOR_RELEASE_VERSION` → `IMG`, `config/manager/{manager.yaml,kustomization.yaml}`, `config/manifests/default.yaml`, `bundle/manifests/*.clusterserviceversion.yaml` | `stamp-release.yml` on publish (`hack/stamp-operator-version.sh`, or `make stamp-release OPERATOR_RELEASE_VERSION=<version>` by hand) |
+| MeshSync image | `pkg/meshsync/resources.go` `defaultMeshSyncVersion` | `meshsync-version-bump.yml` opens a weekly bump PR when meshery/meshsync publishes a semantically newer release whose image is on Docker Hub (GitHub resolves "latest" by tag creation time, so the comparison is by version, and a pre-release or older backport is skipped with a notice) |
+| NATS image | the vendored chart, `pkg/broker/manifests/nats.gen.yaml` | bump `NATS_CHART_VERSION` and re-run `make nats-manifests` (drift-gated by `nats-chart-drift.yml`) |
+
+The user-facing half of these pins is documented downstream, not here:
+`meshery/meshery`'s
+`docs/content/en/guides/infrastructure-management/configuring-operator-meshsync-broker.md`
+(published to docs.meshery.io) is the authoritative page for `MeshSync` and
+`Broker` `spec.version`, and it states the default image tag, the pull-policy
+rule, and the tag forms accepted. Changing any of those here -
+`defaultMeshSyncVersion`, the policy in `pkg/utils/image.go`, the normalisation
+rules - goes stale there, so update that page in the same wave.
+
+Guard rails, so a regression cannot land quietly:
+
+- `make stamp-release` refuses anything that is not a bare semver, so the
+  manager pin cannot be set to a channel tag even by hand.
+- `make docker-push` and `make docker-buildx` refuse to run while `IMG` is
+  still the `OPERATOR_RELEASE_VERSION`-derived default, so a bare push cannot
+  overwrite a released image with a local build. Pass an explicit
+  `IMG=<registry>/<repo>:<tag>`; the release image itself is published by
+  `multi-platform.yml`, never by hand. `make docker-build` (local only) and
+  `make bundle` (which must stamp the pinned release into the CSV) keep the
+  default.
+- `stamp-release.yml` polls Docker Hub before stamping: master may only ever
+  name an image that exists.
+- The `manifests-drift` CI job greps `config/`, `bundle/`, and the `Makefile`
+  for `:*-latest` image references.
+- `TestDefaultMeshSyncVersionIsPinned` fails if the MeshSync default becomes a
+  moving tag, a v-prefixed tag (the registry publishes bare semver only), or
+  a release predating the health endpoints.
+
+Registry convention worth remembering: `meshery/meshsync`, `meshery/meshery-operator`,
+and `nats` all publish **bare-semver** image tags (`1.0.3`), while their git
+tags and GitHub releases are **v-prefixed** (`v1.0.3`). A `spec.version` copied
+straight from a release name would 404, so the operator normalises a leading
+`v` off an otherwise-semver `spec.version` before building the image reference
+(`pkg/utils.NormalizeImageTag`).
+
+Master's manager pin therefore names the **previous** release until
+`stamp-release.yml` lands its commit. That is deliberate: the alternative is
+master naming an image that does not exist yet.
+
 ## Invariants
 
 - **Conversion strategy None ⇔ field-identical schemas.** The chart ships the
@@ -122,9 +183,12 @@ operator image under the server-stamped stream.
 
 1. Merge everything intended for the release; CI green on master.
 2. Publish the release draft (creates the tag).
-3. Watch the three release workflows; confirm the l5io sync commit landed on
+3. Watch the four release workflows; confirm the l5io sync commit landed on
    `meshery/meshery` master (or merge the fallback PR).
-4. Spot-check the OCI chart:
+4. Confirm `stamp-release.yml` advanced master's `OPERATOR_RELEASE_VERSION` to
+   the new version (or merge its `operator-pin/v<version>` fallback PR). It
+   waits up to 30 minutes for the image, so it finishes after the others.
+5. Spot-check the OCI chart:
    `helm pull oci://ghcr.io/meshery/charts/meshery-operator --version <version>`.
-5. If the typed client changed, follow up with the `go.mod` bump in
+6. If the typed client changed, follow up with the `go.mod` bump in
    `meshery/meshery`.

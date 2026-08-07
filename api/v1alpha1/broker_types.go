@@ -23,8 +23,12 @@ import (
 // (Field order is optimised for struct alignment; the JSON/CRD shape is
 // unaffected.)
 type BrokerSpec struct {
-	// Version pins the NATS server image tag. When empty the operator uses its
-	// bundled default NATS version.
+	// Version pins the NATS server image tag. When empty the operator uses the
+	// pinned NATS version from its vendored chart - never a moving channel tag.
+	// Use the bare tag the registry publishes ("2.14.2-alpine"); a leading "v"
+	// is stripped for you, because library/nats publishes no v-prefixed image
+	// tags. A moving tag ("latest") is honoured if you ask for one explicitly,
+	// and is then pulled on every restart.
 	// +optional
 	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 
