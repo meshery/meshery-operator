@@ -35,23 +35,12 @@
 set -euo pipefail
 
 VERSION="${1:?usage: hack/stamp-operator-version.sh <version>}"
-case "$VERSION" in
-  v*) echo "error: version must be bare (1.2.3), got '$VERSION'" >&2; exit 1 ;;
-esac
-# The SemVer grammar for a release version, kept identical to the one in the
-# sibling hack/sync-downstream.sh - the two guards protect the same invariant on
-# either side of the release and must not drift. A loose "digits, dots and a
-# suffix" approximation accepts 01.2.3, 1.2.3-01 and 1.2.3-. , none of which is a
-# version; each would be pinned into an artifact and fail later, opaquely, at
-# image pull. Build metadata (+...) is deliberately not accepted: this value
-# becomes a container image tag, and '+' is not legal in one.
-SEMVER_RE='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
-SEMVER_RE="$SEMVER_RE"'(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
-SEMVER_RE="$SEMVER_RE"'(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$'
-if ! printf '%s' "$VERSION" | grep -Eq "$SEMVER_RE"; then
-  echo "error: '$VERSION' is not a semantic version; the manager image must never be pinned to a moving tag" >&2
-  exit 1
-fi
+
+# Shared with hack/sync-downstream.sh: both stamp a version into artifacts users
+# apply, so both must accept exactly the same set of versions.
+# shellcheck source=hack/lib/release-version.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/release-version.sh"
+require_release_version "$VERSION" "the manager image must never be pinned to a moving tag" || exit 1
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"

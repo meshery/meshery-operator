@@ -628,23 +628,94 @@ func TestSyncDownstreamAcceptsValidSemver(t *testing.T) {
 	}
 }
 
-// assertVersionRejected runs a stamp that must fail, and checks the chart was
-// left alone. Refusing is only half of it: a guard that rejected the version
-// after writing some of the files would leave the chart in exactly the
+// assertVersionRejected runs a stamp that must fail, and checks that the whole
+// chart tree was left alone. Refusing is only half of it: a guard that rejected
+// the version after writing some of the files would leave exactly the
 // half-stamped state this script exists to prevent.
+//
+// The comparison covers every file, not just the parent Chart.yaml: the stamp
+// rewrites values.yaml, three READMEs, both subcharts and the vendored
+// dependency chart, so a partial write anywhere else would pass a single-file
+// check while leaving the tree inconsistent.
 func assertVersionRejected(t *testing.T, version string) {
 	t.Helper()
 
 	checkout := newCheckout(t, stampVersion)
-	chart := filepath.Join(checkout, helmDir, "meshery-operator", "Chart.yaml")
-	before := readFile(t, chart)
+	tree := filepath.Join(checkout, helmDir)
+	before := snapshot(t, tree)
 
 	out, err := runSync(t, checkout, version)
 	if err == nil {
 		t.Fatalf("expected %q to be rejected, got success:\n%s", version, out)
 	}
-	if got := readFile(t, chart); got != before {
-		t.Errorf("%q was rejected but the chart was already rewritten:\n%s", version, got)
+
+	after := snapshot(t, tree)
+	for rel, want := range before {
+		got, ok := after[rel]
+		if !ok {
+			t.Errorf("%q was rejected but %s was removed", version, rel)
+			continue
+		}
+		if got != want {
+			t.Errorf("%q was rejected but %s was already rewritten:\n%s", version, rel, got)
+		}
+	}
+	for rel := range after {
+		if _, ok := before[rel]; !ok {
+			t.Errorf("%q was rejected but %s was created", version, rel)
+		}
+	}
+}
+
+// TestReleaseVersionGuardIsShared pins that both release scripts enforce the
+// same version set - the whole reason the check lives in hack/lib.
+//
+// It drives hack/stamp-operator-version.sh directly rather than only
+// sync-downstream.sh. Only the rejection path is exercised against the real
+// script: the guard runs before that script touches anything, so an invalid
+// version is safe, while a valid one would rewrite this repository's own
+// Makefile, config/ and bundle/. Acceptance is covered against the sourced
+// helper itself, which is the same code both scripts run.
+func TestReleaseVersionGuardIsShared(t *testing.T) {
+	// argsFor puts the version where each script expects it. sync-downstream
+	// takes the checkout path first; the guard runs before that path is read, so
+	// a name that does not exist is fine and keeps this test off the filesystem.
+	scripts := map[string]func(version string) []string{
+		"sync-downstream.sh":        func(v string) []string { return []string{"no-such-checkout", v} },
+		"stamp-operator-version.sh": func(v string) []string { return []string{v} },
+	}
+
+	// Both scripts must actually source the shared guard. Without this, a future
+	// change could reintroduce a local copy and the drift the shared file exists
+	// to prevent would be back with every test still green.
+	for script := range scripts {
+		if body := readFile(t, script); !strings.Contains(body, "lib/release-version.sh") {
+			t.Errorf("%s does not source the shared release-version guard", script)
+		}
+	}
+
+	for _, version := range []string{"stable-latest", "v1.0.5", "01.2.3", "1.2.3-01", "1.0.5-.", "1.0"} {
+		t.Run("reject/"+version, func(t *testing.T) {
+			for script, argsFor := range scripts {
+				out, err := exec.Command("bash", append([]string{script}, argsFor(version)...)...).CombinedOutput() //nolint:gosec // fixed script list
+				if err == nil {
+					t.Errorf("%s accepted %q:\n%s", script, version, out)
+				}
+				if !strings.Contains(string(out), version) {
+					t.Errorf("%s rejected %q without naming it:\n%s", script, version, out)
+				}
+			}
+		})
+	}
+
+	for _, version := range []string{"1.0.5", "0.0.0", "1.2.3-rc.1", "1.2.3-0.3.7"} {
+		t.Run("accept/"+version, func(t *testing.T) {
+			out, err := exec.Command("bash", "-c",
+				`. lib/release-version.sh; require_release_version "$1" "test"`, "_", version).CombinedOutput()
+			if err != nil {
+				t.Errorf("the shared guard rejected the valid version %q: %v\n%s", version, err, out)
+			}
+		})
 	}
 }
 

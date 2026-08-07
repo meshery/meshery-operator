@@ -219,9 +219,19 @@ Guard rails, so a regression cannot land quietly:
 
 - `make stamp-release` refuses anything that is not a bare semver, so the
   manager pin cannot be set to a channel tag even by hand.
-- `hack/sync-downstream.sh` applies the same semver guard to the version it
-  stamps downstream, so a channel tag cannot reach the operator chart's
-  `appVersion`/`image.tag` and be published inside an immutable archive.
+- `hack/sync-downstream.sh` applies the *same* guard - literally the same code -
+  to the version it stamps downstream, so a channel tag cannot reach the operator
+  chart's `appVersion`/`image.tag` and be published inside an immutable archive.
+  Both scripts source `hack/lib/release-version.sh`; they used to carry a copy
+  each, which is a drift waiting to happen when only one gets fixed.
+  `TestReleaseVersionGuardIsShared` fails if either stops sourcing it.
+- That guard is the SemVer grammar, not a "digits, dots and a suffix"
+  approximation. `01.2.3`, `1.2.3-01` and `1.0.5-.` are rejected as firmly as
+  `stable-latest` is: they are not versions either, and they are worse in one
+  respect - the stamp would succeed and write the artifact, so the first sign of
+  trouble is helm or an image pull failing opaquely on something that never
+  existed. Build metadata (`+...`) is rejected too, because the same value
+  becomes a container image tag and `+` is not legal in one.
 - `make docker-push` and `make docker-buildx` refuse to run while `IMG` is
   still the `OPERATOR_RELEASE_VERSION`-derived default, so a bare push cannot
   overwrite a released image with a local build. Pass an explicit
