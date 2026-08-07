@@ -17,6 +17,7 @@ limitations under the License.
 package meshsync
 
 import (
+	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -40,7 +41,19 @@ const (
 	// against.
 	meshsyncImageRepo = "meshery/meshsync"
 	// defaultMeshSyncVersion is the image tag used when spec.version is empty.
-	defaultMeshSyncVersion = "stable-latest"
+	// It MUST be a pinned release that exists on Docker Hub, never a moving
+	// channel tag: a moving default re-points under running clusters, so a
+	// Meshery/chart combination that installed cleanly starts pulling an
+	// incompatible MeshSync on the next pod restart (the operator's own
+	// stable-latest did exactly this - see docs/release-process.md).
+	// Registry convention is bare semver (meshery/meshsync:1.0.3); the
+	// v-prefixed form is a git/release tag and does not exist as an image tag.
+	//
+	// Bump deliberately: `.github/workflows/meshsync-version-bump.yml` opens a
+	// PR when meshery/meshsync publishes a newer release, and
+	// TestDefaultMeshSyncVersionIsPinned fails if this ever regresses to a
+	// moving tag.
+	defaultMeshSyncVersion = "1.0.3"
 )
 
 var (
@@ -96,9 +109,15 @@ var (
 			TerminationGracePeriodSeconds: &val60,
 			Containers: []corev1.Container{
 				{
-					Name:            "meshsync",
+					Name: "meshsync",
+					// Image and ImagePullPolicy are authoritative only as the
+					// starting point: GetServerObject runs applyVersion over
+					// every built Deployment, so both always end up derived
+					// from the resolved version (spec.version, or the pinned
+					// default above). They are seeded consistently here so the
+					// template alone is never a moving-tag reference.
 					Image:           meshsyncImageRepo + ":" + defaultMeshSyncVersion,
-					ImagePullPolicy: corev1.PullAlways,
+					ImagePullPolicy: utils.PullPolicyFor(defaultMeshSyncVersion),
 					Ports: []corev1.ContainerPort{
 						{
 							// No HostPort: pinning a host port would limit
@@ -131,10 +150,11 @@ var (
 					// the template. As of v1.0.1 MeshSync serves HTTP /healthz
 					// (always 200) and /readyz (503 until it has connected to the
 					// broker once, then a permanent 200) on the client port, and
-					// applyProbes upgrades pods whose spec.version is a pinned
-					// semver >= that release to httpGet probes. Everything else
-					// keeps this exec probe: spec.version is user-settable and the
-					// default stable-latest (like every other moving tag) can't be
+					// applyProbes upgrades pods whose resolved version is a pinned
+					// semver >= that release to httpGet probes - which now includes
+					// the default, since defaultMeshSyncVersion is itself pinned.
+					// Everything else keeps this exec probe: spec.version is
+					// user-settable, and a moving or unparseable tag can't be
 					// proven to carry the endpoints, so an httpGet probe against an
 					// image that serves nothing on the client port would
 					// connection-refuse and crashloop an otherwise-healthy pod.

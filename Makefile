@@ -50,8 +50,22 @@ ifeq ($(USE_IMAGE_DIGESTS), true)
 	BUNDLE_GEN_FLAGS += --use-image-digests
 endif
 
-# Image URL to use all building/pushing image targets
-IMG ?= meshery/meshery-operator:stable-latest
+# OPERATOR_RELEASE_VERSION is the published manager release that the rendered
+# install artifacts pin to: config/manager (image + newTag), the flat
+# config/manifests/default.yaml mesheryctl fetches, and the OLM bundle CSV.
+#
+# It is NOT hand-edited: hack/stamp-operator-version.sh advances it (and every
+# artifact derived from it) and .github/workflows/stamp-release.yml runs that
+# script on every published release, so master always names an image that
+# exists. Never set this to a moving channel tag - `stable-latest` re-points
+# under running clusters, which is exactly how a months-old chart ended up
+# pulling a manager build it could not run (docs/release-process.md).
+OPERATOR_RELEASE_VERSION ?= 1.0.4
+
+# Image URL to use all building/pushing image targets. Overridden freely for
+# local builds (make docker-build IMG=me/meshery-operator:dev); the default is
+# the pinned release because `make bundle` stamps it into the bundle CSV.
+IMG ?= $(IMAGE_TAG_BASE):$(OPERATOR_RELEASE_VERSION)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -134,6 +148,10 @@ operator-manifest: manifests kustomize ## Re-render config/manifests/default.yam
 		'# drift gate keeps this file in sync with config/default.' \
 		> config/manifests/default.yaml
 	$(KUSTOMIZE) build config/default >> config/manifests/default.yaml
+
+.PHONY: stamp-release
+stamp-release: ## Pin every rendered artifact to a published operator release: make stamp-release OPERATOR_RELEASE_VERSION=1.0.5. Run by .github/workflows/stamp-release.yml on publish.
+	./hack/stamp-operator-version.sh "$(OPERATOR_RELEASE_VERSION)"
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

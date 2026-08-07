@@ -350,17 +350,38 @@ setup() {
   # cluster sync, starving the (exec) readiness probe and pushing readiness
   # well past the budget. Pulling here (on the runner, warm network) and
   # side-loading into kind removes that contention and makes startup
-  # deterministic. NOTE: the NATS image tags are duplicated from
-  # pkg/broker/resources.go; keep them in sync (WS-4 updates the NATS line).
+  # deterministic.
+  #
+  # Both tags are READ FROM SOURCE rather than duplicated here: the MeshSync
+  # default from pkg/meshsync/resources.go and the NATS images from the
+  # vendored chart render. A hardcoded copy silently rots the moment either pin
+  # moves - the pre-load then side-loads the wrong tag, every workload pulls at
+  # runtime, and the contention this whole step exists to remove comes back
+  # without any test failing to say so.
+  #
   # MESHSYNC_VERSION overrides the MeshSync image tag (spec.version on the CR).
   # Point it at a locally built meshery/meshsync:<tag> to test cross-repo
   # changes end-to-end before they are published.
-  MESHSYNC_IMAGE="meshery/meshsync:${MESHSYNC_VERSION:-stable-latest}"
+  MESHSYNC_DEFAULT=$(sed -n 's/.*defaultMeshSyncVersion = "\(.*\)".*/\1/p' \
+    "$PROJECT_ROOT/pkg/meshsync/resources.go")
+  if [ -z "$MESHSYNC_DEFAULT" ]; then
+    echo "❌ could not read defaultMeshSyncVersion from pkg/meshsync/resources.go"
+    exit 1
+  fi
+  MESHSYNC_IMAGE="meshery/meshsync:${MESHSYNC_VERSION:-$MESHSYNC_DEFAULT}"
+  # The rendered chart lists the NATS server and config-reloader images.
+  NATS_IMAGES=$(sed -n 's/^ *image: \(.*\)$/\1/p' \
+    "$PROJECT_ROOT/pkg/broker/manifests/nats.gen.yaml" | sort -u)
+  if [ -z "$NATS_IMAGES" ]; then
+    echo "❌ could not read any image from pkg/broker/manifests/nats.gen.yaml"
+    exit 1
+  fi
   echo "Pre-loading workload images into KinD cluster..."
+  # NATS_IMAGES is intentionally unquoted: it is a newline-separated list that
+  # must word-split into one loop iteration per image.
   for img in \
     "$MESHSYNC_IMAGE" \
-    nats:2.14.2-alpine \
-    natsio/nats-server-config-reloader:0.23.0; do
+    $NATS_IMAGES; do
     # A locally built image (e.g. a cross-repo meshsync build) is used as-is;
     # only pull what is not already present.
     if docker image inspect "$img" >/dev/null 2>&1 || docker pull "$img"; then
@@ -401,10 +422,17 @@ setup() {
   cd "$TEMP_CONFIG_DIR/manager" 
   "$PROJECT_ROOT/bin/kustomize" edit set image meshery/meshery-operator="$OPERATOR_IMAGE"
   
-  # Set imagePullPolicy to Never for integration tests (image is loaded into kind cluster).
+  # Set imagePullPolicy to Never for integration tests (image is loaded into
+  # kind cluster). Match on the key, not on a specific value: the committed
+  # policy is IfNotPresent now that the image is pinned, and a value-specific
+  # substitution would silently stop firing whenever that changes.
   # Use a portable in-place edit: GNU sed accepts a bare `-i`, but BSD/macOS sed
   # requires an explicit backup suffix, so pass one and delete the backup.
-  sed -i.bak 's/imagePullPolicy: Always/imagePullPolicy: Never/' manager.yaml && rm -f manager.yaml.bak
+  sed -i.bak 's/imagePullPolicy: .*/imagePullPolicy: Never/' manager.yaml && rm -f manager.yaml.bak
+  if ! grep -q 'imagePullPolicy: Never' manager.yaml; then
+    echo "❌ failed to force imagePullPolicy: Never in the temporary manager.yaml"
+    exit 1
+  fi
   
   cd "$PROJECT_ROOT"
   

@@ -41,8 +41,16 @@ spec:
           type: RuntimeDefault
       containers:
       - name: manager
-        image: meshery/meshery-operator:stable-latest
-        imagePullPolicy: Always
+        # Pinned to a published release, never a moving channel tag: a moving
+        # tag re-points under running clusters, so a manifest applied months
+        # ago silently starts pulling a manager build the surrounding
+        # deployment was never rendered for. Both this tag and the newTag in
+        # kustomization.yaml are stamped by hack/stamp-operator-version.sh on
+        # every release. IfNotPresent follows from the pin - the tag is
+        # immutable, so re-pulling it on every restart buys nothing and breaks
+        # side-loaded (kind) and air-gapped clusters.
+        image: meshery/meshery-operator:1.0.4
+        imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true

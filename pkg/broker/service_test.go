@@ -17,9 +17,11 @@ limitations under the License.
 package broker
 
 import (
+	"strings"
 	"testing"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -109,6 +111,79 @@ func TestChartNatsReadsTokenFromSecret(t *testing.T) {
 	if !natsContainerReadsToken(sts) {
 		t.Errorf("nats container should read NATS_TOKEN from a Secret (no committed credentials)")
 	}
+}
+
+// TestBrokerImagePinning covers the broker half of the managed-component image
+// contract: the chart-rendered default must be an immutable tag (never a
+// moving channel tag that would re-point under a running cluster), spec.version
+// must be honoured, and the pull policy must follow the tag's mutability.
+func TestBrokerImagePinning(t *testing.T) {
+	t.Run("chart default is a pinned tag", func(t *testing.T) {
+		c := natsContainer(t, brokerFixture(1, corev1.ServiceTypeClusterIP))
+		tag, ok := imageTag(c.Image)
+		if !ok {
+			t.Fatalf("chart-rendered image %q carries no tag", c.Image)
+		}
+		if utils.MovingTag(tag) {
+			t.Errorf("chart-rendered image %q uses a moving tag; bump NATS_CHART_VERSION and re-run make nats-manifests instead", c.Image)
+		}
+		if c.ImagePullPolicy == corev1.PullAlways {
+			t.Errorf("pinned default must not carry imagePullPolicy: Always (got %q)", c.ImagePullPolicy)
+		}
+	})
+
+	cases := []struct {
+		version    string
+		wantImage  string
+		wantPolicy corev1.PullPolicy
+	}{
+		{"2.10.22-alpine", "nats:2.10.22-alpine", corev1.PullIfNotPresent},
+		// Registry convention: library/nats publishes no v-prefixed tags, so a
+		// v-prefixed pin is normalised rather than left to ImagePullBackOff.
+		{"v2.10.22", "nats:2.10.22", corev1.PullIfNotPresent},
+		{"latest", "nats:latest", corev1.PullAlways},
+		{"edge-latest", "nats:edge-latest", corev1.PullAlways},
+	}
+	for _, tc := range cases {
+		t.Run("spec.version "+tc.version, func(t *testing.T) {
+			m := brokerFixture(1, corev1.ServiceTypeClusterIP)
+			m.Spec.Version = tc.version
+			c := natsContainer(t, m)
+			if c.Image != tc.wantImage {
+				t.Errorf("image = %q, want %q", c.Image, tc.wantImage)
+			}
+			if c.ImagePullPolicy != tc.wantPolicy {
+				t.Errorf("imagePullPolicy = %q, want %q", c.ImagePullPolicy, tc.wantPolicy)
+			}
+		})
+	}
+}
+
+// natsContainer builds the Broker's objects and returns the NATS server
+// container from the rendered StatefulSet.
+func natsContainer(t *testing.T, m *mesheryv1alpha1.Broker) corev1.Container {
+	t.Helper()
+	sts, _ := findStatefulSetAndClientService(GetObjects(m))
+	if sts == nil {
+		t.Fatalf("no StatefulSet named %q among chart objects", natsServiceName)
+	}
+	for _, c := range sts.Spec.Template.Spec.Containers {
+		if c.Name == natsName {
+			return c
+		}
+	}
+	t.Fatalf("no %q container in the rendered StatefulSet", natsName)
+	return corev1.Container{}
+}
+
+// imageTag splits the tag off a "repo:tag" reference (the managed images carry
+// no registry host, so the last colon is unambiguous).
+func imageTag(image string) (string, bool) {
+	i := strings.LastIndex(image, ":")
+	if i < 0 {
+		return "", false
+	}
+	return image[i+1:], true
 }
 
 func brokerFixture(size int32, svcType corev1.ServiceType) *mesheryv1alpha1.Broker {

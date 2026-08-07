@@ -1,0 +1,102 @@
+# Keeps the pinned MeshSync default from rotting.
+#
+# pkg/meshsync/resources.go pins defaultMeshSyncVersion to a published
+# meshery/meshsync release rather than the moving `stable-latest` it used to
+# use, so a MeshSync CR with no spec.version gets a reproducible image instead
+# of whatever the channel points at today. The cost of a pin is that it goes
+# stale, and MeshSync releases from a different repository, so nothing in this
+# repo's own release flow would ever advance it.
+#
+# This is the counterweight: a weekly check that opens a bump PR when
+# meshery/meshsync publishes a newer release whose image is actually on Docker
+# Hub. The PR still goes through review and CI like any other change - nothing
+# here pushes to master.
+name: Bump the pinned MeshSync default
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays, off the hour to avoid the scheduler peak
+  workflow_dispatch:
+
+permissions:
+  contents: read # the branch push below uses GH_ACCESS_TOKEN
+
+jobs:
+  bump:
+    if: github.repository == 'meshery/meshery-operator'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: master
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+
+      - name: Resolve the current pin and the latest MeshSync release
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CURRENT=$(sed -n 's/.*defaultMeshSyncVersion = "\(.*\)".*/\1/p' pkg/meshsync/resources.go)
+          if [ -z "$CURRENT" ]; then
+            echo "::error::could not read defaultMeshSyncVersion from pkg/meshsync/resources.go"; exit 1
+          fi
+          # meshery/meshsync git tags are v-prefixed; its image tags are not.
+          LATEST=$(gh release view --repo meshery/meshsync --json tagName --jq '.tagName')
+          LATEST="${LATEST#v}"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "current pin: $CURRENT, latest release: $LATEST"
+
+      # A GitHub release exists before its image finishes building, and some
+      # releases never publish an image at all. Pinning to a tag that does not
+      # resolve would recreate the ImagePullBackOff this pin exists to prevent.
+      - name: Verify the image exists on Docker Hub
+        id: exists
+        if: steps.ver.outputs.latest != steps.ver.outputs.current
+        env:
+          LATEST: ${{ steps.ver.outputs.latest }}
+        run: |
+          CODE=$(curl -sSL -o /dev/null -w '%{http_code}' \
+            "https://hub.docker.com/v2/repositories/meshery/meshsync/tags/$LATEST")
+          if [ "$CODE" != "200" ]; then
+            echo "::notice::meshery/meshsync:$LATEST is not on Docker Hub yet (HTTP $CODE); skipping this run"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open the bump PR
+        if: steps.exists.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          CURRENT: ${{ steps.ver.outputs.current }}
+          LATEST: ${{ steps.ver.outputs.latest }}
+        run: |
+          set -euo pipefail
+          BRANCH="meshsync-pin/$LATEST"
+          OPEN=$(gh pr list --repo meshery/meshery-operator --head "$BRANCH" --state open \
+                   --json number --jq 'length')
+          if [ "$OPEN" != "0" ]; then
+            echo "a PR for $LATEST is already open"; exit 0
+          fi
+          perl -pi -e "s/defaultMeshSyncVersion = \"\Q$CURRENT\E\"/defaultMeshSyncVersion = \"$LATEST\"/" \
+            pkg/meshsync/resources.go
+          git config user.name l5io
+          git config user.email ci@meshery.io
+          git checkout -b "$BRANCH"
+          git add pkg/meshsync/resources.go
+          git commit --signoff -m "chore(meshsync): pin the default MeshSync image to $LATEST"
+          git push -f origin "$BRANCH"
+          BODY=$(mktemp)
+          {
+            echo "meshery/meshsync released \`$LATEST\` and \`meshery/meshsync:$LATEST\` is on Docker Hub."
+            echo "This advances \`defaultMeshSyncVersion\` from \`$CURRENT\` - the image a MeshSync CR with no \`spec.version\` deploys."
+            echo
+            echo "Review the MeshSync changelog for anything the operator has to follow (health endpoints, env var contract) before merging."
+          } > "$BODY"
+          gh pr create --repo meshery/meshery-operator --base master --head "$BRANCH" \
+            --title "Pin the default MeshSync image to $LATEST" \
+            --body-file "$BODY"

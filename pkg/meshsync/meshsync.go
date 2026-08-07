@@ -24,6 +24,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	"github.com/meshery/meshery-operator/pkg/utils"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,26 +91,37 @@ func GetServerObject(m *mesheryv1alpha1.MeshSync, tokenSecret string) Object {
 	size := desiredReplicas(m)
 	obj.Spec.Replicas = &size
 	if len(obj.Spec.Template.Spec.Containers) > 0 {
-		applyVersion(&obj.Spec.Template.Spec.Containers[0], m.Spec.Version)
-		applyProbes(&obj.Spec.Template.Spec.Containers[0], m.Spec.Version)
+		version := resolveVersion(m.Spec.Version)
+		applyVersion(&obj.Spec.Template.Spec.Containers[0], version)
+		applyProbes(&obj.Spec.Template.Spec.Containers[0], version)
 		setBrokerURL(&obj.Spec.Template.Spec.Containers[0], m.Status.PublishingTo, tokenSecret)
 	}
 	return obj
 }
 
-// applyVersion maps spec.version onto the MeshSync image tag. Moving tags
-// (…-latest) keep PullAlways so clusters track the channel; pinned tags switch
-// to IfNotPresent so side-loaded images (kind) and air-gapped clusters work.
+// resolveVersion is the single place spec.version becomes a concrete image tag.
+// An unset spec.version falls back to the pinned defaultMeshSyncVersion (never
+// a moving channel tag - WS-3 §4.3 #9/#28), and a v-prefixed semver is
+// normalised to the bare form the registry actually publishes. Everything
+// downstream - image tag, pull policy, probe selection - reads this one value,
+// so the default can never take a different code path from an explicit pin.
+func resolveVersion(version string) string {
+	if version == "" {
+		return defaultMeshSyncVersion
+	}
+	return utils.NormalizeImageTag(version)
+}
+
+// applyVersion maps a resolved version onto the MeshSync image tag and the pull
+// policy that matches its mutability (moving tags track their channel with
+// PullAlways; pinned tags use IfNotPresent so side-loaded images (kind) and
+// air-gapped clusters work).
 func applyVersion(c *corev1.Container, version string) {
 	if version == "" {
 		return
 	}
 	c.Image = meshsyncImageRepo + ":" + version
-	if strings.HasSuffix(version, "-latest") {
-		c.ImagePullPolicy = corev1.PullAlways
-	} else {
-		c.ImagePullPolicy = corev1.PullIfNotPresent
-	}
+	c.ImagePullPolicy = utils.PullPolicyFor(version)
 }
 
 // applyProbes selects the container's health probes from the deployed MeshSync
@@ -117,9 +129,11 @@ func applyVersion(c *corev1.Container, version string) {
 // cheap httpGet /healthz liveness probe (no binary fork, so no false restarts
 // under the CPU pressure of the initial full-cluster sync) plus an httpGet
 // /readyz readiness probe that holds the pod NotReady until MeshSync has
-// connected to the broker once. Every other version - older images, moving
-// channel tags such as the default stable-latest, and unparseable tags - keeps
-// the exec liveness baked into the template and gets no readiness probe:
+// connected to the broker once. The pinned default qualifies, so an unset
+// spec.version now gets the HTTP probes too. Every other version - older
+// images, moving channel tags a user pins explicitly (stable-latest,
+// edge-latest), and unparseable tags such as commit shas - keeps the exec
+// liveness baked into the template and gets no readiness probe:
 // probing an image that serves nothing on the client port over HTTP would
 // connection-refuse and crashloop an otherwise-healthy pod (version skew,
 // since spec.version is user-settable).
@@ -154,11 +168,14 @@ func applyProbes(c *corev1.Container, version string) {
 	}
 }
 
-// servesHealthEndpoints reports whether spec.version is a pinned semantic
-// version at or above minHealthEndpointsVersion, i.e. an image known to serve
-// /healthz and /readyz. Moving channel tags (stable-latest, edge-latest, ""),
-// commit-sha tags, and versions predating the endpoints are unparseable or
-// lower and return false, so their pods stay on the exec liveness probe. The
+// servesHealthEndpoints reports whether the resolved version is a pinned
+// semantic version at or above minHealthEndpointsVersion, i.e. an image known
+// to serve /healthz and /readyz. Moving channel tags (stable-latest,
+// edge-latest), commit-sha tags, and versions predating the endpoints are
+// unparseable or lower and return false, so their pods stay on the exec
+// liveness probe. ("" no longer reaches here - resolveVersion substitutes the
+// pinned default first - but is still handled for callers that pass a raw
+// spec.version.) The
 // gate is deliberately conservative: an unprovable version - including a
 // pre-release of the boundary version such as v1.0.1-rc.1, which sorts below
 // v1.0.1 and may predate the endpoint commit - is treated as lacking the

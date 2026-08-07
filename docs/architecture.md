@@ -89,10 +89,34 @@ Workload manifests are produced two different ways, one per CRD:
 health. MeshSync's container probes are version-gated (`applyProbes`): pods
 running MeshSync ≥ v1.0.1 - the first release that serves `/healthz` (liveness)
 and `/readyz` (readiness, 503 until the broker connects) on the client port -
-get httpGet probes, while older images, moving channel tags (e.g. the default
-`stable-latest`), and unparseable versions keep an exec liveness probe as the
+get httpGet probes, while older images, moving channel tags a user pins
+explicitly, and unparseable versions keep an exec liveness probe as the
 version-skew-safe fallback (an httpGet probe against an image without the
 endpoints would connection-refuse and crashloop it).
+
+### Managed-component images
+
+Every managed-component image resolves through one path, `resolveVersion` for
+MeshSync and `overlayBrokerSpec` for the broker, and both share
+`pkg/utils/image.go`:
+
+- **The default is a pinned release, never a channel tag.** An unset
+  `spec.version` resolves to `defaultMeshSyncVersion` (MeshSync) or whatever the
+  vendored chart rendered (NATS). A moving default re-points under running
+  clusters, so an install that worked yesterday pulls a different image
+  tomorrow; see [docs/release-process.md § Pinned images](release-process.md#pinned-images)
+  for the failure this closes and the automation that keeps each pin fresh.
+- **`spec.version` is honoured**, and a leading `v` is normalised off an
+  otherwise-semver tag: these registries publish bare-semver image tags while
+  their releases are v-prefixed, so `v1.0.3` copied from a release name would
+  otherwise 404.
+- **The pull policy follows the tag's mutability** (`utils.PullPolicyFor`):
+  `Always` for a moving tag a user pinned deliberately, `IfNotPresent` for an
+  immutable one, so side-loaded (kind) and air-gapped clusters work. kubelet's
+  own default cannot do this - it infers `Always` from the literal `:latest`
+  alone and would leave `stable-latest` on `IfNotPresent`.
+- Because the resolved version feeds probe selection too, the pinned default is
+  provably ≥ v1.0.1 and gets the httpGet probes rather than the fallback.
 
 ### Vendored NATS chart (`pkg/broker/chart/`, `pkg/broker/manifests/nats.gen.yaml`)
 

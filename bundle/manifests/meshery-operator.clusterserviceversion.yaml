@@ -187,8 +187,8 @@ spec:
                 - --health-probe-bind-address=:8081
                 command:
                 - /manager
-                image: meshery/meshery-operator:stable-latest
-                imagePullPolicy: Always
+                image: meshery/meshery-operator:1.0.4
+                imagePullPolicy: IfNotPresent
                 livenessProbe:
                   httpGet:
                     path: /healthz

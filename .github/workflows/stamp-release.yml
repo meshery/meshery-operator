@@ -1,0 +1,106 @@
+# Advances master's pinned manager image to the release that was just
+# published.
+#
+# The rendered install artifacts (config/manager, the flat
+# config/manifests/default.yaml that mesheryctl fetches, the OLM bundle CSV)
+# name an immutable release tag rather than the moving `stable-latest` they used
+# to. That closes the silent-drift failure - an artifact applied months ago
+# suddenly pulling whatever master had become - but only if something moves the
+# pin forward. This is that something: without it the pin is three hand-edited
+# copies that rot apart.
+#
+# It runs AFTER publish, against master, because the pin may only ever name an
+# image that already exists: multi-platform.yml pushes meshery/meshery-operator
+# on the same event, so this job waits for that tag to appear on Docker Hub
+# before stamping anything.
+#
+# Companion to sync-downstream.yml, which stamps the same version into
+# meshery/meshery's chart. Same commit identity (l5io) and the same
+# push-then-PR-fallback shape as that workflow and error-ref-publisher.yaml.
+name: Stamp released operator version onto master
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release-ver:
+        description: "Released tag to stamp onto master, e.g. v1.0.5"
+        required: true
+
+permissions:
+  contents: read # the push below uses GH_ACCESS_TOKEN, not the job token
+
+jobs:
+  stamp:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Resolve release version
+        id: ver
+        env:
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ github.event.inputs.release-ver }}
+        run: |
+          TAG="${EVENT_TAG:-$INPUT_TAG}"
+          if [ -z "$TAG" ]; then echo "::error::no release tag"; exit 1; fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      # Never pin master to an image that does not exist. multi-platform.yml
+      # builds two architectures on the same event, so the tag lands minutes
+      # after publish; give it a bounded wait rather than racing it.
+      - name: Wait for the manager image to be published
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          URL="https://hub.docker.com/v2/repositories/meshery/meshery-operator/tags/$VERSION"
+          for attempt in $(seq 1 30); do
+            if [ "$(curl -sSL -o /dev/null -w '%{http_code}' "$URL")" = "200" ]; then
+              echo "meshery/meshery-operator:$VERSION is published"; exit 0
+            fi
+            echo "attempt $attempt/30: not yet published, retrying in 60s"
+            sleep 60
+          done
+          echo "::error::meshery/meshery-operator:$VERSION never appeared on Docker Hub; not stamping master onto a nonexistent image"
+          exit 1
+
+      - name: Checkout master
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: master
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+
+      # Re-renders config/manifests/default.yaml from config/default, so the
+      # result is exactly what the manifests-drift gate expects on the next PR.
+      - name: Stamp the released version
+        run: make stamp-release OPERATOR_RELEASE_VERSION=${{ steps.ver.outputs.version }}
+
+      - name: Commit and push (PR fallback)
+        env:
+          GH_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          git config user.name l5io
+          git config user.email ci@meshery.io
+          git add Makefile config bundle
+          if git diff --cached --quiet; then
+            echo "nothing to stamp (master already pins $VERSION)"; exit 0
+          fi
+          git commit --signoff \
+            -m "chore(release): pin rendered artifacts to meshery-operator v${VERSION}"
+          if git push origin master; then
+            echo "stamped master to v${VERSION}"
+          else
+            BRANCH="operator-pin/v${VERSION}"
+            git checkout -b "$BRANCH"
+            git push -f origin "$BRANCH"
+            gh pr create --repo meshery/meshery-operator --base master --head "$BRANCH" \
+              --title "Pin rendered artifacts to meshery-operator v${VERSION}" \
+              --body "Automated stamp from the v${VERSION} release (stamp-release workflow). Advances the pinned manager image in config/manager, config/manifests/default.yaml, and the OLM bundle CSV." \
+              || true
+          fi

@@ -112,3 +112,15 @@ jobs:
                 echo "::error::Generated files are out of date. Run 'make manifests generate operator-manifest' and commit the result."
                 exit 1
               fi
+          # A moving channel tag re-points under running clusters, so an
+          # artifact users applied months ago silently starts pulling a build
+          # it was never rendered for - the ImagePullBackOff/crashloop class of
+          # broken install this pin exists to prevent (#769, docs/release-process.md).
+          # Every one of these is stamped by hack/stamp-operator-version.sh.
+          - name: Verify rendered artifacts pin an immutable image tag
+            run: |
+              if grep -rnE 'image: *[^ ]+:([a-z]+-)?latest' \
+                   config/ bundle/ Makefile; then
+                echo "::error::A rendered artifact references a moving image tag. Pin a published release with 'make stamp-release OPERATOR_RELEASE_VERSION=<version>'."
+                exit 1
+              fi

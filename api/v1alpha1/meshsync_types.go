@@ -39,7 +39,16 @@ type MeshsyncBroker struct {
 type MeshSyncSpec struct {
 	WatchList corev1.ConfigMap `json:"watch-list,omitempty" yaml:"watch-list,omitempty"`
 	Broker    MeshsyncBroker   `json:"broker,omitempty" yaml:"broker,omitempty"`
-	Version   string           `json:"version,omitempty" yaml:"version,omitempty"`
+	// Version pins the MeshSync image tag. When empty the operator deploys the
+	// pinned default MeshSync release it ships with - never a moving channel
+	// tag, so the image a cluster runs cannot change under it on a pod restart.
+	// Use the bare semantic version the registry publishes ("1.0.3"); a leading
+	// "v" is stripped for you, because meshery/meshsync publishes no
+	// v-prefixed image tags even though its releases are named that way. A
+	// moving tag ("edge-latest") is honoured if you ask for one explicitly, and
+	// is then pulled on every restart.
+	// +optional
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=10
 	Size int32 `json:"size,omitempty" yaml:"size,omitempty"`
