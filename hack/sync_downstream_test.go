@@ -22,6 +22,18 @@ const fixtureVersion = "1.0.5"
 // real release so a leftover match cannot be an accident of overlapping digits.
 const stampVersion = "9.9.9"
 
+// prereleaseVersion is stampVersion's release candidate. The semver guard admits
+// prereleases, so every stamped value has to round-trip a version containing a
+// '-' - which is also the character shields.io reads as a badge field separator.
+const prereleaseVersion = "9.9.9-rc.1"
+
+// badgeVersion is the version as it appears inside a shields.io badge path,
+// where a '-' belonging to the value must be doubled to survive the
+// label-message-colour split. Mirrors what helm-docs emits.
+func badgeVersion(version string) string {
+	return strings.ReplaceAll(version, "-", "--")
+}
+
 // versionedChartFiles is the complete set of files under the operator chart that
 // advertise the operator release, with the line each must carry afterwards.
 //
@@ -40,21 +52,21 @@ func versionedChartFiles(version string) map[string][]string {
 			`  tag: "` + version + `"`,
 		},
 		"meshery-operator/README.md": {
-			"![Version: " + version + "](https://img.shields.io/badge/Version-" + version + "-",
-			"![AppVersion: " + version + "](https://img.shields.io/badge/AppVersion-" + version + "-",
+			"![Version: " + version + "](https://img.shields.io/badge/Version-" + badgeVersion(version) + "-informational",
+			"![AppVersion: " + version + "](https://img.shields.io/badge/AppVersion-" + badgeVersion(version) + "-informational",
 			"| image.tag | string | `\"" + version + "\"`",
 		},
 		"meshery-operator/charts/meshery-broker/Chart.yaml": {
 			`appVersion: "` + version + `"`,
 		},
 		"meshery-operator/charts/meshery-broker/README.md": {
-			"![AppVersion: " + version + "](https://img.shields.io/badge/AppVersion-" + version + "-",
+			"![AppVersion: " + version + "](https://img.shields.io/badge/AppVersion-" + badgeVersion(version) + "-informational",
 		},
 		"meshery-operator/charts/meshery-meshsync/Chart.yaml": {
 			`appVersion: "` + version + `"`,
 		},
 		"meshery-operator/charts/meshery-meshsync/README.md": {
-			"![AppVersion: " + version + "](https://img.shields.io/badge/AppVersion-" + version + "-",
+			"![AppVersion: " + version + "](https://img.shields.io/badge/AppVersion-" + badgeVersion(version) + "-informational",
 		},
 	}
 }
@@ -65,11 +77,10 @@ const helmDir = "install/kubernetes/helm"
 // newCheckout materialises a throwaway copy of the fixture meshery checkout and
 // returns its path.
 //
-// The parent chart is pre-vendored at the target version so the script's
-// `helm dependency update` branch is skipped: that step is unrelated to the
-// stamp under test, and depending on it would make these tests need helm on
-// PATH and a network. The skip is the script's own documented behaviour for an
-// already-vendored version, not a test-only bypass.
+// The parent chart starts out pre-vendored at the target version. That is the
+// precondition the script's step-3 skip used to key on, and it is what makes
+// TestSyncDownstreamReVendorsOnContentChange meaningful: the re-vendor there can
+// only have been driven by the chart's content changing, never by the version.
 func newCheckout(t *testing.T, version string) string {
 	t.Helper()
 
@@ -89,6 +100,56 @@ func newCheckout(t *testing.T, version string) string {
 	return dir
 }
 
+// helmCallLog is where the stub records its invocations, at the checkout root so
+// it stays outside the chart tree the assertions walk.
+const helmCallLog = ".helm-calls"
+
+// writeHelmStub installs a stand-in for `helm dependency update` inside the
+// checkout and returns its path.
+//
+// The tests stay hermetic - no helm on PATH, no network - but step 3's decision
+// to re-vendor is behaviour worth asserting rather than avoiding, so the stub
+// records every invocation and reproduces the two side effects the script's own
+// skip condition reads back: the vendored archive and the Chart.lock entry.
+func writeHelmStub(t *testing.T, checkout string) string {
+	t.Helper()
+
+	path := filepath.Join(checkout, ".helm-stub")
+	writeFile(t, path, `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >> "$HELM_STUB_LOG"
+chart="$3"
+mkdir -p "$chart/charts"
+printf 'packaged meshery-operator %s\n' "$HELM_STUB_VERSION" \
+  > "$chart/charts/meshery-operator-$HELM_STUB_VERSION.tgz"
+printf 'dependencies:\n- name: meshery-operator\n  repository: "file://../meshery-operator"\n  version: %s\n' \
+  "$HELM_STUB_VERSION" > "$chart/Chart.lock"
+`)
+	if err := os.Chmod(path, 0o755); err != nil {
+		t.Fatalf("chmod %s: %v", path, err)
+	}
+	return path
+}
+
+// helmCalls returns the arguments of every re-vendor the script has performed
+// against this checkout, across all runs so far.
+func helmCalls(t *testing.T, checkout string) []string {
+	t.Helper()
+
+	body, err := os.ReadFile(filepath.Join(checkout, helmCallLog))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		t.Fatalf("reading %s: %v", helmCallLog, err)
+	}
+	trimmed := strings.TrimSpace(string(body))
+	if trimmed == "" {
+		return nil
+	}
+	return strings.Split(trimmed, "\n")
+}
+
 // runSync invokes hack/sync-downstream.sh against a checkout, returning its
 // combined output and any failure.
 func runSync(t *testing.T, checkout, version string) (string, error) {
@@ -102,7 +163,12 @@ func runSync(t *testing.T, checkout, version string) (string, error) {
 		t.Fatalf("resolving script path: %v", err)
 	}
 	cmd := exec.Command("bash", script, checkout, version)
-	cmd.Env = append(os.Environ(), "CRDS_SRC="+crds)
+	cmd.Env = append(os.Environ(),
+		"CRDS_SRC="+crds,
+		"HELM_BIN="+writeHelmStub(t, checkout),
+		"HELM_STUB_LOG="+filepath.Join(checkout, helmCallLog),
+		"HELM_STUB_VERSION="+version,
+	)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
@@ -118,33 +184,50 @@ func TestSyncDownstreamStampsEveryVersionedFile(t *testing.T) {
 		t.Fatalf("sync-downstream.sh failed: %v\n%s", err, out)
 	}
 
-	for rel, wantLines := range versionedChartFiles(stampVersion) {
+	assertStampedTo(t, checkout, stampVersion)
+	assertNoFileAdvertises(t, checkout, fixtureVersion)
+}
+
+// assertStampedTo checks every value in the contract map, plus the parent
+// meshery chart's dependency on the operator.
+func assertStampedTo(t *testing.T, checkout, version string) {
+	t.Helper()
+
+	for rel, wantLines := range versionedChartFiles(version) {
 		body := readFile(t, filepath.Join(checkout, helmDir, rel))
 		for _, want := range wantLines {
 			if !strings.Contains(body, want) {
-				t.Errorf("%s: not stamped to %s - missing %q", rel, stampVersion, want)
+				t.Errorf("%s: not stamped to %s - missing %q", rel, version, want)
 			}
 		}
 	}
 
-	// The parent meshery chart's dependency on the operator moves too.
 	parent := readFile(t, filepath.Join(checkout, helmDir, "meshery", "Chart.yaml"))
-	if !strings.Contains(parent, "- name: meshery-operator\n    version: "+stampVersion) {
-		t.Errorf("meshery/Chart.yaml: meshery-operator dependency not bumped to %s", stampVersion)
+	if !strings.Contains(parent, "- name: meshery-operator\n    version: "+version) {
+		t.Errorf("meshery/Chart.yaml: meshery-operator dependency not bumped to %s", version)
 	}
+}
 
-	// Nothing anywhere in the chart tree may still advertise the old release.
-	// A per-file assertion cannot catch a versioned line nobody thought to list;
-	// this can, and it is what would have caught the subchart drift years ago.
+// assertNoFileAdvertises sweeps the whole chart tree for a version that should
+// no longer appear anywhere in it. A per-file assertion cannot catch a versioned
+// line nobody thought to list; this can, and it is what would have caught the
+// subchart drift years ago.
+//
+// The fixture is trimmed by a rule independent of what the stamp touches (every
+// non-template file under the operator chart), so this sweep can surface a drift
+// site nobody has thought of yet rather than only re-confirm the known ones.
+func assertNoFileAdvertises(t *testing.T, checkout, version string) {
+	t.Helper()
+
 	for _, rel := range walkFiles(t, filepath.Join(checkout, helmDir)) {
 		if strings.HasSuffix(rel, ".tgz") {
 			continue // opaque archive; step 3 of the script owns it
 		}
 		body := readFile(t, filepath.Join(checkout, helmDir, rel))
 		for i, line := range strings.Split(body, "\n") {
-			if strings.Contains(line, fixtureVersion) {
-				t.Errorf("%s:%d still advertises the old release %s: %s",
-					rel, i+1, fixtureVersion, strings.TrimSpace(line))
+			if strings.Contains(line, version) {
+				t.Errorf("%s:%d still advertises %s: %s",
+					rel, i+1, version, strings.TrimSpace(line))
 			}
 		}
 	}
@@ -177,30 +260,90 @@ func TestSyncDownstreamLeavesSubchartOwnVersionAlone(t *testing.T) {
 // a second run at the same version produces no further changes. The release
 // workflow commits whatever the script leaves behind, so a non-idempotent stamp
 // would churn meshery/meshery on every re-run.
+//
+// Run over a prerelease as well as a plain release: '-' is the shields.io badge
+// field separator, so a badge rewrite that stops at the first one appended the
+// prerelease suffix again on every pass while every plain-version case stayed
+// clean.
 func TestSyncDownstreamIsIdempotent(t *testing.T) {
+	for _, version := range []string{stampVersion, prereleaseVersion} {
+		t.Run(version, func(t *testing.T) {
+			checkout := newCheckout(t, version)
+
+			if out, err := runSync(t, checkout, version); err != nil {
+				t.Fatalf("first run failed: %v\n%s", err, out)
+			}
+			first := snapshot(t, filepath.Join(checkout, helmDir))
+
+			if out, err := runSync(t, checkout, version); err != nil {
+				t.Fatalf("second run failed: %v\n%s", err, out)
+			}
+			second := snapshot(t, filepath.Join(checkout, helmDir))
+
+			for rel, want := range first {
+				if got, ok := second[rel]; !ok {
+					t.Errorf("%s: removed by the second run", rel)
+				} else if got != want {
+					t.Errorf("%s: second run changed it; the stamp is not idempotent", rel)
+				}
+			}
+			for rel := range second {
+				if _, ok := first[rel]; !ok {
+					t.Errorf("%s: created by the second run", rel)
+				}
+			}
+		})
+	}
+}
+
+// TestSyncDownstreamStampsAPrereleaseThenTheFinalRelease walks the sequence a
+// release candidate actually takes: stamp the prerelease, then stamp the final
+// release over the same tree. Both halves have to be exact - a badge rewrite
+// that consumes only up to the first '-' leaves `Version-9.9.9-rc.1-rc.1-` after
+// the first step and a stale `-rc.1` after the second, while the old
+// prefix-only assertion accepted each of them.
+func TestSyncDownstreamStampsAPrereleaseThenTheFinalRelease(t *testing.T) {
+	checkout := newCheckout(t, prereleaseVersion)
+
+	if out, err := runSync(t, checkout, prereleaseVersion); err != nil {
+		t.Fatalf("prerelease stamp failed: %v\n%s", err, out)
+	}
+	assertStampedTo(t, checkout, prereleaseVersion)
+	assertNoFileAdvertises(t, checkout, fixtureVersion)
+
+	// The final release goes over the top of the candidate. Nothing may keep the
+	// candidate's suffix, in a badge or anywhere else.
+	if out, err := runSync(t, checkout, stampVersion); err != nil {
+		t.Fatalf("final release stamp failed: %v\n%s", err, out)
+	}
+	assertStampedTo(t, checkout, stampVersion)
+	assertNoFileAdvertises(t, checkout, "rc.1")
+}
+
+// TestSyncDownstreamReVendorsOnContentChange pins step 3's trigger: the vendored
+// archive folds in every file the stamp rewrites, so "already vendored at this
+// version" is not enough to skip repackaging it. A re-sync of an existing tag
+// (the workflow's supported workflow_dispatch path) would otherwise commit
+// freshly stamped sources beside an archive still carrying the old ones.
+func TestSyncDownstreamReVendorsOnContentChange(t *testing.T) {
+	// Vendored at the target version already, but its subcharts and READMEs still
+	// advertise the previous release - so only a content signal can trigger this.
 	checkout := newCheckout(t, stampVersion)
 
 	if out, err := runSync(t, checkout, stampVersion); err != nil {
 		t.Fatalf("first run failed: %v\n%s", err, out)
 	}
-	first := snapshot(t, filepath.Join(checkout, helmDir))
+	if calls := helmCalls(t, checkout); len(calls) != 1 {
+		t.Fatalf("a stamp that rewrote the chart must re-vendor it; helm calls: %v", calls)
+	}
 
+	// A genuine no-op re-run must still skip, or every re-sync churns the
+	// Chart.lock timestamp and the archive bytes for nothing.
 	if out, err := runSync(t, checkout, stampVersion); err != nil {
 		t.Fatalf("second run failed: %v\n%s", err, out)
 	}
-	second := snapshot(t, filepath.Join(checkout, helmDir))
-
-	for rel, want := range first {
-		if got, ok := second[rel]; !ok {
-			t.Errorf("%s: removed by the second run", rel)
-		} else if got != want {
-			t.Errorf("%s: second run changed it; the stamp is not idempotent", rel)
-		}
-	}
-	for rel := range second {
-		if _, ok := first[rel]; !ok {
-			t.Errorf("%s: created by the second run", rel)
-		}
+	if calls := helmCalls(t, checkout); len(calls) != 1 {
+		t.Errorf("a no-op re-run re-vendored; step 3 must skip an unchanged chart; helm calls: %v", calls)
 	}
 }
 

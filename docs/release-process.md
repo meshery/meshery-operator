@@ -65,6 +65,16 @@ operator chart that advertises an operator release, in one pass:
 | `meshery-operator/charts/*/README.md` | `AppVersion` badge (the subchart's own `Version` badge is left alone) |
 | `meshery/Chart.yaml` + `Chart.lock` + `charts/*.tgz` | the `meshery-operator` dependency version and the vendored archive |
 
+The archive is repackaged whenever the operator chart's **content** changed
+during the run, not merely when the version moved. `helm package` folds in every
+file in the table above, so a re-sync of a tag that is already vendored (the
+`sync-downstream` workflow's `workflow_dispatch` path) would otherwise commit
+freshly stamped sources beside `charts/meshery-operator-<version>.tgz` still
+carrying the old ones - the same drift, relocated into the artifact users
+install from, and invisible to a check that reads the sources. A genuine no-op
+re-run changes nothing and still skips, so the lock timestamp and the archive
+bytes do not churn.
+
 The set is the point. It used to be the first two rows only, and everything
 omitted drifted: both subcharts sat on the moving tag `stable-latest` for an
 unknown number of releases, and the chart README advertised `1.0.0` beside a
@@ -89,11 +99,24 @@ Two properties make the set maintainable rather than another list to rot:
   dependency the walk cannot reach fails the sync instead of drifting.
 - **Every substitution is asserted.** A pattern that silently matches nothing is
   exactly how the README drifted, so the script verifies each rewritten value
-  afterwards and fails the release sync when one no longer matches.
+  afterwards and fails the release sync when one no longer matches. Each
+  assertion pins the whole value it claims to have written - a badge through its
+  trailing `-informational`, not just the version prefix - because an assertion
+  that checks a prefix accepts a mangled remainder.
+
+The two shields.io badges are rewritten by one helper parameterised on the
+label, so their encoding rules live in a single place. Those rules: the message
+segment runs to the colour separator (a version is not `-`-free, and a rewrite
+that stopped at the first `-` appended a prerelease suffix on every pass instead
+of replacing it), and a `-` belonging to the version is doubled inside the badge
+path, which is how shields.io and `helm-docs` both encode it.
 
 `hack/sync_downstream_test.go` drives the script against a verbatim copy of
 meshery master's chart tree (`hack/testdata/meshery/`) and asserts that no file
-in it still advertises the previous release. Refresh that fixture from
+in it still advertises the previous release. The fixture holds every
+non-template file under the operator chart - a rule deliberately independent of
+what the stamp touches, so the sweep can surface a drift site nobody has listed
+yet instead of only re-confirming the known ones. Refresh it from
 `meshery/meshery` master when the chart's shape changes.
 
 The parent README is rewritten value-by-value rather than regenerated: it

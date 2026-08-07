@@ -15,7 +15,8 @@
 #      subchart's Chart.yaml appVersion + README AppVersion badge. See "The
 #      stamped file set" below.
 #   3. Bumps the parent meshery chart's meshery-operator dependency to <version>
-#      and re-vendors it (helm dependency update: Chart.lock + charts/*.tgz).
+#      and re-vendors it (helm dependency update: Chart.lock + charts/*.tgz)
+#      whenever anything under the operator chart actually changed.
 #   4. Removes the legacy duplicate CRD copy at meshery/crds/crds.yaml (the
 #      operator chart is the single source for operator CRDs).
 #
@@ -73,9 +74,25 @@ fi
 CRDS_SRC="${CRDS_SRC:-dist/crds.yaml}"
 [ -f "$CRDS_SRC" ] || { echo "error: $CRDS_SRC not found — run 'make crds' first" >&2; exit 1; }
 
+# HELM_BIN is overridable so the test suite can observe the step-3 re-vendor
+# decision without helm on PATH. The release path always resolves plain `helm`.
+HELM_BIN="${HELM_BIN:-helm}"
+
 OPERATOR_CHART="$MESHERY_DIR/install/kubernetes/helm/meshery-operator"
 PARENT_CHART="$MESHERY_DIR/install/kubernetes/helm/meshery"
 [ -d "$OPERATOR_CHART" ] || { echo "error: $OPERATOR_CHART missing — is $MESHERY_DIR a meshery/meshery checkout?" >&2; exit 1; }
+
+# The operator chart's content as this run found it, for the step-3 re-vendor
+# decision. Snapshotted before the CRD copy rather than after, because the CRD
+# bundles are packaged into the archive too.
+#
+# Compare the chart against its own prior content, not against git HEAD: the
+# sync workflow runs against a checkout that may already carry unrelated staged
+# or unstaged edits, and a release-critical decision must not depend on ambient
+# worktree state. Same reasoning, same shape, as the BEFORE/checksum() pair in
+# the sibling hack/stamp-operator-version.sh.
+chart_checksum() { find "$OPERATOR_CHART" -type f -exec shasum {} + | sort | shasum; }
+CHART_BEFORE="$(chart_checksum)"
 
 # 1. CRDs: install-time copy + the Job-consumed copy. Byte-identical by construction.
 mkdir -p "$OPERATOR_CHART/crds" "$OPERATOR_CHART/files"
@@ -85,6 +102,14 @@ cp "$CRDS_SRC" "$OPERATOR_CHART/files/crds.yaml"
 # VERSION_RE is $VERSION with its dots escaped, for the assertions below: an
 # unescaped 1.0.5 is an ERE that also matches 1x0y5.
 VERSION_RE="$(printf '%s' "$VERSION" | sed 's/\./\\./g')"
+
+# BADGE_VERSION is $VERSION as shields.io encodes it inside a static badge path.
+# That path is label-message-colour, so a '-' belonging to the value itself must
+# be doubled or the badge renders as the label "Version-1.0.6" beside the message
+# "rc.1". helm-docs escapes it the same way (`replace "-" "--"`), so a stamped
+# badge stays byte-identical to what regenerating the README would produce.
+BADGE_VERSION="$(printf '%s' "$VERSION" | sed 's/-/--/g')"
+BADGE_VERSION_RE="$(printf '%s' "$BADGE_VERSION" | sed 's/\./\\./g')"
 
 # assert_stamped fails the sync when a file the stamp claims to have rewritten
 # does not actually carry $VERSION afterwards. Without it a pattern that stops
@@ -112,24 +137,35 @@ stamp_app_version() {
   assert_stamped "$chart_yaml" "$description" "^appVersion: \"${VERSION_RE}\"\$"
 }
 
-# stamp_app_version_badge rewrites the helm-docs `AppVersion` badge in a chart
-# README. The `Version` badge beside it is deliberately left alone - on a
-# subchart it advertises the subchart's own version, and on the parent it is
-# stamped explicitly below. The substitution anchors on the leading `![` so the
-# AppVersion pattern cannot also match the Version badge, whose label is a
-# suffix of it.
+# stamp_badge rewrites one helm-docs shields.io badge in a chart README, selected
+# by its label. `AppVersion` is the operator release on the parent and on every
+# subchart; `Version` is the chart's own version, so only the parent's is stamped
+# and a subchart's is deliberately left alone (it tracks the subchart lifecycle).
+# One helper for both because the two rewrites differ only in that label, and a
+# second copy of this regex is a second place for its encoding rules to rot.
+#
+# Two things the pattern has to get right:
+#   - It anchors on the leading `![` so the `Version` pattern cannot also match
+#     the `AppVersion` badge, whose label ends with it.
+#   - It consumes the whole message segment through the trailing `-informational`
+#     rather than stopping at the first `-`. Stopping early left a prerelease
+#     appending its suffix on every pass (`Version-1.0.6-rc.1-rc.1-`) instead of
+#     replacing it, and left a stale `-rc.1` behind when the final release was
+#     stamped over it.
 #
 # A chart with no README is not an error; a README whose badge stopped matching
-# is, which is what the assertion covers.
-stamp_app_version_badge() {
-  local readme="$1"
+# is, which is what the assertion covers - pinned through `-informational` so a
+# mangled message segment cannot satisfy it on the version prefix alone.
+stamp_badge() {
+  local readme="$1" label="$2"
   [ -f "$readme" ] || return 0
-  VERSION="$VERSION" perl -pi -e '
-    my $v = $ENV{VERSION};
-    s{!\[AppVersion: [^\]]*\]\(https://img\.shields\.io/badge/AppVersion-[^-)]*-}{![AppVersion: $v](https://img.shields.io/badge/AppVersion-$v-}g;
+  LABEL="$label" VERSION="$VERSION" BADGE_VERSION="$BADGE_VERSION" perl -pi -e '
+    my ($l, $v, $b) = @ENV{qw(LABEL VERSION BADGE_VERSION)};
+    s{!\[\Q$l\E: [^\]]*\]\(https://img\.shields\.io/badge/\Q$l\E-[^)]*?-informational}
+     {![$l: $v](https://img.shields.io/badge/$l-$b-informational}g;
   ' "$readme"
-  assert_stamped "$readme" "AppVersion badge" \
-    "!\[AppVersion: ${VERSION_RE}\]\(https://img\.shields\.io/badge/AppVersion-${VERSION_RE}-"
+  assert_stamped "$readme" "$label badge" \
+    "!\[${label}: ${VERSION_RE}\]\(https://img\.shields\.io/badge/${label}-${BADGE_VERSION_RE}-informational"
 }
 
 # 2. Parent chart version + appVersion. Only rewrite the top-level keys.
@@ -159,7 +195,7 @@ STAMPED_SUBCHARTS=" "
 for subchart_yaml in "$OPERATOR_CHART"/charts/*/Chart.yaml; do
   [ -f "$subchart_yaml" ] || continue
   stamp_app_version "$subchart_yaml" "subchart appVersion"
-  stamp_app_version_badge "$(dirname "$subchart_yaml")/README.md"
+  stamp_badge "$(dirname "$subchart_yaml")/README.md" AppVersion
   STAMPED_SUBCHARTS+="$(basename "$(dirname "$subchart_yaml")") "
 done
 
@@ -194,14 +230,12 @@ README="$OPERATOR_CHART/README.md"
   echo "error: $README missing - the chart README advertises the release and must be stamped with it" >&2
   exit 1
 }
+stamp_badge "$README" Version
+stamp_badge "$README" AppVersion
 VERSION="$VERSION" perl -pi -e '
   my $v = $ENV{VERSION};
-  s{!\[Version: [^\]]*\]\(https://img\.shields\.io/badge/Version-[^-)]*-}{![Version: $v](https://img.shields.io/badge/Version-$v-}g;
   s{^\| image\.tag \| string \| `"[^"]*"`}{| image.tag | string | `"$v"`};
 ' "$README"
-stamp_app_version_badge "$README"
-assert_stamped "$README" "Version badge" \
-  "!\[Version: ${VERSION_RE}\]\(https://img\.shields\.io/badge/Version-${VERSION_RE}-"
 assert_stamped "$README" "image.tag row" \
   "^\| image\.tag \| string \| \`\"${VERSION_RE}\"\`"
 
@@ -209,13 +243,23 @@ assert_stamped "$README" "image.tag row" \
 #    the adjacent name key so only the meshery-operator entry's version changes.
 #    helm dependency update leaves the repository-less adapter deps alone
 #    ("Assuming it exists in the charts directory") and repackages only the
-#    file://-sourced operator chart + Chart.lock. Skipped when already vendored
-#    at $VERSION so re-runs don't churn the lock timestamp / tgz bytes.
+#    file://-sourced operator chart + Chart.lock.
+#
+#    The trigger is CONTENT, not version. `helm package` folds in the CRD
+#    bundles, the subchart Chart.yamls and every README this script rewrites, so
+#    a re-sync of a tag that is already vendored (the workflow's supported
+#    workflow_dispatch path) would otherwise leave the archive carrying pre-stamp
+#    bytes beside freshly stamped sources. meshery's appVersion check reads the
+#    sources and would pass, so the drift this script exists to prevent would
+#    survive silently inside the artifact users actually install from. A genuine
+#    no-op re-run still changes nothing and still skips, so the lock timestamp
+#    and tgz bytes do not churn.
 perl -0pi -e "s/(name: meshery-operator\n(?:[^\n]*\n)*?\s*version: )[^\n]*/\${1}$VERSION/" "$PARENT_CHART/Chart.yaml"
-if [ ! -f "$PARENT_CHART/charts/meshery-operator-$VERSION.tgz" ] \
-   || ! grep -A2 'name: meshery-operator' "$PARENT_CHART/Chart.lock" 2>/dev/null | grep -q "version: $VERSION"; then
+if [ "$(chart_checksum)" != "$CHART_BEFORE" ] \
+   || [ ! -f "$PARENT_CHART/charts/meshery-operator-$VERSION.tgz" ] \
+   || ! grep -A2 'name: meshery-operator' "$PARENT_CHART/Chart.lock" 2>/dev/null | grep -Eq "version: ${VERSION_RE}$"; then
   rm -f "$PARENT_CHART"/charts/meshery-operator-*.tgz
-  helm dependency update "$PARENT_CHART" >/dev/null
+  "$HELM_BIN" dependency update "$PARENT_CHART" >/dev/null
 fi
 
 # 4. Retire the legacy duplicate CRD copy in the parent chart.
