@@ -12,9 +12,9 @@
 [![Build Status](https://github.com/meshery/meshery-operator/actions/workflows/build-and-release.yml/badge.svg)](https://github.com/meshery/meshery-operator/actions)
 [![GitHub](https://img.shields.io/github/license/meshery/meshery-operator.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/meshery/meshery-operator/branch/master/graph/badge.svg?token=TJZ2L4JHSA)](https://codecov.io/gh/meshery/meshery-operator)
-[![Website](https://img.shields.io/website/https/meshery.io/meshery.svg)](https://meshery.io)
-[![Twitter Follow](https://img.shields.io/twitter/follow/meshery.svg?label=Follow&style=social)](https://x.com/intent/follow?screen_name=mesheryio)
-<!--[![Discuss Users](https://img.shields.io/discourse/users?server=http%3A%2F%2Fdiscuss.meshery.io)](http://discuss.meshery.io)-->
+[![Website](https://img.shields.io/website/https/meshery.io)](https://meshery.io)
+[![X Follow](https://img.shields.io/twitter/follow/meshery.svg?label=Follow&style=social)](https://x.com/intent/follow?screen_name=mesheryio)
+[![Discuss Users](https://img.shields.io/discourse/users?server=http%3A%2F%2Fdiscuss.meshery.io)](https://discuss.meshery.io)
 [![Slack](https://img.shields.io/badge/Slack-@meshery.svg?logo=slack)](http://slack.meshery.io)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3564/badge)](https://bestpractices.coreinfrastructure.org/projects/3564)
 
