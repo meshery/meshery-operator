@@ -1,7 +1,9 @@
 # Testing
 
 The operator is tested in three tiers. The unit and envtest tiers run in CI on
-every PR and gate merges; the kind e2e tier validates the full lifecycle.
+every PR and gate merges; the kind e2e tier validates the full lifecycle. The
+release-time scripts in `hack/` are covered separately - see
+[Release scripts](#release-scripts-hack).
 
 ## 1. Unit (fast, no cluster)
 
@@ -76,6 +78,60 @@ being Available proves nothing about broker connectivity.
 > richer matrix (ClusterIP/NodePort/LoadBalancer, networking reconfiguration,
 > conversion/upgrade, finalizer cleanup, leader election) and CI promotion are
 > delivered in WS-7 (#789).
+
+## Release scripts (`hack/`)
+
+The release-time shell scripts are covered by ordinary Go tests in the same
+directory, so they run under `go test ./...`, `make test`, and CI without a
+separate shell harness.
+
+```bash
+go test ./hack/...
+```
+
+`make lint` covers this code too. `hack` used to sit in `.golangci.yml`'s excluded
+paths, which was harmless while the directory held only shell scripts and
+`boilerplate.go.txt`, but would have left every line of Go added here
+unlinted - so the exclusion is gone. `gosec`'s path-and-subprocess rules
+(`G204`, `G301`, `G302`, `G304`, `G306`, `G703`) are excluded for **`hack`'s own
+test files only** (`^hack/.*_test\.go$`): copying a fixture tree into
+`t.TempDir()` and shelling out to the real script is what this harness is for.
+The scope is deliberately not a bare `_test.go` - that matches every suite in the
+repo and would quietly stop `gosec` reporting these rules in `controllers/`,
+`api/` and `pkg/` as well. Those suites, and all shipped code, still fail the
+build on the same patterns.
+
+`hack/sync_downstream_test.go` drives `hack/sync-downstream.sh` against
+`hack/testdata/meshery/` - a verbatim copy of `meshery/meshery` master's
+`install/kubernetes/helm` chart tree - and asserts that a single stamp pass
+leaves no file still advertising the previous release, that a subchart's own
+`version` is untouched, that a second pass changes nothing (for a plain release
+and for a prerelease, whose `-` is also the shields.io badge separator), that a
+final release stamped over a candidate leaves no trace of it, that the vendored
+archive is repackaged whenever the chart's content changed *and* whenever that
+archive is missing or `Chart.lock` names another version (each of those two
+repair clauses isolated by a case that keeps the content settled, so only the
+artifact state can decide), that a subchart directory the parent does not
+declare - and a declared dependency the walk cannot reach - both fail the sync,
+that a stamp pattern which stops matching fails loudly instead of silently, and
+that a version which is not bare semver - a moving channel tag - is refused
+before any file is touched. The set of files and why it is the set:
+[release-process.md § The stamped chart file
+set](release-process.md#the-stamped-chart-file-set).
+
+The tests need `bash` and `perl` (present on every supported dev platform and on
+the CI runners) but neither `helm` nor a network: the script resolves helm
+through a `HELM_BIN` override that the tests point at a stub, which records the
+invocation instead of packaging anything. That keeps the re-vendor decision
+asserted rather than avoided.
+
+**Refresh the fixture from `meshery/meshery` master when the chart's shape
+changes** - a stale fixture proves the stamp against files that no longer exist,
+which is the failure these tests are here to prevent. The fixture holds every
+non-template file under `install/kubernetes/helm/meshery-operator/`, a rule
+chosen to be independent of what the stamp happens to touch; the exact file list
+and refresh command are in
+[`hack/testdata/meshery/README.md`](../hack/testdata/meshery/README.md).
 
 ## Conventions
 

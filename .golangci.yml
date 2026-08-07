@@ -15,10 +15,24 @@ linters:
       - vendor
       - bundle
       - config
-      - hack
       - helpers
       - img
-  
+
+    rules:
+      # The release-script tests in hack/ copy a fixture chart tree into
+      # t.TempDir() and shell out to run the real script over it, so paths built
+      # from variables, an executable stub and group-readable fixture files are
+      # what the harness is for, not a risk.
+      #
+      # Scoped to hack/'s own test files, not to _test.go everywhere: a bare
+      # `_test\.go` matches every suite in the repo (controllers/, api/, pkg/),
+      # so it would silently stop gosec reporting these rules across code this
+      # exception was never meant to cover.
+      - path: ^hack/.*_test\.go$
+        linters:
+          - gosec
+        text: "G(204|301|302|304|306|703)"
+
   settings:
     goconst:
       min-len: 3

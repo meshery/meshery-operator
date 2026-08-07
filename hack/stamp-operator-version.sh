@@ -35,13 +35,12 @@
 set -euo pipefail
 
 VERSION="${1:?usage: hack/stamp-operator-version.sh <version>}"
-case "$VERSION" in
-  v*) echo "error: version must be bare (1.2.3), got '$VERSION'" >&2; exit 1 ;;
-esac
-if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
-  echo "error: '$VERSION' is not a semantic version; the manager image must never be pinned to a moving tag" >&2
-  exit 1
-fi
+
+# Shared with hack/sync-downstream.sh: both stamp a version into artifacts users
+# apply, so both must accept exactly the same set of versions.
+# shellcheck source=hack/lib/release-version.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/release-version.sh"
+require_release_version "$VERSION" "the manager image must never be pinned to a moving tag" || exit 1
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR"

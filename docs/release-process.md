@@ -37,10 +37,10 @@ the only reliable attach point.
    block the sync below).
 2. **Downstream sync** - checks out `meshery/meshery` and runs
    `hack/sync-downstream.sh`, which updates the `meshery-operator` chart's
-   `crds/crds.yaml` + `files/crds.yaml`, stamps the chart's
-   `version`/`appVersion`/`values.yaml image.tag` to the released version,
-   bumps the parent `meshery` chart's dependency, and re-vendors it
-   (`Chart.lock` + `charts/meshery-operator-<version>.tgz`). The result is
+   `crds/crds.yaml` + `files/crds.yaml`, stamps [the whole versioned file
+   set](#the-stamped-chart-file-set) to the released version, bumps the parent
+   `meshery` chart's dependency, and re-vendors it (`Chart.lock` +
+   `charts/meshery-operator-<version>.tgz`). The result is
    committed as `l5io <ci@meshery.io>` with `--signoff` and pushed to master
    (same convention as `error-ref-publisher.yaml`). If the push is rejected
    (e.g. branch protection), it opens an automated PR instead.
@@ -50,6 +50,93 @@ the only reliable attach point.
    `helm install meshery-operator oci://ghcr.io/meshery/charts/meshery-operator --version <version>`.
    The push is best-effort (a registry-permission failure warns without
    failing the sync).
+
+## The stamped chart file set
+
+`hack/sync-downstream.sh` rewrites **every** file in `meshery/meshery`'s
+operator chart that advertises an operator release, in one pass:
+
+| File | What is stamped |
+|---|---|
+| `meshery-operator/Chart.yaml` | `version:`, `appVersion:` |
+| `meshery-operator/values.yaml` | `image.tag` |
+| `meshery-operator/README.md` | `Version` + `AppVersion` badges, the `image.tag` values row |
+| `meshery-operator/charts/*/Chart.yaml` | `appVersion:` (the subchart's own `version:` is left alone - it tracks the subchart's lifecycle) |
+| `meshery-operator/charts/*/README.md` | `AppVersion` badge (the subchart's own `Version` badge is left alone) |
+| `meshery/Chart.yaml` + `Chart.lock` + `charts/*.tgz` | the `meshery-operator` dependency version and the vendored archive |
+
+The archive is repackaged whenever the operator chart's **content** changed
+during the run, not merely when the version moved. `helm package` folds in every
+file in the table above, so a re-sync of a tag that is already vendored (the
+`sync-downstream` workflow's `workflow_dispatch` path) would otherwise commit
+freshly stamped sources beside `charts/meshery-operator-<version>.tgz` still
+carrying the old ones - the same drift, relocated into the artifact users
+install from, and invisible to a check that reads the sources. A genuine no-op
+re-run changes nothing and still skips, so the lock timestamp and the archive
+bytes do not churn.
+
+The set is the point. It used to be the first two rows only, and everything
+omitted drifted: both subcharts sat on the moving tag `stable-latest` for an
+unknown number of releases, and the chart README advertised `1.0.0` beside a
+`Chart.yaml` that read `1.0.5` (meshery/meshery-operator#878). A published Helm
+archive is immutable, so an `appVersion` naming a moving tag advertises a
+different application at every publish; a README that disagrees with
+`values.yaml` is simply wrong about what the chart installs.
+
+Neither subchart deploys a workload - each ships one custom resource (`Broker`,
+`MeshSync`) whose images the operator's controllers choose. So the only honest
+reading of a subchart `appVersion` is "the operator release whose controllers
+reconcile this CR", which is the value the parent already gets.
+`meshery/meshery` asserts that agreement in CI
+(`install/scripts/check-operator-chart-appversions.sh`); this stamp is what
+keeps the assertion true across releases.
+
+Two properties make the set maintainable rather than another list to rot:
+
+- **Subcharts are discovered, not named - and the set is checked both ways.**
+  The script walks `charts/*/` and cross-checks the result against the operator
+  `Chart.yaml`'s declared dependencies in *both* directions, because each
+  direction is a different way the chart ends up lying about what it installs.
+  Declared but not discovered - a dependency vendored as a `.tgz` rather than
+  unpacked - is never reached by the walk and keeps its old `appVersion`; that
+  is the original drift. Discovered but not declared would have the walk stamp
+  the operator release onto a chart that installs something else (a vendored
+  upstream NATS chart, mirroring what this repo keeps under
+  `pkg/broker/chart`). Both fail the sync: a third operator-owned subchart is
+  stamped the day it appears, and a chart that does not track the operator
+  release is rejected rather than mislabelled or silently skipped.
+- **Every substitution is asserted.** A pattern that silently matches nothing is
+  exactly how the README drifted, so the script verifies each rewritten value
+  afterwards and fails the release sync when one no longer matches. Each
+  assertion pins the whole value it claims to have written - a badge through its
+  trailing `-informational`, not just the version prefix - because an assertion
+  that checks a prefix accepts a mangled remainder. Where a file has
+  near-identical neighbours the assertion reads the specific entry back out
+  rather than searching the file: the parent chart declares a dozen
+  dependencies, so any of their `version:` keys would satisfy a file-wide match
+  while the `meshery-operator` entry sat at the previous release - and with a
+  non-exact constraint helm resolves that stale entry and vendors the previous
+  archive without complaint.
+
+The two shields.io badges are rewritten by one helper parameterised on the
+label, so their encoding rules live in a single place. Those rules: the message
+segment runs to the colour separator (a version is not `-`-free, and a rewrite
+that stopped at the first `-` appended a prerelease suffix on every pass instead
+of replacing it), and a `-` belonging to the version is doubled inside the badge
+path, which is how shields.io and `helm-docs` both encode it.
+
+The set is enforced by `hack/sync_downstream_test.go`, which drives the script
+against a fixture copy of meshery master's chart tree and asserts that no file
+in it still advertises the previous release - including files the stamp has no
+opinion about, so the sweep can surface a drift site nobody has listed yet. What
+the fixture holds and when to refresh it: [testing.md § Release
+scripts](testing.md#release-scripts-hack).
+
+The parent README is rewritten value-by-value rather than regenerated: it
+carries hand-written prose that `helm-docs` would delete, because `values.yaml`
+has no `# --` description comments and the chart has no `README.md.gotmpl`. When
+that migration lands downstream, this part of the stamp collapses to a
+regenerate step.
 
 ## Two chart version streams - two channels
 
@@ -132,6 +219,19 @@ Guard rails, so a regression cannot land quietly:
 
 - `make stamp-release` refuses anything that is not a bare semver, so the
   manager pin cannot be set to a channel tag even by hand.
+- `hack/sync-downstream.sh` applies the *same* guard - literally the same code -
+  to the version it stamps downstream, so a channel tag cannot reach the operator
+  chart's `appVersion`/`image.tag` and be published inside an immutable archive.
+  Both scripts source `hack/lib/release-version.sh`; they used to carry a copy
+  each, which is a drift waiting to happen when only one gets fixed.
+  `TestReleaseVersionGuardIsShared` fails if either stops sourcing it.
+- That guard is the SemVer grammar, not a "digits, dots and a suffix"
+  approximation. `01.2.3`, `1.2.3-01` and `1.0.5-.` are rejected as firmly as
+  `stable-latest` is: they are not versions either, and they are worse in one
+  respect - the stamp would succeed and write the artifact, so the first sign of
+  trouble is helm or an image pull failing opaquely on something that never
+  existed. Build metadata (`+...`) is rejected too, because the same value
+  becomes a container image tag and `+` is not legal in one.
 - `make docker-push` and `make docker-buildx` refuse to run while `IMG` is
   still the `OPERATOR_RELEASE_VERSION`-derived default, so a bare push cannot
   overwrite a released image with a local build. Pass an explicit
