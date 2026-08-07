@@ -115,8 +115,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/maruel/natural v1.1.1 h1:Hja7XhhmvEFhcByqDoHz9QZbkWey+COd9xWfCfn1ioo=
 github.com/maruel/natural v1.1.1/go.mod h1:v+Rfd79xlw1AgVBjbO0BEQmptqb5HvL/k9GRHB7ZKEg=
-github.com/meshery/meshkit v1.0.20 h1:5hr8HzdF+WyeURl87DsWufOMfC7+seIWyuIIg6Paa8Y=
-github.com/meshery/meshkit v1.0.20/go.mod h1:bKbYWZHFpc86Paq5Bs5IT8E7xeyG5DC4baKkgAiLm+Y=
+github.com/meshery/meshkit v1.0.22 h1:c8CgO2+mdF6krvAdA66FF5ScmIHBkTEVt3MtkUmOJuU=
+github.com/meshery/meshkit v1.0.22/go.mod h1:2SzXjDsxZOraA9YbnqFzHS+1Tk14zsLuePJzHuZ1SRU=
 github.com/mfridman/tparse v0.18.0 h1:wh6dzOKaIwkUGyKgOntDW4liXSo37qg5AXbIhkMV3vE=
 github.com/mfridman/tparse v0.18.0/go.mod h1:gEvqZTuCgEhPbYk/2lS3Kcxg1GmTxxU7kTC8DvP0i/A=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
