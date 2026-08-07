@@ -581,15 +581,70 @@ func TestSyncDownstreamFailsOnUndeclaredSubchart(t *testing.T) {
 func TestSyncDownstreamRejectsMovingTags(t *testing.T) {
 	for _, version := range []string{"stable-latest", "edge-latest", "latest", "v1.0.5"} {
 		t.Run(version, func(t *testing.T) {
-			checkout := newCheckout(t, stampVersion)
-			out, err := runSync(t, checkout, version)
-			if err == nil {
-				t.Fatalf("expected %q to be rejected, got success:\n%s", version, out)
-			}
-			if strings.Contains(readFile(t, filepath.Join(checkout, helmDir, "meshery-operator", "Chart.yaml")), version) {
-				t.Errorf("%q reached the chart despite the rejection", version)
-			}
+			assertVersionRejected(t, version)
 		})
+	}
+}
+
+// TestSyncDownstreamRejectsMalformedVersions covers the other half of the guard.
+// Moving tags are the failure it was written for, but a value can be neither a
+// moving tag nor a version - and a loose "digits, dots and a suffix" pattern
+// waves those through. They are worse than a moving tag in one respect: the
+// stamp succeeds and the chart is written, so the first sign of trouble is helm
+// or an image pull failing opaquely on a version that never existed.
+func TestSyncDownstreamRejectsMalformedVersions(t *testing.T) {
+	for _, version := range []string{
+		"1.0",         // too few components
+		"1.0.5.1",     // too many
+		"1.0.5-",      // prerelease marker with no identifier
+		"1.0.5-.",     // empty prerelease identifiers
+		"1.0.5-rc..1", // empty identifier between dots
+		"01.2.3",      // leading zero in a numeric identifier
+		"1.02.3",      //
+		"1.2.03",      //
+		"1.2.3-01",    // leading zero in a numeric prerelease identifier
+		"1.2.3+build", // build metadata is not legal in a container image tag
+		"",            // empty
+		"1.2.x",       // non-numeric component
+	} {
+		t.Run(version, func(t *testing.T) {
+			assertVersionRejected(t, version)
+		})
+	}
+}
+
+// TestSyncDownstreamAcceptsValidSemver is the guard's other side: tightening a
+// pattern is only safe if it still admits every version a release can legitimately
+// carry, so the prerelease forms the release process can produce are pinned too.
+func TestSyncDownstreamAcceptsValidSemver(t *testing.T) {
+	for _, version := range []string{"1.0.5", "0.0.0", "10.20.30", "1.2.3-rc.1", "1.2.3-0.3.7", "1.2.3-alpha-1"} {
+		t.Run(version, func(t *testing.T) {
+			checkout := newCheckout(t, version)
+			if out, err := runSync(t, checkout, version); err != nil {
+				t.Fatalf("valid version %q was rejected: %v\n%s", version, err, out)
+			}
+			assertStampedTo(t, checkout, version)
+		})
+	}
+}
+
+// assertVersionRejected runs a stamp that must fail, and checks the chart was
+// left alone. Refusing is only half of it: a guard that rejected the version
+// after writing some of the files would leave the chart in exactly the
+// half-stamped state this script exists to prevent.
+func assertVersionRejected(t *testing.T, version string) {
+	t.Helper()
+
+	checkout := newCheckout(t, stampVersion)
+	chart := filepath.Join(checkout, helmDir, "meshery-operator", "Chart.yaml")
+	before := readFile(t, chart)
+
+	out, err := runSync(t, checkout, version)
+	if err == nil {
+		t.Fatalf("expected %q to be rejected, got success:\n%s", version, out)
+	}
+	if got := readFile(t, chart); got != before {
+		t.Errorf("%q was rejected but the chart was already rewritten:\n%s", version, got)
 	}
 }
 

@@ -38,7 +38,17 @@ VERSION="${1:?usage: hack/stamp-operator-version.sh <version>}"
 case "$VERSION" in
   v*) echo "error: version must be bare (1.2.3), got '$VERSION'" >&2; exit 1 ;;
 esac
-if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+# The SemVer grammar for a release version, kept identical to the one in the
+# sibling hack/sync-downstream.sh - the two guards protect the same invariant on
+# either side of the release and must not drift. A loose "digits, dots and a
+# suffix" approximation accepts 01.2.3, 1.2.3-01 and 1.2.3-. , none of which is a
+# version; each would be pinned into an artifact and fail later, opaquely, at
+# image pull. Build metadata (+...) is deliberately not accepted: this value
+# becomes a container image tag, and '+' is not legal in one.
+SEMVER_RE='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+SEMVER_RE="$SEMVER_RE"'(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+SEMVER_RE="$SEMVER_RE"'(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$'
+if ! printf '%s' "$VERSION" | grep -Eq "$SEMVER_RE"; then
   echo "error: '$VERSION' is not a semantic version; the manager image must never be pinned to a moving tag" >&2
   exit 1
 fi

@@ -63,8 +63,20 @@ case "$VERSION" in
 esac
 # A moving channel tag must never reach a published chart: the archive is
 # immutable but the tag is not. Same guard, same reason, as the sibling
-# hack/stamp-operator-version.sh applies to the in-repo artifacts.
-if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+# hack/stamp-operator-version.sh applies to the in-repo artifacts - keep the two
+# patterns identical.
+#
+# This is the SemVer grammar for a release version, not a loose "digits, dots and
+# a suffix" approximation. The loose form accepted 01.2.3, 1.2.3-01 and 1.2.3-. ,
+# none of which is a version: each would be stamped into the chart and only fail
+# later, opaquely, when helm or an image pull could not resolve it. Numeric
+# identifiers therefore reject leading zeros, and every prerelease identifier
+# must be non-empty. Build metadata (+...) is deliberately NOT accepted: this
+# value also becomes a container image tag, and '+' is not legal in one.
+SEMVER_RE='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+SEMVER_RE="$SEMVER_RE"'(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+SEMVER_RE="$SEMVER_RE"'(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$'
+if ! printf '%s' "$VERSION" | grep -Eq "$SEMVER_RE"; then
   echo "error: '$VERSION' is not a semantic version; a chart must never advertise a moving tag" >&2
   exit 1
 fi

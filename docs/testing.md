@@ -93,10 +93,13 @@ go test ./hack/...
 paths, which was harmless while the directory held only shell scripts and
 `boilerplate.go.txt`, but would have left every line of Go added here
 unlinted - so the exclusion is gone. `gosec`'s path-and-subprocess rules
-(`G204`, `G301`, `G302`, `G304`, `G306`, `G703`) are excluded for `_test.go`
-files only: copying a fixture tree into `t.TempDir()` and shelling out to the
-real script is what this harness is for. The same patterns in shipped code still
-fail the build.
+(`G204`, `G301`, `G302`, `G304`, `G306`, `G703`) are excluded for **`hack`'s own
+test files only** (`^hack/.*_test\.go$`): copying a fixture tree into
+`t.TempDir()` and shelling out to the real script is what this harness is for.
+The scope is deliberately not a bare `_test.go` - that matches every suite in the
+repo and would quietly stop `gosec` reporting these rules in `controllers/`,
+`api/` and `pkg/` as well. Those suites, and all shipped code, still fail the
+build on the same patterns.
 
 `hack/sync_downstream_test.go` drives `hack/sync-downstream.sh` against
 `hack/testdata/meshery/` - a verbatim copy of `meshery/meshery` master's
