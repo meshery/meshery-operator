@@ -93,16 +93,30 @@ keeps the assertion true across releases.
 
 Two properties make the set maintainable rather than another list to rot:
 
-- **Subcharts are discovered, not named.** The script walks `charts/*/`, then
-  cross-checks the result against the parent `Chart.yaml`'s declared
-  dependencies, so a third subchart is stamped the day it appears and a
-  dependency the walk cannot reach fails the sync instead of drifting.
+- **Subcharts are discovered, not named - and the set is checked both ways.**
+  The script walks `charts/*/` and cross-checks the result against the operator
+  `Chart.yaml`'s declared dependencies in *both* directions, because each
+  direction is a different way the chart ends up lying about what it installs.
+  Declared but not discovered - a dependency vendored as a `.tgz` rather than
+  unpacked - is never reached by the walk and keeps its old `appVersion`; that
+  is the original drift. Discovered but not declared would have the walk stamp
+  the operator release onto a chart that installs something else (a vendored
+  upstream NATS chart, mirroring what this repo keeps under
+  `pkg/broker/chart`). Both fail the sync: a third operator-owned subchart is
+  stamped the day it appears, and a chart that does not track the operator
+  release is rejected rather than mislabelled or silently skipped.
 - **Every substitution is asserted.** A pattern that silently matches nothing is
   exactly how the README drifted, so the script verifies each rewritten value
   afterwards and fails the release sync when one no longer matches. Each
   assertion pins the whole value it claims to have written - a badge through its
   trailing `-informational`, not just the version prefix - because an assertion
-  that checks a prefix accepts a mangled remainder.
+  that checks a prefix accepts a mangled remainder. Where a file has
+  near-identical neighbours the assertion reads the specific entry back out
+  rather than searching the file: the parent chart declares a dozen
+  dependencies, so any of their `version:` keys would satisfy a file-wide match
+  while the `meshery-operator` entry sat at the previous release - and with a
+  non-exact constraint helm resolves that stale entry and vendors the previous
+  archive without complaint.
 
 The two shields.io badges are rewritten by one helper parameterised on the
 label, so their encoding rules live in a single place. Those rules: the message

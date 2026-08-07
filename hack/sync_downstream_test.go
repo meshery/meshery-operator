@@ -5,6 +5,7 @@
 package hack
 
 import (
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -355,15 +356,17 @@ func TestSyncDownstreamReVendorsOnContentChange(t *testing.T) {
 	}
 }
 
-// TestSyncDownstreamReVendorsOnVersionChange is the other half of step 3's
-// trigger. Content is what the previous test varies; here the chart is
-// unstamped-but-unvendored, so only the version signal can fire.
+// TestSyncDownstreamReVendorsOnVersionChange walks the release path a version
+// bump takes. It does NOT isolate step 3's version clause: a bump rewrites every
+// file in the contract map, so the content clause short-circuits the decision
+// first. What it pins is the end-to-end outcome around the repackage - the
+// archive vendored under the old name is gone and the new name is in place, so a
+// bump cannot leave two archives behind for helm to choose between. The clauses
+// the content signal hides are isolated in
+// TestSyncDownstreamReVendorsOnMissingOrStaleArtifact.
 func TestSyncDownstreamReVendorsOnVersionChange(t *testing.T) {
 	checkout := newCheckout(t, stampVersion)
 
-	// Stamp once so the chart content settles, then move to a different version:
-	// the tree is now vendored at the old version and nothing but the version
-	// bump can drive the repackage.
 	if out, err := runSync(t, checkout, stampVersion); err != nil {
 		t.Fatalf("first run failed: %v\n%s", err, out)
 	}
@@ -374,6 +377,76 @@ func TestSyncDownstreamReVendorsOnVersionChange(t *testing.T) {
 	}
 	if got := len(helmCalls(t, checkout)) - before; got != 1 {
 		t.Errorf("a version bump must re-vendor exactly once, got %d further helm calls", got)
+	}
+
+	vendored := filepath.Join(checkout, helmDir, "meshery", "charts")
+	if _, err := os.Stat(filepath.Join(vendored, "meshery-operator-"+prereleaseVersion+".tgz")); err != nil {
+		t.Errorf("the bumped version was not vendored: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(vendored, "meshery-operator-"+stampVersion+".tgz")); !os.IsNotExist(err) {
+		t.Errorf("the archive from the previous version survived the bump; two archives leave helm a choice")
+	}
+}
+
+// TestSyncDownstreamReVendorsOnMissingOrStaleArtifact isolates the two clauses
+// of step 3's trigger that a content change hides. The chart is stamped once so
+// its content settles; every run after that rewrites the same bytes, so the
+// content clause cannot fire and only the artifact state can decide. That is the
+// repair path for a tree whose sources are stamped at V but whose vendored
+// artifact never landed - a half-finished sync, or a hand-reverted archive - and
+// without it the next sync would see settled content and skip forever.
+//
+// Deleting either clause from the script must fail this test; that was checked
+// by deleting them.
+func TestSyncDownstreamReVendorsOnMissingOrStaleArtifact(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		disturb func(t *testing.T, parent string)
+	}{
+		{
+			name: "vendored archive missing",
+			disturb: func(t *testing.T, parent string) {
+				t.Helper()
+				archive := filepath.Join(parent, "charts", "meshery-operator-"+stampVersion+".tgz")
+				if err := os.Remove(archive); err != nil {
+					t.Fatalf("removing the vendored archive: %v", err)
+				}
+			},
+		},
+		{
+			name: "Chart.lock names another version",
+			disturb: func(t *testing.T, parent string) {
+				t.Helper()
+				writeFile(t, filepath.Join(parent, "Chart.lock"),
+					"dependencies:\n- name: meshery-operator\n  repository: \"file://../meshery-operator\"\n  version: 0.0.1\n")
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checkout := newCheckout(t, stampVersion)
+			operatorChart := filepath.Join(checkout, helmDir, "meshery-operator")
+
+			if out, err := runSync(t, checkout, stampVersion); err != nil {
+				t.Fatalf("first run failed: %v\n%s", err, out)
+			}
+			settled := snapshot(t, operatorChart)
+			before := len(helmCalls(t, checkout))
+
+			// Only the parent chart is disturbed. Nothing under the operator chart
+			// moves, so the content clause is out of the picture by construction.
+			tc.disturb(t, filepath.Join(checkout, helmDir, "meshery"))
+
+			if out, err := runSync(t, checkout, stampVersion); err != nil {
+				t.Fatalf("repair run failed: %v\n%s", err, out)
+			}
+			if got := len(helmCalls(t, checkout)) - before; got != 1 {
+				t.Errorf("step 3 must repair this exactly once, got %d further helm calls", got)
+			}
+			if !maps.Equal(snapshot(t, operatorChart), settled) {
+				t.Error("the repair run rewrote the operator chart, so the content clause could have " +
+					"decided the re-vendor and this case no longer isolates the artifact state")
+			}
+		})
 	}
 }
 
@@ -409,6 +482,17 @@ func TestSyncDownstreamFailsWhenAStampPatternStopsMatching(t *testing.T) {
 			old:     "  tag: \"" + fixtureVersion + "\"",
 			new:     "    tag: \"" + fixtureVersion + "\"",
 			wantMsg: "image.tag was not stamped",
+		},
+		{
+			// The one substitution whose silent no-op leaves no trace: with a
+			// non-exact constraint helm resolves the stale entry and vendors the
+			// PREVIOUS operator archive without complaint, so the sync "succeeds"
+			// having shipped the last release.
+			name:    "parent dependency entry lost its version key",
+			rel:     "meshery/Chart.yaml",
+			old:     "  - name: meshery-operator\n    version: " + fixtureVersion + "\n",
+			new:     "  - name: meshery-operator\n",
+			wantMsg: "meshery-operator dependency version was not stamped",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -451,6 +535,34 @@ func TestSyncDownstreamFailsOnUnreachableSubchart(t *testing.T) {
 	}
 	if !strings.Contains(out, "meshery-newthing") {
 		t.Errorf("failure did not name the unstamped dependency:\n%s", out)
+	}
+}
+
+// TestSyncDownstreamFailsOnUndeclaredSubchart covers the other direction of the
+// same cross-check. The walk stamps the operator release onto every chart it
+// finds under charts/, so a chart that does not track that release - a vendored
+// upstream NATS chart, say, mirroring what this repo keeps under
+// pkg/broker/chart - would be relabelled to advertise an application it does not
+// install. Skipping it quietly would be no better: that silence is how the
+// declared-but-unreachable direction rotted for releases on end.
+func TestSyncDownstreamFailsOnUndeclaredSubchart(t *testing.T) {
+	checkout := newCheckout(t, stampVersion)
+
+	// Sorts after both declared subcharts, so the run reaches it only once the
+	// legitimate ones are stamped - the position where a silent pass is likeliest.
+	intruder := filepath.Join(checkout, helmDir, "meshery-operator", "charts", "nats")
+	const intruderChart = "apiVersion: v2\nname: nats\nversion: 1.3.10\nappVersion: \"2.11.10\"\n"
+	writeFile(t, filepath.Join(intruder, "Chart.yaml"), intruderChart)
+
+	out, err := runSync(t, checkout, stampVersion)
+	if err == nil {
+		t.Fatalf("expected a failure for an undeclared subchart, got success:\n%s", out)
+	}
+	if !strings.Contains(out, "nats") || !strings.Contains(out, "not a declared dependency") {
+		t.Errorf("failure did not name the undeclared subchart and what to do about it:\n%s", out)
+	}
+	if got := readFile(t, filepath.Join(intruder, "Chart.yaml")); got != intruderChart {
+		t.Errorf("the undeclared subchart was rewritten before the sync refused it:\n%s", got)
 	}
 }
 

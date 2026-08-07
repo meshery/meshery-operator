@@ -96,8 +96,13 @@ leaves no file still advertising the previous release, that a subchart's own
 `version` is untouched, that a second pass changes nothing (for a plain release
 and for a prerelease, whose `-` is also the shields.io badge separator), that a
 final release stamped over a candidate leaves no trace of it, that the vendored
-archive is repackaged whenever the chart's content changed, and that a stamp
-pattern which stops matching fails loudly instead of silently. The set of files
+archive is repackaged whenever the chart's content changed *and* whenever that
+archive is missing or `Chart.lock` names another version (each of those two
+repair clauses isolated by a case that keeps the content settled, so only the
+artifact state can decide), that a subchart directory the parent does not
+declare - and a declared dependency the walk cannot reach - both fail the sync,
+and that a stamp pattern which stops matching fails loudly instead of
+silently. The set of files
 and why it is the set: [release-process.md § The stamped chart file
 set](release-process.md#the-stamped-chart-file-set).
 

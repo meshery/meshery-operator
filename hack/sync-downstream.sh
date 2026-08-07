@@ -115,13 +115,45 @@ BADGE_VERSION_RE="$(printf '%s' "$BADGE_VERSION" | sed 's/\./\\./g')"
 # does not actually carry $VERSION afterwards. Without it a pattern that stops
 # matching - a reformatted README row, a renamed key - is a silent no-op, which
 # is how the subcharts and the READMEs drifted in the first place.
+#
+# A fourth argument narrows the haystack to a value already extracted from the
+# file. A substitution that targets one entry among near-identical neighbours
+# cannot be checked by searching the whole file: the parent chart declares a
+# dozen dependencies, each with its own `version:` key, so any of them would
+# satisfy a file-wide match while the meshery-operator entry sat untouched.
 assert_stamped() {
   local file="$1" description="$2" pattern="$3"
-  if ! grep -Eq -- "$pattern" "$file"; then
+  local haystack
+  haystack="${4-$(cat "$file")}"
+  if ! printf '%s\n' "$haystack" | grep -Eq -- "$pattern"; then
     echo "error: $file: $description was not stamped to $VERSION" >&2
     echo "       the stamp pattern no longer matches this file; fix hack/sync-downstream.sh" >&2
     exit 1
   fi
+}
+
+# declared_dependencies prints the name of every entry in a chart's dependencies
+# block, one per line. `- name:` entries also appear under `maintainers:` at the
+# same indentation, so the scan is scoped to the dependencies block and ends at
+# the next top-level key.
+declared_dependencies() {
+  awk '
+    /^dependencies:/ { in_deps = 1; next }
+    in_deps && /^[^[:space:]#]/ { in_deps = 0 }
+    in_deps && $1 == "-" && $2 == "name:" { print $3 }
+  ' "$1"
+}
+
+# dependency_version prints the version one named entry of a chart's
+# dependencies block records, for the assertion on the parent chart's bump.
+# Same block scoping, same reason, as declared_dependencies.
+dependency_version() {
+  awk -v want="$2" '
+    /^dependencies:/ { in_deps = 1; next }
+    in_deps && /^[^[:space:]#]/ { in_deps = 0 }
+    in_deps && $1 == "-" && $2 == "name:" { current = $3; next }
+    in_deps && current == want && $1 == "version:" { print $2; exit }
+  ' "$1"
 }
 
 # stamp_app_version rewrites a Chart.yaml's top-level appVersion, appending the
@@ -186,24 +218,49 @@ assert_stamped "$OPERATOR_CHART/values.yaml" "image.tag" "^  tag: \"${VERSION_RE
 #     Subcharts are discovered from the directories rather than named, so a third
 #     one added downstream is stamped the day it appears instead of passing
 #     unexamined.
+#
+#     Discovery and the operator chart's declared dependencies are cross-checked
+#     in BOTH directions, because each direction is a different way the chart
+#     ends up lying about what it installs:
+#       - declared but not discovered: a dependency vendored as a .tgz rather
+#         than unpacked is never reached by the walk and keeps whatever
+#         appVersion it already had. That is the original drift.
+#       - discovered but not declared: were meshery/meshery to vendor a
+#         third-party chart under charts/ - an upstream NATS chart, mirroring
+#         what this repo vendors under pkg/broker/chart - the walk would stamp
+#         the operator release onto a chart that installs something else. Passing
+#         over it quietly is no better, because silence is what let the first
+#         direction rot for releases on end.
+#     So both fail the sync rather than either being resolved by guesswork.
+#
 # A space-delimited string rather than an array: `${arr[*]}` on an EMPTY array
 # is an unbound-variable error under `set -u` in bash 3.2, which ships as
 # /bin/bash on macOS - so the zero-subchart case would abort with a confusing
 # error instead of the dependency message below, which is the one that explains
 # what actually went wrong.
+DECLARED_SUBCHARTS=" "
+while read -r dep; do
+  [ -n "$dep" ] || continue
+  DECLARED_SUBCHARTS+="$dep "
+done < <(declared_dependencies "$OPERATOR_CHART/Chart.yaml")
+
 STAMPED_SUBCHARTS=" "
 for subchart_yaml in "$OPERATOR_CHART"/charts/*/Chart.yaml; do
   [ -f "$subchart_yaml" ] || continue
+  subchart="$(basename "$(dirname "$subchart_yaml")")"
+  case "$DECLARED_SUBCHARTS" in
+    *" $subchart "*) ;;
+    *) echo "error: $OPERATOR_CHART/charts/$subchart is not a declared dependency of the operator chart" >&2
+       echo "       every subchart under charts/ is stamped with the operator release, so a chart that" >&2
+       echo "       does not track that release must not sit there: declare it in the operator chart's" >&2
+       echo "       dependencies if it is operator-owned, or remove the vendored copy if it is not" >&2
+       exit 1 ;;
+  esac
   stamp_app_version "$subchart_yaml" "subchart appVersion"
   stamp_badge "$(dirname "$subchart_yaml")/README.md" AppVersion
-  STAMPED_SUBCHARTS+="$(basename "$(dirname "$subchart_yaml")") "
+  STAMPED_SUBCHARTS+="$subchart "
 done
 
-# Cross-check the discovered set against the parent's declared dependencies: a
-# dependency that is not unpacked as a directory is never reached by the loop
-# above, and would drift silently. `- name:` entries also appear under
-# `maintainers:` at the same indentation, so the scan is scoped to the
-# dependencies block and ends at the next top-level key.
 while read -r dep; do
   [ -n "$dep" ] || continue
   case "$STAMPED_SUBCHARTS" in
@@ -212,11 +269,7 @@ while read -r dep; do
        echo "       only an unpacked subchart directory can be stamped; a vendored .tgz cannot be" >&2
        exit 1 ;;
   esac
-done < <(awk '
-  /^dependencies:/ { in_deps = 1; next }
-  in_deps && /^[^[:space:]#]/ { in_deps = 0 }
-  in_deps && $1 == "-" && $2 == "name:" { print $3 }
-' "$OPERATOR_CHART/Chart.yaml")
+done < <(declared_dependencies "$OPERATOR_CHART/Chart.yaml")
 
 # 2c. The parent chart README: both badges and the image.tag row. It is
 #     helm-docs output too, but NOT regenerable today (see "The stamped file set"
@@ -239,8 +292,14 @@ VERSION="$VERSION" perl -pi -e '
 assert_stamped "$README" "image.tag row" \
   "^\| image\.tag \| string \| \`\"${VERSION_RE}\"\`"
 
-# 3. Parent chart dependency bump + re-vendor. The dependency block is matched by
-#    the adjacent name key so only the meshery-operator entry's version changes.
+# 3. Parent chart dependency bump + re-vendor. The rewrite is bounded to the
+#    meshery-operator entry: it starts at that entry's name key and may cross
+#    only further indented lines of the same list item, so an entry that has lost
+#    its `version:` key cannot hand the rewrite to a neighbour's. The bump is
+#    then asserted against the value read back out of THAT entry - the one
+#    substitution in this script that a file-wide match could not check, and the
+#    one whose silent no-op is invisible: with a non-exact constraint helm
+#    resolves it happily and vendors the PREVIOUS operator archive.
 #    helm dependency update leaves the repository-less adapter deps alone
 #    ("Assuming it exists in the charts directory") and repackages only the
 #    file://-sourced operator chart + Chart.lock.
@@ -254,7 +313,9 @@ assert_stamped "$README" "image.tag row" \
 #    survive silently inside the artifact users actually install from. A genuine
 #    no-op re-run still changes nothing and still skips, so the lock timestamp
 #    and tgz bytes do not churn.
-perl -0pi -e "s/(name: meshery-operator\n(?:[^\n]*\n)*?\s*version: )[^\n]*/\${1}$VERSION/" "$PARENT_CHART/Chart.yaml"
+perl -0pi -e "s/(name: meshery-operator\n(?:(?=[ \t])(?![ \t]*-)[^\n]*\n)*?[ \t]*version: )[^\n]*/\${1}$VERSION/" "$PARENT_CHART/Chart.yaml"
+assert_stamped "$PARENT_CHART/Chart.yaml" "meshery-operator dependency version" \
+  "^${VERSION_RE}\$" "$(dependency_version "$PARENT_CHART/Chart.yaml" meshery-operator)"
 if [ "$(chart_checksum)" != "$CHART_BEFORE" ] \
    || [ ! -f "$PARENT_CHART/charts/meshery-operator-$VERSION.tgz" ] \
    || ! grep -A2 'name: meshery-operator' "$PARENT_CHART/Chart.lock" 2>/dev/null | grep -Eq "version: ${VERSION_RE}$"; then
