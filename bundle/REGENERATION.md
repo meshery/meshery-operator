@@ -33,13 +33,24 @@ the previous CSV and widen `olm.skipRange` to cover it.
 
 ## What may change without operator-sdk
 
-Exactly one field: the manager image, which
-`hack/stamp-operator-version.sh` rewrites in place on every release (see
-[docs/release-process.md § Pinned images](../docs/release-process.md#pinned-images)).
-That textual stamp is byte-identical to what `make bundle` would write for that
-field, and it exists because the bundle must never be left naming a moving tag
-just because CI cannot run operator-sdk. Everything else in the bundle comes
-from regeneration.
+Only verbatim mirrors of what `config/` already says, never an independent edit:
+
+- **The manager image**, which `hack/stamp-operator-version.sh` rewrites in
+  place on every release (see [docs/release-process.md § Pinned
+  images](../docs/release-process.md#pinned-images)). That textual stamp is
+  byte-identical to what `make bundle` would write for that field, and it exists
+  because the bundle must never be left naming a moving tag just because CI
+  cannot run operator-sdk.
+- **A field the CSV mirrors from `config/manager`** (the manager's
+  `imagePullPolicy` moved with the pin this way) and **generated CRD text in
+  `bundle/manifests/meshery.io_*.yaml` mirrored from `config/crd/bases`** (an
+  API field's `description` after a doc-comment change). Copy the generated
+  output exactly, then confirm the remaining bundle-vs-`config/` delta is
+  unchanged - a hand-sync that is not a verbatim copy needs a real
+  regeneration instead.
+
+Everything else in the bundle - install spec structure, RBAC, the upgrade graph,
+provenance stamps - comes from regeneration.
 
 ## Remaining metadata notes
 

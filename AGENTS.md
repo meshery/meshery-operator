@@ -109,7 +109,7 @@ the promoted hooks firing twice - recover it and prune them with
 - [docs/testing.md](docs/testing.md) - the three test tiers in detail, envtest caveats, kind e2e environment knobs.
 - [docs/errors.md](docs/errors.md) - the full MeshKit error convention, example constructor, and per-file code registries.
 - [docs/metrics.md](docs/metrics.md) - reconciliation metrics and why named returns are required.
-- [docs/release-process.md](docs/release-process.md) - release flow, downstream chart/CRD sync into `meshery/meshery`, and the pinned-image rule below.
+- [docs/release-process.md](docs/release-process.md) - release flow, downstream chart/CRD sync into `meshery/meshery`, and the mechanisms behind [No moving image tags](#no-moving-image-tags) above.
 - [docs/proposals/operator-modernization-plan.md](docs/proposals/operator-modernization-plan.md) - the active roadmap; code comments referencing `WS-N` (e.g. `WS-3`) point at that plan's workstreams.
 
 ## Maintaining this file

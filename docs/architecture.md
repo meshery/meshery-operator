@@ -24,8 +24,10 @@ Meshery Server ──(installs & manages via pkg/client typed clientset)──�
 
 ## Custom resources (`api/v1alpha1`, `api/v1alpha2`)
 
-- **`Broker`** (`brokers.meshery.io`) - a NATS message broker. Spec today is just
-  `Size`; `Status` carries `Endpoint{Internal,External}` and typed `Conditions`.
+- **`Broker`** (`brokers.meshery.io`) - a NATS message broker. Spec carries
+  `Size`, `Version` (the NATS image tag), and a `Service` block for network
+  exposure; `Status` carries `Endpoint{Internal,External}` and typed
+  `Conditions`.
 - **`MeshSync`** (`meshsyncs.meshery.io`) - the cluster-state synchronizer. Spec
   carries `Size`, `Version`, a `Broker` reference (native or custom URL), and a
   `WatchList`. `Status` carries `PublishingTo` and `Conditions`.
