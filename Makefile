@@ -70,7 +70,7 @@ endif
 # exists. Never set this to a moving channel tag - `stable-latest` re-points
 # under running clusters, which is exactly how a months-old chart ended up
 # pulling a manager build it could not run (docs/release-process.md).
-OPERATOR_RELEASE_VERSION ?= 1.0.4
+OPERATOR_RELEASE_VERSION ?= 1.0.5
 
 # RELEASE_IMG is the published, immutable manager image the rendered artifacts
 # name. `make bundle` must stamp exactly this into the CSV, which is why IMG

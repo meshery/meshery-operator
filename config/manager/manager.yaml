@@ -49,7 +49,7 @@ spec:
         # every release. IfNotPresent follows from the pin - the tag is
         # immutable, so re-pulling it on every restart buys nothing and breaks
         # side-loaded (kind) and air-gapped clusters.
-        image: meshery/meshery-operator:1.0.4
+        image: meshery/meshery-operator:1.0.5
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
