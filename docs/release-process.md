@@ -119,6 +119,15 @@ Three independent pins, three mechanisms:
 | MeshSync image | `pkg/meshsync/resources.go` `defaultMeshSyncVersion` | `meshsync-version-bump.yml` opens a weekly bump PR when meshery/meshsync publishes a semantically newer release whose image is on Docker Hub (GitHub resolves "latest" by tag creation time, so the comparison is by version, and a pre-release or older backport is skipped with a notice) |
 | NATS image | the vendored chart, `pkg/broker/manifests/nats.gen.yaml` | bump `NATS_CHART_VERSION` and re-run `make nats-manifests` (drift-gated by `nats-chart-drift.yml`) |
 
+The user-facing half of these pins is documented downstream, not here:
+`meshery/meshery`'s
+`docs/content/en/guides/infrastructure-management/configuring-operator-meshsync-broker.md`
+(published to docs.meshery.io) is the authoritative page for `MeshSync` and
+`Broker` `spec.version`, and it states the default image tag, the pull-policy
+rule, and the tag forms accepted. Changing any of those here -
+`defaultMeshSyncVersion`, the policy in `pkg/utils/image.go`, the normalisation
+rules - goes stale there, so update that page in the same wave.
+
 Guard rails, so a regression cannot land quietly:
 
 - `make stamp-release` refuses anything that is not a bare semver, so the

@@ -1,10 +1,20 @@
-# VERSION defines the project version for the bundle.
-# Update this value when you upgrade the version of your project.
-# To re-generate a bundle for another specific version without changing the standard setup, you can:
-# - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
-# - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-# Current Operator version
-VERSION ?= 0.0.1
+# VERSION is the OLM bundle's CSV version, and it must stay in lockstep with
+# the committed bundle (`meshery-operator.v0.1.0` / `version: 0.1.0` in
+# bundle/manifests/meshery-operator.clusterserviceversion.yaml). A stale default
+# is not inert: a bare `make bundle` regenerates the CSV at whatever this says,
+# so a lower value silently rewrites the bundle backwards and collapses the
+# upgrade graph OLM orders by (`replaces: meshery-operator.v0.0.1`,
+# `olm.skipRange: '>=0.0.1 <0.1.0'`) onto a CSV that replaces itself.
+#
+# Bumping it is part of regenerating the bundle at a new version - raise this
+# default, then set `replaces` to the previous CSV and widen `olm.skipRange`
+# (bundle/REGENERATION.md). It is distinct from OPERATOR_RELEASE_VERSION below,
+# which is the published *manager image* the bundle installs.
+#
+# A one-off render can still override it without editing here:
+# - as an arg of the bundle target (e.g make bundle VERSION=0.2.0)
+# - via the environment (e.g export VERSION=0.2.0)
+VERSION ?= 0.1.0
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 BIN_DIR := $(PROJECT_DIR)/bin
 

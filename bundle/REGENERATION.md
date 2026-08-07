@@ -20,9 +20,14 @@ install and CI does not have - which is why bundle regeneration is not part of
 the `manifests-drift` gate.
 
 ```bash
-make bundle VERSION=0.2.0      # regenerates from config/ at the new CSV version
+make bundle                    # regenerates from config/ at the committed CSV version
 operator-sdk bundle validate ./bundle
 ```
+
+The Makefile's `VERSION` default *is* the committed CSV version, so a bare
+`make bundle` reproduces the bundle in place. `VERSION=<x.y.z>` renders a one-off
+at some other version; a permanent bump belongs in that default, not on the
+command line, or the next bare regeneration rewrites the CSV backwards.
 
 `make bundle` stamps `IMG` (that is, `OPERATOR_RELEASE_VERSION`) into the CSV's
 manager image via `kustomize edit set image`, so regenerate **after** any
