@@ -1,7 +1,9 @@
 # Testing
 
 The operator is tested in three tiers. The unit and envtest tiers run in CI on
-every PR and gate merges; the kind e2e tier validates the full lifecycle.
+every PR and gate merges; the kind e2e tier validates the full lifecycle. The
+release-time scripts in `hack/` are covered separately - see
+[Release scripts](#release-scripts-hack).
 
 ## 1. Unit (fast, no cluster)
 
@@ -76,6 +78,32 @@ being Available proves nothing about broker connectivity.
 > richer matrix (ClusterIP/NodePort/LoadBalancer, networking reconfiguration,
 > conversion/upgrade, finalizer cleanup, leader election) and CI promotion are
 > delivered in WS-7 (#789).
+
+## Release scripts (`hack/`)
+
+The release-time shell scripts are covered by ordinary Go tests in the same
+directory, so they run under `go test ./...`, `make test`, and CI without a
+separate shell harness.
+
+```bash
+go test ./hack/...
+```
+
+`hack/sync_downstream_test.go` drives `hack/sync-downstream.sh` against
+`hack/testdata/meshery/` - a verbatim copy of `meshery/meshery` master's
+`install/kubernetes/helm` chart tree - and asserts that a single stamp pass
+leaves no file still advertising the previous release, that a subchart's own
+`version` is untouched, that a second pass changes nothing, and that a stamp
+pattern which stops matching fails loudly instead of silently. The set of files
+and why it is the set: [release-process.md § The stamped chart file
+set](release-process.md#the-stamped-chart-file-set).
+
+The tests need `bash` and `perl` (present on every supported dev platform and on
+the CI runners) but neither `helm` nor a network: the fixture checkout is
+pre-vendored at the target version, which is the script's own documented skip
+condition. **Refresh the fixture from `meshery/meshery` master when the chart's
+shape changes** - a stale fixture proves the stamp against files that no longer
+exist, which is the failure these tests are here to prevent.
 
 ## Conventions
 

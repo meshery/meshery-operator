@@ -37,10 +37,10 @@ the only reliable attach point.
    block the sync below).
 2. **Downstream sync** - checks out `meshery/meshery` and runs
    `hack/sync-downstream.sh`, which updates the `meshery-operator` chart's
-   `crds/crds.yaml` + `files/crds.yaml`, stamps the chart's
-   `version`/`appVersion`/`values.yaml image.tag` to the released version,
-   bumps the parent `meshery` chart's dependency, and re-vendors it
-   (`Chart.lock` + `charts/meshery-operator-<version>.tgz`). The result is
+   `crds/crds.yaml` + `files/crds.yaml`, stamps [the whole versioned file
+   set](#the-stamped-chart-file-set) to the released version, bumps the parent
+   `meshery` chart's dependency, and re-vendors it (`Chart.lock` +
+   `charts/meshery-operator-<version>.tgz`). The result is
    committed as `l5io <ci@meshery.io>` with `--signoff` and pushed to master
    (same convention as `error-ref-publisher.yaml`). If the push is rejected
    (e.g. branch protection), it opens an automated PR instead.
@@ -50,6 +50,57 @@ the only reliable attach point.
    `helm install meshery-operator oci://ghcr.io/meshery/charts/meshery-operator --version <version>`.
    The push is best-effort (a registry-permission failure warns without
    failing the sync).
+
+## The stamped chart file set
+
+`hack/sync-downstream.sh` rewrites **every** file in `meshery/meshery`'s
+operator chart that advertises an operator release, in one pass:
+
+| File | What is stamped |
+|---|---|
+| `meshery-operator/Chart.yaml` | `version:`, `appVersion:` |
+| `meshery-operator/values.yaml` | `image.tag` |
+| `meshery-operator/README.md` | `Version` + `AppVersion` badges, the `image.tag` values row |
+| `meshery-operator/charts/*/Chart.yaml` | `appVersion:` (the subchart's own `version:` is left alone - it tracks the subchart's lifecycle) |
+| `meshery-operator/charts/*/README.md` | `AppVersion` badge (the subchart's own `Version` badge is left alone) |
+| `meshery/Chart.yaml` + `Chart.lock` + `charts/*.tgz` | the `meshery-operator` dependency version and the vendored archive |
+
+The set is the point. It used to be the first two rows only, and everything
+omitted drifted: both subcharts sat on the moving tag `stable-latest` for an
+unknown number of releases, and the chart README advertised `1.0.0` beside a
+`Chart.yaml` that read `1.0.5` (meshery/meshery-operator#878). A published Helm
+archive is immutable, so an `appVersion` naming a moving tag advertises a
+different application at every publish; a README that disagrees with
+`values.yaml` is simply wrong about what the chart installs.
+
+Neither subchart deploys a workload - each ships one custom resource (`Broker`,
+`MeshSync`) whose images the operator's controllers choose. So the only honest
+reading of a subchart `appVersion` is "the operator release whose controllers
+reconcile this CR", which is the value the parent already gets.
+`meshery/meshery` asserts that agreement in CI
+(`install/scripts/check-operator-chart-appversions.sh`); this stamp is what
+keeps the assertion true across releases.
+
+Two properties make the set maintainable rather than another list to rot:
+
+- **Subcharts are discovered, not named.** The script walks `charts/*/`, then
+  cross-checks the result against the parent `Chart.yaml`'s declared
+  dependencies, so a third subchart is stamped the day it appears and a
+  dependency the walk cannot reach fails the sync instead of drifting.
+- **Every substitution is asserted.** A pattern that silently matches nothing is
+  exactly how the README drifted, so the script verifies each rewritten value
+  afterwards and fails the release sync when one no longer matches.
+
+`hack/sync_downstream_test.go` drives the script against a verbatim copy of
+meshery master's chart tree (`hack/testdata/meshery/`) and asserts that no file
+in it still advertises the previous release. Refresh that fixture from
+`meshery/meshery` master when the chart's shape changes.
+
+The parent README is rewritten value-by-value rather than regenerated: it
+carries hand-written prose that `helm-docs` would delete, because `values.yaml`
+has no `# --` description comments and the chart has no `README.md.gotmpl`. When
+that migration lands downstream, this part of the stamp collapses to a
+regenerate step.
 
 ## Two chart version streams - two channels
 

@@ -67,7 +67,10 @@ Full convention and example: [docs/errors.md](docs/errors.md).
 ## Testing
 
 Three tiers: unit (`go test ./pkg/...`), envtest (`make test`), and kind e2e
-(`make integration-tests`). New behavior gets a case added to the existing suite file
+(`make integration-tests`). The release scripts in `hack/` are covered by Go tests in
+that same directory (`go test ./hack/...`), driven against a fixture copy of
+meshery/meshery's chart tree - refresh `hack/testdata/` when that chart's shape
+changes. New behavior gets a case added to the existing suite file
 for its package, not a new test file. envtest caveats and e2e knobs: [docs/testing.md](docs/testing.md).
 
 ## Identifier Naming Conventions
