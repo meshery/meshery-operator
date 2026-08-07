@@ -35,6 +35,12 @@ func badgeVersion(version string) string {
 	return strings.ReplaceAll(version, "-", "--")
 }
 
+// parentChartReadme is the operator chart's own README, relative to the helm
+// directory. It is the file the issue caught advertising 1.0.0 beside a 1.0.5
+// Chart.yaml, so it turns up both in the contract map and among the cases that
+// pin what happens when a stamp pattern stops matching.
+const parentChartReadme = "meshery-operator/README.md"
+
 // versionedChartFiles is the complete set of files under the operator chart that
 // advertise the operator release, with the line each must carry afterwards.
 //
@@ -52,7 +58,7 @@ func versionedChartFiles(version string) map[string][]string {
 		"meshery-operator/values.yaml": {
 			`  tag: "` + version + `"`,
 		},
-		"meshery-operator/README.md": {
+		parentChartReadme: {
 			"![Version: " + version + "](https://img.shields.io/badge/Version-" + badgeVersion(version) + "-informational",
 			"![AppVersion: " + version + "](https://img.shields.io/badge/AppVersion-" + badgeVersion(version) + "-informational",
 			"| image.tag | string | `\"" + version + "\"`",
@@ -159,7 +165,7 @@ func runSync(t *testing.T, checkout, version string) (string, error) {
 	crds := filepath.Join(t.TempDir(), "crds.yaml")
 	writeFile(t, crds, "# rendered CRD bundle placeholder\n")
 
-	script, err := filepath.Abs(filepath.Join("sync-downstream.sh"))
+	script, err := filepath.Abs("sync-downstream.sh")
 	if err != nil {
 		t.Fatalf("resolving script path: %v", err)
 	}
@@ -399,12 +405,13 @@ func TestSyncDownstreamReVendorsOnVersionChange(t *testing.T) {
 // Deleting either clause from the script must fail this test; that was checked
 // by deleting them.
 func TestSyncDownstreamReVendorsOnMissingOrStaleArtifact(t *testing.T) {
+	// disturb precedes name so the struct packs its two pointers adjacently
+	// (govet fieldalignment); the reader-friendly order is the other way round.
 	for _, tc := range []struct {
-		name    string
 		disturb func(t *testing.T, parent string)
+		name    string
 	}{
 		{
-			name: "vendored archive missing",
 			disturb: func(t *testing.T, parent string) {
 				t.Helper()
 				archive := filepath.Join(parent, "charts", "meshery-operator-"+stampVersion+".tgz")
@@ -412,14 +419,15 @@ func TestSyncDownstreamReVendorsOnMissingOrStaleArtifact(t *testing.T) {
 					t.Fatalf("removing the vendored archive: %v", err)
 				}
 			},
+			name: "vendored archive missing",
 		},
 		{
-			name: "Chart.lock names another version",
 			disturb: func(t *testing.T, parent string) {
 				t.Helper()
 				writeFile(t, filepath.Join(parent, "Chart.lock"),
 					"dependencies:\n- name: meshery-operator\n  repository: \"file://../meshery-operator\"\n  version: 0.0.1\n")
 			},
+			name: "Chart.lock names another version",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -464,14 +472,14 @@ func TestSyncDownstreamFailsWhenAStampPatternStopsMatching(t *testing.T) {
 	}{
 		{
 			name:    "README image.tag row reformatted",
-			rel:     "meshery-operator/README.md",
+			rel:     parentChartReadme,
 			old:     "| image.tag | string | `\"" + fixtureVersion + "\"`",
 			new:     "| image.tag | str | `\"" + fixtureVersion + "\"`",
 			wantMsg: "image.tag row was not stamped",
 		},
 		{
 			name:    "README AppVersion badge reformatted",
-			rel:     "meshery-operator/README.md",
+			rel:     parentChartReadme,
 			old:     "![AppVersion: " + fixtureVersion + "](https://img.shields.io/badge/AppVersion-",
 			new:     "![App Version: " + fixtureVersion + "](https://img.shields.io/badge/AppVersion-",
 			wantMsg: "AppVersion badge was not stamped",

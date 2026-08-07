@@ -89,6 +89,15 @@ separate shell harness.
 go test ./hack/...
 ```
 
+`make lint` covers this code too. `hack` used to sit in `.golangci.yml`'s excluded
+paths, which was harmless while the directory held only shell scripts and
+`boilerplate.go.txt`, but would have left every line of Go added here
+unlinted - so the exclusion is gone. `gosec`'s path-and-subprocess rules
+(`G204`, `G301`, `G302`, `G304`, `G306`, `G703`) are excluded for `_test.go`
+files only: copying a fixture tree into `t.TempDir()` and shelling out to the
+real script is what this harness is for. The same patterns in shipped code still
+fail the build.
+
 `hack/sync_downstream_test.go` drives `hack/sync-downstream.sh` against
 `hack/testdata/meshery/` - a verbatim copy of `meshery/meshery` master's
 `install/kubernetes/helm` chart tree - and asserts that a single stamp pass
