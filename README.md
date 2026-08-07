@@ -8,7 +8,8 @@
 <div align="center">
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/meshery/meshery-operator.svg)](https://hub.docker.com/r/meshery/meshery-operator)
-[![Build Status](https://github.com/meshery/meshery-operator/actions/workflows/multi-platform.yml)](https://github.com/meshery/meshery-operator/actions)
+<!--[![Build Status](https://github.com/meshery/meshery-operator/actions/workflows/multi-platform.yml)](https://github.com/meshery/meshery-operator/actions)-->
+
 [![GitHub](https://img.shields.io/github/license/meshery/meshery-operator.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/meshery/meshery-operator/branch/master/graph/badge.svg?token=TJZ2L4JHSA)](https://codecov.io/gh/meshery/meshery-operator)
 [![Website](https://img.shields.io/website/https/meshery.io)](https://meshery.io)
