@@ -101,9 +101,10 @@ archive is missing or `Chart.lock` names another version (each of those two
 repair clauses isolated by a case that keeps the content settled, so only the
 artifact state can decide), that a subchart directory the parent does not
 declare - and a declared dependency the walk cannot reach - both fail the sync,
-and that a stamp pattern which stops matching fails loudly instead of
-silently. The set of files
-and why it is the set: [release-process.md § The stamped chart file
+that a stamp pattern which stops matching fails loudly instead of silently, and
+that a version which is not bare semver - a moving channel tag - is refused
+before any file is touched. The set of files and why it is the set:
+[release-process.md § The stamped chart file
 set](release-process.md#the-stamped-chart-file-set).
 
 The tests need `bash` and `perl` (present on every supported dev platform and on

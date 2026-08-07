@@ -8,7 +8,7 @@ the [Meshery docs site](https://docs.meshery.io).
 |-----|----------------|
 | [architecture.md](architecture.md) | How the operator is structured: the two CRDs, the two controllers, the resource builders, the typed client, and how Meshery Server drives it all. |
 | [development.md](development.md) | Local setup, the `.claude/` agent configuration split, the `go/v4` project layout, the Makefile targets, tool versions, and how to build/run the operator. |
-| [testing.md](testing.md) | The three test tiers (unit, envtest, kind e2e) and how to run each. |
+| [testing.md](testing.md) | The three test tiers (unit, envtest, kind e2e), the release-script tests in `hack/`, and how to run each. |
 | [errors.md](errors.md) | The error-handling convention (MeshKit structured errors) and how to add a new error. |
 | [metrics.md](metrics.md) | The Prometheus reconciliation metrics, how they are wired to the manager endpoint, and how to add a metric. |
 | [release-process.md](release-process.md) | How a release is cut and propagates downstream, the two chart version streams, and the pinned-image rule every rendered artifact obeys. |

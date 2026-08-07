@@ -125,13 +125,12 @@ that stopped at the first `-` appended a prerelease suffix on every pass instead
 of replacing it), and a `-` belonging to the version is doubled inside the badge
 path, which is how shields.io and `helm-docs` both encode it.
 
-`hack/sync_downstream_test.go` drives the script against a verbatim copy of
-meshery master's chart tree (`hack/testdata/meshery/`) and asserts that no file
-in it still advertises the previous release. The fixture holds every
-non-template file under the operator chart - a rule deliberately independent of
-what the stamp touches, so the sweep can surface a drift site nobody has listed
-yet instead of only re-confirming the known ones. Refresh it from
-`meshery/meshery` master when the chart's shape changes.
+The set is enforced by `hack/sync_downstream_test.go`, which drives the script
+against a fixture copy of meshery master's chart tree and asserts that no file
+in it still advertises the previous release - including files the stamp has no
+opinion about, so the sweep can surface a drift site nobody has listed yet. What
+the fixture holds and when to refresh it: [testing.md § Release
+scripts](testing.md#release-scripts-hack).
 
 The parent README is rewritten value-by-value rather than regenerated: it
 carries hand-written prose that `helm-docs` would delete, because `values.yaml`
@@ -220,6 +219,9 @@ Guard rails, so a regression cannot land quietly:
 
 - `make stamp-release` refuses anything that is not a bare semver, so the
   manager pin cannot be set to a channel tag even by hand.
+- `hack/sync-downstream.sh` applies the same semver guard to the version it
+  stamps downstream, so a channel tag cannot reach the operator chart's
+  `appVersion`/`image.tag` and be published inside an immutable archive.
 - `make docker-push` and `make docker-buildx` refuse to run while `IMG` is
   still the `OPERATOR_RELEASE_VERSION`-derived default, so a bare push cannot
   overwrite a released image with a local build. Pass an explicit
