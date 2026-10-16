@@ -31,7 +31,7 @@ The plan is organized into **eight workstreams** delivered across **five phases*
 This plan is grounded in a direct read of the repository at branch tip, a build/verify pass, and a cross‑repository read of `meshkit` and `meshsync`. Specifically:
 
 - **Static read** of every Go source file under `api/`, `controllers/`, `pkg/`, plus `main.go` (~4,300 LoC total).
-- **Build verification**: `go build ./...` succeeds on Go 1.26.4; `go vet ./...` and `go list -deps ./...` exceed two minutes — itself a signal of the transitive dependency weight pulled in through meshkit.
+- **Build verification**: `go build ./...` succeeds on Go 1.27.1; `go vet ./...` and `go list -deps ./...` exceed two minutes — itself a signal of the transitive dependency weight pulled in through meshkit.
 - **Manifest/scaffolding read** of `config/**`, `bundle/**`, `Dockerfile`, `Makefile`, `PROJECT`, `.golangci.yml`, `.github/workflows/**`, and `integration-tests/**`.
 - **Cross‑repo read** of meshkit's `utils/kubernetes/service.go` (`GetEndpoint`) and meshsync's broker/NATS configuration path, to establish the contract the operator must preserve.
 - **Version grounding** against current upstream releases (operator‑sdk v1.42.2, Kubebuilder `go/v4`, the official NATS Helm chart line, controller‑tools).
@@ -337,7 +337,7 @@ Promote e2e into CI on a kind matrix (≥2 Kubernetes minor versions, pinned), p
 | OLM bundle version | `0.0.1` (frozen, 2022‑05‑12) | semver‑bumped with `replaces`/`skipRange` |
 | NATS server | `nats:2.8.2-alpine3.15` | current 2.10.x/2.11.x line |
 | NATS config‑reloader | `connecteverything/…:0.6.0` (defunct org) | `natsio/nats-server-config-reloader` current |
-| Go | `1.26.4` | keep current (already modern) |
+| Go | `1.27.1` | keep current (already modern) |
 | k8s libraries | `v0.35.0` | keep current; align across repos |
 | controller‑runtime | `v0.22.4` | keep current |
 | meshkit | `v0.8.64` | `v1.0.x` (or extract endpoint helper) |
