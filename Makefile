@@ -290,7 +290,7 @@ GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
 CONTROLLER_TOOLS_VERSION ?= v0.18.0
-GOLANGCI_LINT_VERSION ?= v2.12.2
+GOLANGCI_LINT_VERSION ?= v2.15.0
 
 # go-install-versioned installs a Go-based tool at a pinned version into bin/,
 # re-installing when the on-disk binary reports a different version. The plain
