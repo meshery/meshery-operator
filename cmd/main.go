@@ -131,13 +131,21 @@ func main() {
 	// ENABLE_WEBHOOKS so `make run` (no serving certs) can opt out; in-cluster it
 	// is required because the CRDs declare conversion strategy Webhook.
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err = ctrl.NewWebhookManagedBy(mgr).For(&mesheryv1alpha2.Broker{}).Complete(); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Broker")
-			os.Exit(1)
-		}
-		if err = ctrl.NewWebhookManagedBy(mgr).For(&mesheryv1alpha2.MeshSync{}).Complete(); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "MeshSync")
-			os.Exit(1)
+		certPath := "/tmp/k8s-webhook-server/serving-certs/tls.crt"
+		keyPath := "/tmp/k8s-webhook-server/serving-certs/tls.key"
+		_, certErr := os.Stat(certPath)
+		_, keyErr := os.Stat(keyPath)
+		if (certErr == nil && keyErr == nil) || os.Getenv("ENABLE_WEBHOOKS") == "true" {
+			if err = ctrl.NewWebhookManagedBy(mgr).For(&mesheryv1alpha2.Broker{}).Complete(); err != nil {
+				setupLog.Error(err, "unable to create webhook", "webhook", "Broker")
+				os.Exit(1)
+			}
+			if err = ctrl.NewWebhookManagedBy(mgr).For(&mesheryv1alpha2.MeshSync{}).Complete(); err != nil {
+				setupLog.Error(err, "unable to create webhook", "webhook", "MeshSync")
+				os.Exit(1)
+			}
+		} else {
+			setupLog.Info("Webhook serving certificate or key not found, skipping webhook registration. If webhooks are required, ensure certs are mounted or set ENABLE_WEBHOOKS=true to force.", "certPath", certPath, "keyPath", keyPath)
 		}
 	}
 	// +kubebuilder:scaffold:builder
