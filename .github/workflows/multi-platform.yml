@@ -113,10 +113,17 @@ jobs:
           # Sign by immutable digest so every pushed tag resolves to one signed manifest.
           cosign sign --yes "${IMAGE}@${DIGEST}"
 
-      # - name: Docker Hub Description
-      #   uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
-      #   with:
-      #     username: ${{ secrets.DOCKER_USERNAME }}
-      #     password: ${{ secrets.DOCKER_PASSWORD }}
-      #     repository: ${{ secrets.IMAGE_NAME }}
-      #     readme-filepath: README.md
+      - name: Docker Hub Description
+        id: dockerhub_desc
+        continue-on-error: true
+        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: ${{ secrets.IMAGE_NAME }}
+          readme-filepath: README.md
+
+      - name: Notify on Docker Hub Description failure
+        if: steps.dockerhub_desc.outcome == 'failure'
+        run: |
+          echo "::warning title=Docker Hub Description Failed::The Docker Hub Description step failed, likely due to token permissions (see issue #880). Release artifacts are unaffected."
