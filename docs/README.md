@@ -17,7 +17,7 @@ the [Meshery docs site](https://docs.meshery.io).
 ## Repository layout (Kubebuilder `go/v4`)
 
 ```
-cmd/main.go                 manager entrypoint (scheme, flags, manager wiring)
+cmd/                        manager entrypoint: main.go (scheme, flags, manager wiring), webhook.go (ENABLE_WEBHOOKS decision)
 api/v1alpha1/               CRD Go types (Broker, MeshSync) + groupversion + deepcopy
 controllers/               Broker and MeshSync reconcilers + error registry
 pkg/broker/                NATS broker resource builders, health, endpoint derivation

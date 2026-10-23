@@ -198,6 +198,14 @@ directory`. Pinned tags are immutable by convention, which is also what makes
 `imagePullPolicy: IfNotPresent` correct for them (and side-loaded kind images
 and air-gapped clusters work).
 
+Pinning protects only artifacts rendered after it landed; charts already
+installed keep tracking `stable-latest`. The image therefore defends itself
+too: with `ENABLE_WEBHOOKS` unset it serves the conversion webhooks only when a
+serving certificate is mounted, and otherwise logs a warning and runs without
+them ([architecture.md](architecture.md#enable_webhooks),
+meshery/meshery#22555). A manifest that needs the webhook must say
+`ENABLE_WEBHOOKS=true`, which keeps a missing certificate a hard failure.
+
 Three independent pins, three mechanisms:
 
 | Pin | Where | Advanced by |

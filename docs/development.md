@@ -167,7 +167,7 @@ The project uses the Kubebuilder **`go.kubebuilder.io/v4`** layout (see
 |--------|--------------|
 | `make manifests` | Regenerate CRDs and the RBAC `ClusterRole` from `+kubebuilder` markers via `controller-gen`. |
 | `make generate` | Regenerate `zz_generated.deepcopy.go`. |
-| `make build` | `go build` the manager into `bin/manager` (from `cmd/main.go`). |
+| `make build` | `go build` the `./cmd` package into `bin/manager`. |
 | `make run` | Run the manager against your current kube-context. |
 | `make test` | `manifests generate fmt vet` then unit + envtest with `KUBEBUILDER_ASSETS` resolved by `setup-envtest`. |
 | `make lint` / `make lint-fix` | Run `golangci-lint` (installed into `bin/`). |
@@ -202,6 +202,15 @@ make run                # run the manager locally
 make docker-build IMG=meshery/meshery-operator:dev
 make deploy IMG=meshery/meshery-operator:dev
 ```
+
+`make run` leaves `ENABLE_WEBHOOKS` unset and mounts no serving certificate,
+so the manager logs `WARNING: conversion webhooks disabled` and runs without
+them. `make install` applies the CRDs with conversion strategy `Webhook`, so
+in that state the API server cannot serve `v1alpha1` (the non-storage
+version); `v1alpha2` works. To exercise conversion locally, place a
+certificate and key at `$TMPDIR/k8s-webhook-server/serving-certs/{tls.crt,tls.key}`
+and run `ENABLE_WEBHOOKS=true make run`. The full contract is in
+[architecture.md](architecture.md#enable_webhooks).
 
 The manager image is multi-stage and distroless (`gcr.io/distroless/static:nonroot`,
 `CGO_ENABLED=0`, `TARGETOS`/`TARGETARCH`), so it builds for both amd64 and arm64.

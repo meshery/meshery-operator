@@ -207,12 +207,15 @@ test: manifests generate fmt vet test-env ## Run tests.
 ##@ Build
 
 .PHONY: build
+# build, run and the Dockerfile compile the ./cmd PACKAGE, never the file
+# cmd/main.go: naming a file compiles that file alone, so any helper beside it
+# (cmd/webhook.go, cmd/error.go) is an undefined symbol.
 build: generate fmt vet manifests ## Build manager binary.
-	go build -o bin/manager cmd/main.go
+	go build -o bin/manager ./cmd
 
 .PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/main.go
+run: manifests generate fmt vet ## Run a controller from your host (conversion webhooks off unless a serving cert is present; see docs/architecture.md).
+	go run ./cmd
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
@@ -384,7 +387,8 @@ catalog-push: ## Push a catalog image.
 
 .PHONY: coverage
 coverage: test-env ## Run tests and write an HTML coverage report to cover.html.
-	go test -v ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$$(bin/setup-envtest use $(ENVTEST_K8S_VERSION) --bin-dir $(BIN_DIR) -p path)" \
+		go test -v ./... -coverprofile cover.out
 	go tool cover -html=cover.out -o cover.html
 
 KIND ?= $(LOCALBIN)/kind

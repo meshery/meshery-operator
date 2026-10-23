@@ -23,6 +23,7 @@ import (
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	mesheryv1alpha2 "github.com/meshery/meshery-operator/api/v1alpha2"
 	"github.com/meshery/meshery-operator/controllers"
+	meshkiterrors "github.com/meshery/meshkit/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -71,6 +72,23 @@ func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{})))
 
+	// Decide before building the manager whether to serve the v1alpha1 <->
+	// v1alpha2 conversion webhooks, so a misconfiguration exits here with a
+	// structured error rather than inside mgr.Start. The decision and the
+	// webhook server read the same options, hence the same certificate path.
+	webhookOpts := webhookServerOptions()
+	webhooks, err := resolveWebhookEnablement(os.Getenv(enableWebhooksEnv), webhookOpts)
+	if err != nil {
+		setupLog.Error(err, "unable to configure the conversion webhooks", "code", meshkiterrors.GetCode(err))
+		os.Exit(1)
+	}
+	if webhooks.Enabled {
+		setupLog.Info("Conversion webhooks enabled", "reason", webhooks.Reason, "certDir", webhookOpts.CertDir)
+	} else {
+		setupLog.Info("WARNING: conversion webhooks disabled; the manager runs without them",
+			"reason", webhooks.Reason, "certDir", webhookOpts.CertDir)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
@@ -82,10 +100,8 @@ func main() {
 			SecureServing:  true,
 			FilterProvider: filters.WithAuthenticationAndAuthorization,
 		},
-		HealthProbeBindAddress: probeAddr,
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Port: 9443,
-		}),
+		HealthProbeBindAddress:  probeAddr,
+		WebhookServer:           webhook.NewServer(webhookOpts),
 		LeaderElection:          enableLeaderElection,
 		LeaderElectionID:        leaderElectionID,
 		LeaderElectionNamespace: namespace,
@@ -127,10 +143,11 @@ func main() {
 	}
 
 	// Register the conversion webhook for the v1alpha2 hub so the served
-	// v1alpha1 CRs round-trip through the /convert endpoint. Gated by
-	// ENABLE_WEBHOOKS so `make run` (no serving certs) can opt out; in-cluster it
-	// is required because the CRDs declare conversion strategy Webhook.
-	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+	// v1alpha1 CRs round-trip through the /convert endpoint. Required when the
+	// CRDs declare conversion strategy Webhook (config/default); the Helm chart's
+	// CRDs use strategy None and need none. resolveWebhookEnablement owns the
+	// ENABLE_WEBHOOKS contract.
+	if webhooks.Enabled {
 		if err = ctrl.NewWebhookManagedBy(mgr).For(&mesheryv1alpha2.Broker{}).Complete(); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Broker")
 			os.Exit(1)
