@@ -8,6 +8,8 @@
 
 #coverage file 
 coverage.txt
+# HTML report written by `make coverage`
+cover.html
 # Test binary, built with `go test -c`
 *.test
 

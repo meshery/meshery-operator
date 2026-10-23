@@ -187,6 +187,9 @@ spec:
                 - --health-probe-bind-address=:8081
                 command:
                 - /manager
+                env:
+                - name: ENABLE_WEBHOOKS
+                  value: "true"
                 image: meshery/meshery-operator:1.0.6
                 imagePullPolicy: IfNotPresent
                 livenessProbe:

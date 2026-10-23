@@ -8,6 +8,13 @@ spec:
     spec:
       containers:
       - name: manager
+        # These CRDs declare conversion strategy Webhook, so the webhook is
+        # required here: state it, so a missing serving certificate exits with
+        # a structured error instead of the manager silently running without
+        # it (the unset default only serves webhooks when a cert is mounted).
+        env:
+        - name: ENABLE_WEBHOOKS
+          value: "true"
         ports:
         - containerPort: 9443
           name: webhook-server

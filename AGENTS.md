@@ -20,7 +20,7 @@ to be on `PATH`. Go version is pinned in `go.mod` (CI resolves it via `go-versio
 
 | Command | Purpose |
 |---|---|
-| `make build` | Compile `cmd/main.go` into `bin/manager`. |
+| `make build` | Compile the `./cmd` package (entrypoint `cmd/main.go`) into `bin/manager`. Build the package, never the file - `cmd/` holds more than `main.go`. |
 | `make test` | `manifests generate fmt vet`, then unit + envtest suites (auto-resolves `KUBEBUILDER_ASSETS` via `setup-envtest`). |
 | `go test ./pkg/...` | Just the fast unit tests (resource builders, pure helpers) - no control plane. |
 | `go test ./controllers/... ./pkg/broker/...` | Just the Ginkgo/Gomega envtest suites. |
