@@ -97,6 +97,10 @@ var (
 			Selector: &metav1.LabelSelector{
 				MatchLabels: MeshSyncLabel,
 			},
+			// RollingUpdate with maxSurge: 0 and maxUnavailable: 1 so the old
+			// pod releases hostPort 11000 before a replacement is created,
+			// preventing the rollout deadlock in #933. Brief unavailability
+			// during upgrades is the intended tradeoff.
 			Strategy: appsv1.DeploymentStrategy{
 				Type: appsv1.RollingUpdateDeploymentStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateDeployment{
