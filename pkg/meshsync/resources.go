@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -63,6 +64,9 @@ var (
 
 	valtrue bool = true
 
+	maxSurge0       = intstr.FromInt(0)
+	maxUnavailable1 = intstr.FromInt(1)
+
 	MesheryLabel = map[string]string{
 		appLabelKey: mesheryName,
 	}
@@ -92,6 +96,13 @@ var (
 			Replicas: &val1,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: MeshSyncLabel,
+			},
+			Strategy: appsv1.DeploymentStrategy{
+				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
+					MaxSurge:       &maxSurge0,
+					MaxUnavailable: &maxUnavailable1,
+				},
 			},
 			Template: PodTemplate,
 		},
