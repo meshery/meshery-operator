@@ -43,6 +43,7 @@ broker StatefulSet and meshsync Deployment become ready and that the Broker CR
 
 ```bash
 make integration-tests          # full cycle: setup, assert, cleanup
+BROKER_UPGRADE_FIXTURE=1 make integration-tests  # seed and verify legacy Broker child cleanup
 # or step by step:
 make integration-tests-setup
 make integration-tests-run
@@ -73,6 +74,15 @@ that matters: `BROKER_URL` carries no literal credential (token flows through a
 `secretKeyRef`), and MeshSync holds a **live client connection on the NATS
 server** (checked via the broker's `connz` monitoring endpoint) - deployments
 being Available proves nothing about broker connectivity.
+
+The optional Broker upgrade fixture creates the previous generation's
+StatefulSet and LoadBalancer Service with the sample Broker's controlling owner
+UID and legacy labels. It verifies their deletion, preservation of current
+resources and an owned ConfigMap outside the cleanup scope, the cleanup Event,
+and MeshSync connectivity after cleanup. It exercises legacy child migration,
+not an upgrade of every historical chart/image combination. A kind cluster can
+verify the Service disappears, but cannot demonstrate cloud LoadBalancer
+deprovisioning.
 
 > The current e2e harness is bash-on-kind with a single Service-type path. A
 > richer matrix (ClusterIP/NodePort/LoadBalancer, networking reconfiguration,

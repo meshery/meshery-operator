@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -79,7 +80,7 @@ var _ = Describe("Controller update reconciliation", func() {
 		meshsync := &mesheryv1alpha1.MeshSync{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: testAPIVersion,
-				Kind:       "MeshSync",
+				Kind:       testMeshSyncKind,
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
@@ -188,5 +189,63 @@ var _ = Describe("Controller update reconciliation", func() {
 		err := k8sClient.Create(ctx, broker)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("loadBalancerClass is only valid when service type is LoadBalancer"))
+	})
+})
+
+var _ = Describe("Broker upgrade cleanup", func() {
+	It("cleans up legacy broker resources after publishing the replacement endpoint", func() {
+		ctx := context.Background()
+		namespace := fmt.Sprintf("broker-migration-%d", GinkgoRandomSeed())
+		Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})).To(Succeed())
+		broker := &mesheryv1alpha1.Broker{
+			ObjectMeta: metav1.ObjectMeta{Name: "custom-broker", Namespace: namespace},
+			Spec:       mesheryv1alpha1.BrokerSpec{Size: 1},
+		}
+		Expect(k8sClient.Create(ctx, broker)).To(Succeed())
+		owner := metav1.NewControllerRef(broker, mesheryv1alpha1.GroupVersion.WithKind("Broker"))
+		labels := legacyBrokerTestLabels()
+		one := int32(1)
+		old := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: broker.Name, Namespace: namespace, Labels: labels, OwnerReferences: []metav1.OwnerReference{*owner}},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: &one, ServiceName: broker.Name, Selector: &metav1.LabelSelector{MatchLabels: labels},
+				Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: labels}, Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "nats", Image: "nats:2.8.2-alpine3.15"}}}},
+			},
+		}
+		service := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: broker.Name, Namespace: namespace, Labels: labels, OwnerReferences: []metav1.OwnerReference{*owner}},
+			Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer, Selector: labels, Ports: []corev1.ServicePort{{Name: "client", Port: 4222}}},
+		}
+		Expect(k8sClient.Create(ctx, old)).To(Succeed())
+		Expect(k8sClient.Create(ctx, service)).To(Succeed())
+		newKey := types.NamespacedName{Name: natsObjectName, Namespace: namespace}
+		Eventually(func() error {
+			return k8sClient.Get(ctx, newKey, &appsv1.StatefulSet{})
+		}, 15*time.Second, 100*time.Millisecond).Should(Succeed())
+		By("retaining old resources while the replacement is unready")
+		Consistently(func() error {
+			return k8sClient.Get(ctx, types.NamespacedName{Name: broker.Name, Namespace: namespace}, &corev1.Service{})
+		}, time.Second, 100*time.Millisecond).Should(Succeed())
+		By("driving the replacement rollout status because envtest has no kubelet")
+		Eventually(func() error {
+			current := &appsv1.StatefulSet{}
+			if err := k8sClient.Get(ctx, newKey, current); err != nil {
+				return err
+			}
+			current.Status.ObservedGeneration = current.Generation
+			current.Status.Replicas, current.Status.ReadyReplicas, current.Status.UpdatedReplicas = one, one, one
+			current.Status.CurrentRevision, current.Status.UpdateRevision = "replacement", "replacement"
+			return k8sClient.Status().Update(ctx, current)
+		}, 5*time.Second, 100*time.Millisecond).Should(Succeed())
+		By("publishing the new endpoint and removing only obsolete owned children")
+		Eventually(func(g Gomega) {
+			current := &mesheryv1alpha1.Broker{}
+			g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: broker.Name, Namespace: namespace}, current)).To(Succeed())
+			g.Expect(current.Status.Endpoint.Internal).ToNot(BeEmpty())
+			g.Expect(apierrors.IsNotFound(k8sClient.Get(ctx, types.NamespacedName{Name: broker.Name, Namespace: namespace}, &appsv1.StatefulSet{}))).To(BeTrue())
+			g.Expect(apierrors.IsNotFound(k8sClient.Get(ctx, types.NamespacedName{Name: broker.Name, Namespace: namespace}, &corev1.Service{}))).To(BeTrue())
+			g.Expect(k8sClient.Get(ctx, newKey, &appsv1.StatefulSet{})).To(Succeed())
+			g.Expect(k8sClient.Get(ctx, newKey, &corev1.Service{})).To(Succeed())
+		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 	})
 })

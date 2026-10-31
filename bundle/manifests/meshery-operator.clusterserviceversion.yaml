@@ -108,6 +108,13 @@ spec:
           - update
           - watch
         - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        - apiGroups:
           - apps
           resources:
           - deployments

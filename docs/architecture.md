@@ -96,6 +96,43 @@ explicitly, and unparseable versions keep an exec liveness probe as the
 version-skew-safe fallback (an httpGet probe against an image without the
 endpoints would connection-refuse and crashloop it).
 
+### Broker upgrade cleanup
+
+Earlier broker builders named their StatefulSet and LoadBalancer Service after
+the Broker CR. The chart-based builder uses `meshery-nats` instead. Normal
+reconciliation now prunes the verified legacy StatefulSet and Service after
+publishing the replacement endpoint. This is separate from Broker finalization.
+
+A candidate must be in the Broker namespace, named after that Broker, carry
+`app=meshery,component=broker`, and have a controlling `meshery.io` Broker owner
+reference matching the CR's name and UID. Both served owner-reference versions
+are accepted. Current desired identities are explicitly protected, including
+when the Broker itself is named `meshery-nats`. ConfigMaps, Secrets, PVCs and
+other names are outside this migration's deletion scope.
+
+Cleanup waits for the replacement StatefulSet's observed generation, updated
+replicas, ready replicas and revisions to show a completed rollout. It also
+waits for every MeshSync referencing that native Broker, including references
+from other namespaces, to have a completed Deployment rollout with the new
+`BROKER_URL` and auth Secret reference. The Broker endpoint is published **before**
+this check, so consumers can migrate. Pending migration or asynchronous deletion
+requeues after five seconds without blocking the endpoint update.
+
+These checks establish Kubernetes rollout state, not the absence of arbitrary
+clients on the old NATS server. Older MeshSync images have weaker readiness
+signals. Custom brokers and external clients are not discoverable through native
+Broker references; users must plan their endpoint migration as part of the upgrade.
+
+Deletes use UID and resourceVersion preconditions. A stale candidate is
+re-evaluated after a conflict; NotFound is harmless. Other API failures surface
+as a structured error and a false Broker `Cleanup` condition, which clears after
+cleanup succeeds. Each accepted delete request emits an
+`ObsoleteBrokerResourceCleanup` Kubernetes Event. The event reports a request,
+not completion of Pod termination or cloud LoadBalancer deprovisioning.
+
+The migration does not depend on the MeshSync deployment-strategy fix in #941.
+Until a referenced MeshSync rollout can finish, legacy resources are retained.
+
 ### Managed-component images
 
 Every managed-component image resolves through one path, `resolveVersion` for
