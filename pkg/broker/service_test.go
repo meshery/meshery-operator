@@ -159,6 +159,59 @@ func TestBrokerImagePinning(t *testing.T) {
 	}
 }
 
+func TestBrokerImageRepository(t *testing.T) {
+	cases := []struct {
+		name       string
+		repository string
+		version    string
+		wantImage  string
+		wantPolicy corev1.PullPolicy
+	}{
+		{
+			name:       "custom repo with default chart version",
+			repository: "myregistry.corp.internal/nats",
+			version:    "",
+			wantImage:  "myregistry.corp.internal/nats:2.14.2-alpine",
+			wantPolicy: corev1.PullIfNotPresent,
+		},
+		{
+			name:       "custom repo with explicit version",
+			repository: "myregistry.corp.internal/nats",
+			version:    "2.10.22-alpine",
+			wantImage:  "myregistry.corp.internal/nats:2.10.22-alpine",
+			wantPolicy: corev1.PullIfNotPresent,
+		},
+		{
+			name:       "custom repo with port",
+			repository: "registry.internal:5000/nats",
+			version:    "v2.10.22",
+			wantImage:  "registry.internal:5000/nats:2.10.22",
+			wantPolicy: corev1.PullIfNotPresent,
+		},
+		{
+			name:       "custom repo with moving tag",
+			repository: "myregistry.corp.internal/nats",
+			version:    "latest",
+			wantImage:  "myregistry.corp.internal/nats:latest",
+			wantPolicy: corev1.PullAlways,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := brokerFixture(1, corev1.ServiceTypeClusterIP)
+			m.Spec.Repository = tc.repository
+			m.Spec.Version = tc.version
+			c := natsContainer(t, m)
+			if c.Image != tc.wantImage {
+				t.Errorf("image = %q, want %q", c.Image, tc.wantImage)
+			}
+			if c.ImagePullPolicy != tc.wantPolicy {
+				t.Errorf("imagePullPolicy = %q, want %q", c.ImagePullPolicy, tc.wantPolicy)
+			}
+		})
+	}
+}
+
 // natsContainer builds the Broker's objects and returns the NATS server
 // container from the rendered StatefulSet.
 func natsContainer(t *testing.T, m *mesheryv1alpha1.Broker) corev1.Container {

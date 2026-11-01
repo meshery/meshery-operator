@@ -23,6 +23,12 @@ import (
 // (Field order is optimised for struct alignment; the JSON/CRD shape is
 // unaffected.)
 type BrokerSpec struct {
+	// Repository overrides the default NATS image repository ("nats").
+	// When combined with Version, the full image is "<repository>:<version>".
+	// An air-gapped installation points this at a private registry.
+	// +optional
+	Repository string `json:"repository,omitempty" yaml:"repository,omitempty"`
+
 	// Version pins the NATS server image tag. When empty the operator uses the
 	// pinned NATS version from its vendored chart - never a moving channel tag.
 	// Use the bare tag the registry publishes ("2.14.2-alpine"); a leading "v"

@@ -100,7 +100,7 @@ func GetServerObject(m *mesheryv1alpha1.MeshSync, tokenSecret string) Object {
 	obj.Spec.Replicas = &size
 	if len(obj.Spec.Template.Spec.Containers) > 0 {
 		version := resolveVersion(m.Spec.Version)
-		applyVersion(&obj.Spec.Template.Spec.Containers[0], version)
+		applyImage(&obj.Spec.Template.Spec.Containers[0], m.Spec.Repository, version)
 		applyProbes(&obj.Spec.Template.Spec.Containers[0], version)
 		setBrokerURL(&obj.Spec.Template.Spec.Containers[0], m.Status.PublishingTo, tokenSecret)
 	}
@@ -120,16 +120,23 @@ func resolveVersion(version string) string {
 	return utils.NormalizeImageTag(version)
 }
 
-// applyVersion maps a resolved version onto the MeshSync image tag and the pull
-// policy that matches its mutability (moving tags track their channel with
-// PullAlways; pinned tags use IfNotPresent so side-loaded images (kind) and
-// air-gapped clusters work).
-func applyVersion(c *corev1.Container, version string) {
-	if version == "" {
+// applyImage maps a resolved repository and version onto the MeshSync container
+// image and the pull policy that matches its mutability (moving tags track their
+// channel with PullAlways; pinned tags use IfNotPresent so side-loaded images (kind)
+// and air-gapped clusters work).
+func applyImage(c *corev1.Container, repository, version string) {
+	if repository == "" && version == "" {
 		return
 	}
-	c.Image = meshsyncImageRepo + ":" + version
-	c.ImagePullPolicy = utils.PullPolicyFor(version)
+	image, pullPolicy := utils.BuildImage(repository, version, meshsyncImageRepo, defaultMeshSyncVersion)
+	c.Image = image
+	c.ImagePullPolicy = pullPolicy
+}
+
+// applyVersion is a delegating wrapper for applyImage that preserves the existing
+// call signature for backward compatibility and tests.
+func applyVersion(c *corev1.Container, version string) {
+	applyImage(c, "", version)
 }
 
 // applyProbes selects the container's health probes from the deployed MeshSync

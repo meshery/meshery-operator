@@ -148,6 +148,58 @@ func TestApplyVersion(t *testing.T) {
 	}
 }
 
+func TestApplyImage(t *testing.T) {
+	c := &corev1.Container{Image: "meshery/meshsync:stable-latest", ImagePullPolicy: corev1.PullAlways}
+
+	applyImage(c, "", "")
+	if c.Image != "meshery/meshsync:stable-latest" || c.ImagePullPolicy != corev1.PullAlways {
+		t.Errorf("empty repo and version must leave template untouched, got %s/%s", c.Image, c.ImagePullPolicy)
+	}
+
+	applyImage(c, "myregistry.corp.internal/meshery/meshsync", "")
+	if c.Image != "myregistry.corp.internal/meshery/meshsync:"+defaultMeshSyncVersion || c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("custom repo with default tag = %s/%s, want myregistry.corp.internal/meshery/meshsync:%s/IfNotPresent",
+			c.Image, c.ImagePullPolicy, defaultMeshSyncVersion)
+	}
+
+	applyImage(c, "myregistry.corp.internal/meshery/meshsync", "1.0.4")
+	if c.Image != "myregistry.corp.internal/meshery/meshsync:1.0.4" || c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("custom repo with pinned tag = %s/%s, want myregistry.corp.internal/meshery/meshsync:1.0.4/IfNotPresent",
+			c.Image, c.ImagePullPolicy)
+	}
+
+	applyImage(c, "registry.corp.internal:5000/meshery/meshsync", "v1.0.5")
+	if c.Image != "registry.corp.internal:5000/meshery/meshsync:1.0.5" || c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("custom repo with port = %s/%s, want registry.corp.internal:5000/meshery/meshsync:1.0.5/IfNotPresent",
+			c.Image, c.ImagePullPolicy)
+	}
+}
+
+func TestGetServerObjectRepository(t *testing.T) {
+	m := &mesheryv1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync", Namespace: "meshery"},
+		Spec: mesheryv1alpha1.MeshSyncSpec{
+			Repository: "myregistry.corp.internal/custom-sync",
+			Version:    "1.0.4",
+		},
+	}
+	obj := GetServerObject(m, "")
+	deploy, ok := obj.(*appsv1.Deployment)
+	if !ok {
+		t.Fatalf("expected *appsv1.Deployment, got %T", obj)
+	}
+	if len(deploy.Spec.Template.Spec.Containers) == 0 {
+		t.Fatal("deployment has no containers")
+	}
+	c := deploy.Spec.Template.Spec.Containers[0]
+	if want := "myregistry.corp.internal/custom-sync:1.0.4"; c.Image != want {
+		t.Errorf("GetServerObject container image = %q, want %q", c.Image, want)
+	}
+	if c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("GetServerObject pullPolicy = %v, want IfNotPresent", c.ImagePullPolicy)
+	}
+}
+
 // TestDefaultMeshSyncVersionIsPinned is the regression gate for the class of
 // broken install that motivated the pin: a moving channel tag as the default
 // re-points under running clusters, so an install that worked yesterday pulls

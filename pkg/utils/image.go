@@ -75,3 +75,57 @@ func NormalizeImageTag(tag string) string {
 	}
 	return rest
 }
+
+// BuildImage constructs a complete container image reference and its corresponding
+// pull policy from a custom or default repository and version tag.
+//
+// If customRepo is non-empty:
+//   - If version is empty and customRepo already carries an explicit tag (after the last '/')
+//     or digest ('@'), customRepo is used directly.
+//   - If version is provided, any existing tag on customRepo is stripped and replaced
+//     with the normalized version.
+//   - Otherwise, customRepo is joined with the normalized version (or defaultTag).
+//
+// If customRepo is empty, defaultRepo is used with the normalized version (or defaultTag).
+//
+// Port numbers on private registry hosts (e.g. "registry.corp.internal:5000/nats") are
+// safely distinguished from image tags because a colon is only treated as a tag delimiter
+// when it occurs after the last forward slash.
+//
+// Pull policy is derived from the effective tag using PullPolicyFor, ensuring that pinned
+// releases maintain PullIfNotPresent for air-gapped clusters.
+func BuildImage(customRepo, version, defaultRepo, defaultTag string) (string, corev1.PullPolicy) {
+	repo := strings.TrimSpace(customRepo)
+	v := strings.TrimSpace(version)
+
+	if repo == "" {
+		repo = defaultRepo
+	}
+
+	lastSlash := strings.LastIndex(repo, "/")
+	lastColon := strings.LastIndex(repo, ":")
+	hasTagInRepo := lastColon > lastSlash
+	hasDigestInRepo := strings.Contains(repo, "@")
+
+	if v != "" {
+		tag := NormalizeImageTag(v)
+		if hasTagInRepo {
+			repo = repo[:lastColon]
+		}
+		return repo + ":" + tag, PullPolicyFor(tag)
+	}
+
+	if hasDigestInRepo {
+		return repo, corev1.PullIfNotPresent
+	}
+
+	if hasTagInRepo {
+		tag := repo[lastColon+1:]
+		normalizedTag := NormalizeImageTag(tag)
+		effectiveImage := repo[:lastColon] + ":" + normalizedTag
+		return effectiveImage, PullPolicyFor(normalizedTag)
+	}
+
+	tag := NormalizeImageTag(defaultTag)
+	return repo + ":" + tag, PullPolicyFor(tag)
+}

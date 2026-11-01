@@ -39,6 +39,11 @@ type MeshsyncBroker struct {
 type MeshSyncSpec struct {
 	WatchList corev1.ConfigMap `json:"watch-list,omitempty" yaml:"watch-list,omitempty"`
 	Broker    MeshsyncBroker   `json:"broker,omitempty" yaml:"broker,omitempty"`
+	// Repository overrides the default image repository ("meshery/meshsync").
+	// When combined with Version, the full image is "<repository>:<version>".
+	// An air-gapped installation points this at a private registry.
+	// +optional
+	Repository string `json:"repository,omitempty" yaml:"repository,omitempty"`
 	// Version pins the MeshSync image tag. When empty the operator deploys the
 	// pinned default MeshSync release it ships with - never a moving channel
 	// tag, so the image a cluster runs cannot change under it on a pod restart.
