@@ -115,8 +115,21 @@ replicas, ready replicas and revisions to show a completed rollout. It also
 waits for every MeshSync referencing that native Broker, including references
 from other namespaces, to have a completed Deployment rollout with the new
 `BROKER_URL` and auth Secret reference. The Broker endpoint is published **before**
-this check, so consumers can migrate. Pending migration or asynchronous deletion
-requeues after five seconds without blocking the endpoint update.
+this check, so consumers can migrate. Cleanup retries after one minute when the
+migration gate is closed and no child is deleting. Issued or pending deletions
+use a five-second retry; already deleting children do not need to pass that gate
+again. Children not yet deleting still require the migration gate to open before
+a delete can be requested. Owned resource events can trigger an earlier
+reconciliation. This cleanup-specific retry policy applies after normal Broker
+reconciliation and health checks succeed; errors still use controller-runtime
+backoff. Neither cleanup retry blocks publication of the endpoint.
+
+Environment matching requires the expected literal `BROKER_URL` and the token
+Secret's name and key. An omitted Secret `optional` flag and explicit `false`
+are equivalent. Optional token Secrets, different sources, literal tokens and
+wrong endpoints or Secret references still block cleanup. Broker variables must
+have unique names, and `NATS_TOKEN` must precede a `BROKER_URL` that expands it;
+otherwise the stored configuration cannot establish the expected authentication.
 
 These checks establish Kubernetes rollout state, not the absence of arbitrary
 clients on the old NATS server. Older MeshSync images have weaker readiness

@@ -18,13 +18,14 @@ package controllers
 
 import (
 	"context"
+	"strings"
+	"time"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
 	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -32,24 +33,56 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	brokerMigrationRetryInterval = time.Minute
+	brokerDeletionRetryInterval  = 5 * time.Second
+)
+
 // cleanupObsoleteBrokerResources prunes only the previous broker builder's
 // StatefulSet and Service. Other child kinds, Secrets and PVCs are untouched.
-// A true result means migration or asynchronous deletion still needs a retry.
-func (r *BrokerReconciler) cleanupObsoleteBrokerResources(ctx context.Context, broker *mesheryv1alpha1.Broker) (bool, error) {
+// The result distinguishes slow migration polling from fast deletion confirmation;
+// zero means no migration cleanup remains.
+func (r *BrokerReconciler) cleanupObsoleteBrokerResources(ctx context.Context, broker *mesheryv1alpha1.Broker) (time.Duration, error) {
 	if broker.DeletionTimestamp != nil || broker.UID == "" {
-		return false, nil
+		return 0, nil
 	}
 	obsolete, err := r.legacyBrokerChildren(ctx, broker)
 	if err != nil || len(obsolete) == 0 {
-		return false, err
+		return 0, err
+	}
+	pendingDeletion, allDeleting := false, true
+	for _, object := range obsolete {
+		if object.GetDeletionTimestamp() != nil {
+			pendingDeletion = true
+		} else {
+			allDeleting = false
+		}
+	}
+	// Confirmation does not require another migration check once every
+	// candidate is already deleting. No new delete is requested on this path.
+	if allDeleting {
+		return brokerDeletionRetryInterval, nil
 	}
 	ready, err := r.brokerMigrationReady(ctx, broker)
-	if err != nil || !ready {
-		return true, err
+	if err != nil {
+		return 0, err
 	}
-	return r.deleteLegacyBrokerChildren(ctx, broker, obsolete)
+	if !ready {
+		if pendingDeletion {
+			// Confirm the in-flight child promptly while retaining any child
+			// whose migration gate is still closed.
+			return brokerDeletionRetryInterval, nil
+		}
+		return brokerMigrationRetryInterval, nil
+	}
+	pending, err := r.deleteLegacyBrokerChildren(ctx, broker, obsolete)
+	if pending {
+		return brokerDeletionRetryInterval, err
+	}
+	return 0, err
 }
 
+// legacyBrokerChildren lists eligible kinds and verifies identity before pruning.
 func (r *BrokerReconciler) legacyBrokerChildren(ctx context.Context, broker *mesheryv1alpha1.Broker) ([]client.Object, error) {
 	options := []client.ListOption{client.InNamespace(broker.Namespace), client.MatchingLabels(brokerpackage.BrokerLabel)}
 	statefulSets := &appsv1.StatefulSetList{}
@@ -74,6 +107,7 @@ func (r *BrokerReconciler) legacyBrokerChildren(ctx context.Context, broker *mes
 	return obsolete, nil
 }
 
+// deleteLegacyBrokerChildren requests guarded deletion and retries until API objects disappear.
 func (r *BrokerReconciler) deleteLegacyBrokerChildren(ctx context.Context, broker *mesheryv1alpha1.Broker, obsolete []client.Object) (bool, error) {
 	for _, object := range obsolete {
 		if object.GetDeletionTimestamp() != nil {
@@ -106,6 +140,7 @@ func (r *BrokerReconciler) deleteLegacyBrokerChildren(ctx context.Context, broke
 	return true, nil
 }
 
+// brokerChildKind limits migration candidates to the historical workload and Service kinds.
 func brokerChildKind(object client.Object) string {
 	switch object.(type) {
 	case *appsv1.StatefulSet:
@@ -117,6 +152,7 @@ func brokerChildKind(object client.Object) string {
 	}
 }
 
+// isLegacyBrokerChild requires historical identity and ownership while protecting desired resources.
 func isLegacyBrokerChild(broker *mesheryv1alpha1.Broker, object client.Object) bool {
 	// The old builders used Broker.Name, including custom names. A different
 	// name is not a verified legacy resource even if somebody set these labels.
@@ -142,6 +178,7 @@ func isLegacyBrokerChild(broker *mesheryv1alpha1.Broker, object client.Object) b
 	return true
 }
 
+// isControlledByBroker verifies controller identity independently of the served owner version.
 func isControlledByBroker(broker *mesheryv1alpha1.Broker, object client.Object) bool {
 	owner := metav1.GetControllerOf(object)
 	if owner == nil || owner.UID != broker.UID || owner.Name != broker.Name || owner.Kind != "Broker" {
@@ -181,6 +218,7 @@ func (r *BrokerReconciler) brokerMigrationReady(ctx context.Context, broker *mes
 	return true, nil
 }
 
+// replacementBrokerRolledOut reads desired StatefulSets and waits for their current rollout.
 func (r *BrokerReconciler) replacementBrokerRolledOut(ctx context.Context, broker *mesheryv1alpha1.Broker) (bool, error) {
 	for _, desired := range brokerpackage.GetObjects(broker) {
 		want, ok := desired.(*appsv1.StatefulSet)
@@ -201,6 +239,7 @@ func (r *BrokerReconciler) replacementBrokerRolledOut(ctx context.Context, broke
 	return true, nil
 }
 
+// replacementBrokerRolloutComplete requires the owned workload to reach the desired revision and replicas.
 func replacementBrokerRolloutComplete(broker *mesheryv1alpha1.Broker, current *appsv1.StatefulSet, replicas int32) bool {
 	return isControlledByBroker(broker, current) && current.DeletionTimestamp == nil &&
 		current.Status.ObservedGeneration >= current.Generation && current.Status.CurrentRevision != "" &&
@@ -208,6 +247,7 @@ func replacementBrokerRolloutComplete(broker *mesheryv1alpha1.Broker, current *a
 		current.Status.Replicas == replicas && current.Status.UpdatedReplicas == replicas && current.Status.ReadyReplicas == replicas
 }
 
+// meshSyncBrokerRolledOut verifies that an owned consumer has rolled out the replacement configuration.
 func (r *BrokerReconciler) meshSyncBrokerRolledOut(ctx context.Context, broker *mesheryv1alpha1.Broker, m *mesheryv1alpha1.MeshSync) (bool, error) {
 	deployment := &appsv1.Deployment{}
 	if err := r.Get(ctx, types.NamespacedName{Namespace: m.Namespace, Name: m.Name}, deployment); err != nil {
@@ -235,6 +275,7 @@ func (r *BrokerReconciler) meshSyncBrokerRolledOut(ctx context.Context, broker *
 	return true, nil
 }
 
+// meshSyncDeploymentRolloutComplete rejects stale, unavailable or reported terminating replicas.
 func meshSyncDeploymentRolloutComplete(deployment *appsv1.Deployment, replicas int32) bool {
 	return deployment.Spec.Replicas != nil && *deployment.Spec.Replicas == replicas &&
 		deployment.Status.ObservedGeneration >= deployment.Generation &&
@@ -243,27 +284,64 @@ func meshSyncDeploymentRolloutComplete(deployment *appsv1.Deployment, replicas i
 		(deployment.Status.TerminatingReplicas == nil || *deployment.Status.TerminatingReplicas == 0)
 }
 
+// brokerEnvMatches checks unique broker variables and token-expansion order,
+// ignoring unrelated environment entries. Duplicate names are ambiguous because
+// later definitions can override a value that matched earlier in the list.
 func brokerEnvMatches(want corev1.Container, containers []corev1.Container) bool {
 	for _, current := range containers {
 		if current.Name != want.Name {
 			continue
 		}
+		tokenIndex, urlIndex := -1, -1
+		urlNeedsToken := false
 		for _, expected := range want.Env {
 			if expected.Name != "BROKER_URL" && expected.Name != "NATS_TOKEN" {
 				continue
 			}
-			found := false
-			for _, actual := range current.Env {
-				if actual.Name == expected.Name && equality.Semantic.DeepEqual(actual, expected) {
-					found = true
-					break
+			matchIndex := -1
+			for i, actual := range current.Env {
+				if actual.Name != expected.Name {
+					continue
 				}
+				if matchIndex >= 0 || !brokerEnvVarMatches(actual, expected) {
+					return false
+				}
+				matchIndex = i
 			}
-			if !found {
+			if matchIndex < 0 {
 				return false
 			}
+			if expected.Name == "NATS_TOKEN" {
+				tokenIndex = matchIndex
+			} else {
+				urlIndex = matchIndex
+				urlNeedsToken = strings.Contains(expected.Value, "$(NATS_TOKEN)")
+			}
 		}
-		return true
+		// Kubernetes expands $(VAR) only from earlier environment entries.
+		return !urlNeedsToken || (tokenIndex >= 0 && tokenIndex < urlIndex)
 	}
 	return false
+}
+
+// brokerEnvVarMatches compares literal URLs and Secret references without treating
+// an omitted optional flag differently from false. A different source or an
+// optional token Secret still fails the migration gate.
+func brokerEnvVarMatches(actual, expected corev1.EnvVar) bool {
+	if actual.Value != expected.Value {
+		return false
+	}
+	if expected.ValueFrom == nil {
+		return actual.ValueFrom == nil
+	}
+	if actual.ValueFrom == nil || expected.ValueFrom.SecretKeyRef == nil {
+		return false
+	}
+	source := actual.ValueFrom
+	if source.FieldRef != nil || source.ResourceFieldRef != nil || source.ConfigMapKeyRef != nil || source.FileKeyRef != nil {
+		return false
+	}
+	current, want := source.SecretKeyRef, expected.ValueFrom.SecretKeyRef
+	return current != nil && current.Name == want.Name && current.Key == want.Key &&
+		(current.Optional != nil && *current.Optional) == (want.Optional != nil && *want.Optional)
 }

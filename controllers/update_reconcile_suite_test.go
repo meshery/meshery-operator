@@ -248,4 +248,42 @@ var _ = Describe("Broker upgrade cleanup", func() {
 			g.Expect(k8sClient.Get(ctx, newKey, &corev1.Service{})).To(Succeed())
 		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 	})
+	It("checks stored Secret defaults, environment ordering and duplicate definitions", func() {
+		ctx := context.Background()
+		namespace := fmt.Sprintf("broker-env-semantic-%d", GinkgoRandomSeed())
+		Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})).To(Succeed())
+		f := newBrokerCleanupFixture()
+		deployment := f.addMeshSync()
+		want := deployment.Spec.Template.Spec.Containers[0].DeepCopy()
+		deployment.Namespace = namespace
+		deployment.OwnerReferences = nil
+		deployment.Generation = 0
+		optional := false
+		brokerCleanupTestEnv(&deployment.Spec.Template.Spec.Containers[0], testNatsTokenEnv).ValueFrom.SecretKeyRef.Optional = &optional
+		Expect(k8sClient.Create(ctx, deployment)).To(Succeed())
+		stored := &appsv1.Deployment{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: deployment.Name, Namespace: namespace}, stored)).To(Succeed())
+		selector := brokerCleanupTestEnv(&stored.Spec.Template.Spec.Containers[0], testNatsTokenEnv).ValueFrom.SecretKeyRef
+		Expect(selector.Optional).ToNot(BeNil())
+		Expect(*selector.Optional).To(BeFalse())
+		Expect(brokerEnvMatches(*want, stored.Spec.Template.Spec.Containers)).To(BeTrue())
+
+		By("rejecting an API-stored URL placed before its token reference")
+		container := &stored.Spec.Template.Spec.Containers[0]
+		tokenEnv := brokerCleanupTestEnv(container, testNatsTokenEnv)
+		urlEnv := brokerCleanupTestEnv(container, testBrokerURLEnv)
+		*tokenEnv, *urlEnv = *urlEnv, *tokenEnv
+		Expect(k8sClient.Update(ctx, stored)).To(Succeed())
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: deployment.Name, Namespace: namespace}, stored)).To(Succeed())
+		Expect(brokerEnvMatches(*want, stored.Spec.Template.Spec.Containers)).To(BeFalse())
+
+		By("rejecting an API-stored duplicate URL that overrides the earlier value")
+		stored.Spec.Template.Spec.Containers[0].Env = want.DeepCopy().Env
+		stored.Spec.Template.Spec.Containers[0].Env = append(stored.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{Name: testBrokerURLEnv, Value: testOldBrokerURL})
+		Expect(k8sClient.Update(ctx, stored)).To(Succeed())
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: deployment.Name, Namespace: namespace}, stored)).To(Succeed())
+		Expect(brokerEnvMatches(*want, stored.Spec.Template.Spec.Containers)).To(BeFalse())
+	})
+
 })

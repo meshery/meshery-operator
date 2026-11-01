@@ -31,6 +31,7 @@ import (
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -43,6 +44,9 @@ import (
 )
 
 const (
+	testOldBrokerURL = "nats://old:4222"
+	testNatsTokenEnv = "NATS_TOKEN"
+	testBrokerURLEnv = "BROKER_URL"
 	defaultNamespace = "default"
 	testAPIVersion   = "meshery.io/v1alpha1"
 	testBrokerKind   = "Broker"
@@ -345,8 +349,8 @@ func TestBrokerCleanupMigrationGate(t *testing.T) {
 			d := f.addMeshSync()
 			for i := range d.Spec.Template.Spec.Containers[0].Env {
 				e := &d.Spec.Template.Spec.Containers[0].Env[i]
-				if e.Name == "BROKER_URL" {
-					e.Value = "nats://old:4222"
+				if e.Name == testBrokerURLEnv {
+					e.Value = testOldBrokerURL
 				}
 			}
 		}, pending: true},
@@ -354,7 +358,7 @@ func TestBrokerCleanupMigrationGate(t *testing.T) {
 			d := f.addMeshSync()
 			for i := range d.Spec.Template.Spec.Containers[0].Env {
 				e := &d.Spec.Template.Spec.Containers[0].Env[i]
-				if e.Name == "NATS_TOKEN" {
+				if e.Name == testNatsTokenEnv {
 					e.ValueFrom = nil
 					e.Value = "literal"
 				}
@@ -372,7 +376,7 @@ func TestBrokerCleanupMigrationGate(t *testing.T) {
 			f := newBrokerCleanupFixture()
 			test.modify(f)
 			r := f.reconciler(t)
-			pending, err := r.cleanupObsoleteBrokerResources(context.Background(), f.broker)
+			retryAfter, err := r.cleanupObsoleteBrokerResources(context.Background(), f.broker)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -386,7 +390,7 @@ func TestBrokerCleanupMigrationGate(t *testing.T) {
 					t.Fatalf("legacy %T must be removed: %v", o, err)
 				}
 			}
-			if test.pending && !pending {
+			if test.pending && retryAfter == 0 {
 				t.Fatal("pending migration must request a retry")
 			}
 		})
@@ -408,8 +412,8 @@ func TestBrokerCleanupPreservationAndIdempotency(t *testing.T) {
 			t.Fatalf("preserve %T %s: %v", object, object.GetName(), err)
 		}
 	}
-	if pending, err := r.cleanupObsoleteBrokerResources(ctx, f.broker); err != nil || pending {
-		t.Fatalf("repeat cleanup pending=%v, err=%v", pending, err)
+	if retryAfter, err := r.cleanupObsoleteBrokerResources(ctx, f.broker); err != nil || retryAfter != 0 {
+		t.Fatalf("repeat cleanup retry=%v, err=%v", retryAfter, err)
 	}
 	recorder := r.Recorder.(*record.FakeRecorder)
 	if got := len(recorder.Events); got != 2 {
@@ -454,9 +458,9 @@ func TestBrokerCleanupDeleteFailures(t *testing.T) {
 				}
 				return cause
 			}})
-			pending, err := r.cleanupObsoleteBrokerResources(context.Background(), f.broker)
-			if !pending {
-				t.Fatal("failed deletion needs a retry")
+			retryAfter, err := r.cleanupObsoleteBrokerResources(context.Background(), f.broker)
+			if retryAfter != 5*time.Second {
+				t.Fatal("failed deletion needs a fast retry")
 			}
 			if conflict && err != nil {
 				t.Fatalf("precondition conflict should revalidate: %v", err)
@@ -482,4 +486,237 @@ func (f *brokerCleanupFixture) replacementStatefulSet() *v1.StatefulSet {
 
 func legacyBrokerTestLabels() map[string]string {
 	return map[string]string{appLabelKey: "meshery", "component": brokerLabelValue}
+}
+
+// TestBrokerCleanupRetryIntervals distinguishes migration polling from deletion confirmation.
+func TestBrokerCleanupRetryIntervals(t *testing.T) {
+	markDeleting := func(f *brokerCleanupFixture, all bool) {
+		for _, o := range f.objects {
+			if isLegacyBrokerChild(f.broker, o) && (all || brokerChildKind(o) == "StatefulSet") {
+				now := metav1.Now()
+				o.SetDeletionTimestamp(&now)
+				o.SetFinalizers([]string{"test.example/preserve-until-confirmed"})
+			}
+		}
+	}
+	tests := []struct {
+		prepare    func(*brokerCleanupFixture)
+		name       string
+		want       time.Duration
+		wantEvents int
+	}{
+		{name: "replacement not ready", prepare: func(f *brokerCleanupFixture) {
+			f.replacementStatefulSet().Status.ReadyReplicas = 0
+		}, want: time.Minute},
+		{name: "consumer rollout blocked", prepare: func(f *brokerCleanupFixture) {
+			f.addMeshSync().Status.UpdatedReplicas = 0
+		}, want: time.Minute},
+		{name: "deletion requested", prepare: func(_ *brokerCleanupFixture) {}, want: 5 * time.Second, wantEvents: 2},
+		{name: "deletion already pending", prepare: func(f *brokerCleanupFixture) {
+			markDeleting(f, true)
+		}, want: 5 * time.Second},
+		{name: "readiness drops after deletion started", prepare: func(f *brokerCleanupFixture) {
+			markDeleting(f, true)
+			f.replacementStatefulSet().Status.ReadyReplicas = 0
+		}, want: 5 * time.Second},
+		{name: "partial deletion with blocked migration", prepare: func(f *brokerCleanupFixture) {
+			markDeleting(f, false)
+			f.addMeshSync().Status.UpdatedReplicas = 0
+		}, want: 5 * time.Second},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f := newBrokerCleanupFixture()
+			test.prepare(f)
+			r := f.reconciler(t)
+			result, err := r.reconcileBrokerCleanup(context.Background(), f.broker)
+			if err != nil || result.RequeueAfter != test.want {
+				t.Fatalf("retry=%v, err=%v; want %v", result.RequeueAfter, err, test.want)
+			}
+			if got := len(r.Recorder.(*record.FakeRecorder).Events); got != test.wantEvents {
+				t.Fatalf("events=%d, want %d", got, test.wantEvents)
+			}
+			if test.wantEvents == 0 {
+				for _, o := range []client.Object{&v1.StatefulSet{}, &corev1.Service{}} {
+					if getErr := r.Get(context.Background(), client.ObjectKeyFromObject(f.broker), o); getErr != nil {
+						t.Fatalf("pending legacy %T must be retained: %v", o, getErr)
+					}
+				}
+			}
+			if test.wantEvents == 2 {
+				result, err = r.reconcileBrokerCleanup(context.Background(), f.broker)
+				if err != nil || result.RequeueAfter != 0 {
+					t.Fatalf("completed cleanup retry=%v, err=%v", result.RequeueAfter, err)
+				}
+			}
+		})
+	}
+}
+
+// TestBrokerCleanupEquivalentSecretReference exercises an equivalent stored Secret selector.
+func TestBrokerCleanupEquivalentSecretReference(t *testing.T) {
+	f := newBrokerCleanupFixture()
+	deployment := f.addMeshSync()
+	for i := range deployment.Spec.Template.Spec.Containers[0].Env {
+		e := &deployment.Spec.Template.Spec.Containers[0].Env[i]
+		if e.Name == testNatsTokenEnv {
+			required := false
+			e.ValueFrom.SecretKeyRef.Optional = &required
+		}
+	}
+	r := f.reconciler(t)
+	if _, err := r.cleanupObsoleteBrokerResources(context.Background(), f.broker); err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range []client.Object{&v1.StatefulSet{}, &corev1.Service{}} {
+		err := r.Get(context.Background(), client.ObjectKeyFromObject(f.broker), o)
+		if !apierrors.IsNotFound(err) {
+			t.Fatalf("equivalent required Secret reference must allow removal of legacy %T: %v", o, err)
+		}
+	}
+}
+
+// TestBrokerCleanupEnvironmentSemantics preserves endpoint and authentication requirements.
+func TestBrokerCleanupEnvironmentSemantics(t *testing.T) {
+	f := newBrokerCleanupFixture()
+	want := f.addMeshSync().Spec.Template.Spec.Containers[0]
+	tests := []struct {
+		modify  func(*corev1.Container)
+		name    string
+		matches bool
+	}{
+		{name: "exact configuration", modify: func(_ *corev1.Container) {}, matches: true},
+		{name: "explicitly required Secret", modify: func(c *corev1.Container) {
+			value := false
+			brokerCleanupTestEnv(c, testNatsTokenEnv).ValueFrom.SecretKeyRef.Optional = &value
+		}, matches: true},
+		{name: "optional Secret", modify: func(c *corev1.Container) {
+			value := true
+			brokerCleanupTestEnv(c, testNatsTokenEnv).ValueFrom.SecretKeyRef.Optional = &value
+		}},
+		{name: "wrong Secret name", modify: func(c *corev1.Container) {
+			brokerCleanupTestEnv(c, testNatsTokenEnv).ValueFrom.SecretKeyRef.Name = "other-secret"
+		}},
+		{name: "wrong Secret key", modify: func(c *corev1.Container) {
+			brokerCleanupTestEnv(c, testNatsTokenEnv).ValueFrom.SecretKeyRef.Key = "other-key"
+		}},
+		{name: "literal token", modify: func(c *corev1.Container) {
+			e := brokerCleanupTestEnv(c, testNatsTokenEnv)
+			e.ValueFrom, e.Value = nil, "literal-token"
+		}},
+		{name: "different token source", modify: func(c *corev1.Container) {
+			brokerCleanupTestEnv(c, testNatsTokenEnv).ValueFrom = &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"}}
+		}},
+		{name: "old broker URL", modify: func(c *corev1.Container) {
+			brokerCleanupTestEnv(c, testBrokerURLEnv).Value = testOldBrokerURL
+		}},
+		{name: "indirect broker URL", modify: func(c *corev1.Container) {
+			e := brokerCleanupTestEnv(c, testBrokerURLEnv)
+			e.Value = ""
+			e.ValueFrom = &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "broker"}, Key: "url"}}
+		}},
+		{name: "missing token", modify: func(c *corev1.Container) {
+			for i := range c.Env {
+				if c.Env[i].Name == testNatsTokenEnv {
+					c.Env = append(c.Env[:i], c.Env[i+1:]...)
+					return
+				}
+			}
+		}},
+		{name: "missing URL", modify: func(c *corev1.Container) {
+			for i := range c.Env {
+				if c.Env[i].Name == testBrokerURLEnv {
+					c.Env = append(c.Env[:i], c.Env[i+1:]...)
+					return
+				}
+			}
+		}},
+		{name: "token defined after URL", modify: func(c *corev1.Container) {
+			token, brokerURL := -1, -1
+			for i := range c.Env {
+				if c.Env[i].Name == testNatsTokenEnv {
+					token = i
+				}
+				if c.Env[i].Name == testBrokerURLEnv {
+					brokerURL = i
+				}
+			}
+			c.Env[token], c.Env[brokerURL] = c.Env[brokerURL], c.Env[token]
+		}},
+		{name: "duplicate token", modify: func(c *corev1.Container) {
+			duplicate := brokerCleanupTestEnv(c, testNatsTokenEnv).DeepCopy()
+			duplicate.ValueFrom.SecretKeyRef.Name = "other-secret"
+			c.Env = append(c.Env, *duplicate)
+		}},
+		{name: "duplicate URL", modify: func(c *corev1.Container) {
+			c.Env = append(c.Env, corev1.EnvVar{Name: testBrokerURLEnv, Value: testOldBrokerURL})
+		}},
+		{name: "unrelated env addition", modify: func(c *corev1.Container) {
+			c.Env = append(c.Env, corev1.EnvVar{Name: "EXTRA_ENV", Value: "unrelated"})
+		}, matches: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			current := want.DeepCopy()
+			test.modify(current)
+			if got := brokerEnvMatches(want, []corev1.Container{*current}); got != test.matches {
+				t.Fatalf("match=%v, want %v", got, test.matches)
+			}
+		})
+	}
+}
+
+func brokerCleanupTestEnv(container *corev1.Container, name string) *corev1.EnvVar {
+	for i := range container.Env {
+		if container.Env[i].Name == name {
+			return &container.Env[i]
+		}
+	}
+	panic("broker environment fixture missing " + name)
+}
+
+// TestBrokerCleanupFailureRecovery verifies failure reporting and eventual condition recovery.
+func TestBrokerCleanupFailureRecovery(t *testing.T) {
+	ctx := context.Background()
+	f := newBrokerCleanupFixture()
+	r := f.reconciler(t)
+	original := r.Client
+	r.Client = interceptor.NewClient(original.(client.WithWatch), interceptor.Funcs{Delete: func(_ context.Context, _ client.WithWatch, o client.Object, _ ...client.DeleteOption) error {
+		return apierrors.NewForbidden(schema.GroupResource{Resource: "statefulsets"}, o.GetName(), nil)
+	}})
+	current := &v1alpha1.Broker{}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(f.broker), current); err != nil {
+		t.Fatal(err)
+	}
+	result, err := r.reconcileBrokerCleanup(ctx, current)
+	if err == nil || result.RequeueAfter != 0 {
+		t.Fatalf("API errors must be returned for controller backoff; retry=%v err=%v", result.RequeueAfter, err)
+	}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(f.broker), current); err != nil {
+		t.Fatal(err)
+	}
+	condition := meta.FindStatusCondition(current.Status.Conditions, "Cleanup")
+	if condition == nil || condition.Status != metav1.ConditionFalse {
+		t.Fatal("deletion failure must record a false Cleanup condition")
+	}
+	if len(r.Recorder.(*record.FakeRecorder).Events) != 0 {
+		t.Fatal("failed deletion must not record success Events")
+	}
+	r.Client = original
+	if _, err := r.reconcileBrokerCleanup(ctx, current); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(f.broker), current); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := r.reconcileBrokerCleanup(ctx, current); err != nil || result.RequeueAfter != 0 {
+		t.Fatalf("successful cleanup must stop retrying: result=%v err=%v", result, err)
+	}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(f.broker), current); err != nil {
+		t.Fatal(err)
+	}
+	condition = meta.FindStatusCondition(current.Status.Conditions, "Cleanup")
+	if condition == nil || condition.Status != metav1.ConditionTrue {
+		t.Fatal("successful cleanup must clear the failure condition")
+	}
 }

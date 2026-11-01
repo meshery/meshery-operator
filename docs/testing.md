@@ -33,6 +33,14 @@ Because envtest has no kubelet, any test resource you create must still be valid
 to the apiserver. For example, a `StatefulSet`/`Deployment` pod template must
 declare at least one container, or the apiserver rejects it with a `422`.
 
+Controller regression tests also distinguish one-minute migration polling from
+five-second deletion confirmation. Environment tests accept equivalent required
+Secret selectors while rejecting changed endpoints and authentication sources;
+envtest verifies explicit `optional: false` survives an API-server round trip
+and stored reordered/duplicate broker variables are rejected. Retry tests also
+cover readiness dropping after deletion starts, partial deletion and cleanup
+failure/condition recovery.
+
 ## 3. End-to-end (kind)
 
 `integration-tests/main.sh` builds the manager image, loads it into a

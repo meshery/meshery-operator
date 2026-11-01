@@ -204,15 +204,16 @@ func (r *BrokerReconciler) performReconciliation(ctx context.Context, log logr.L
 	return r.reconcileBrokerCleanup(ctx, baseResource)
 }
 
+// reconcileBrokerCleanup schedules migration retries and reports cleanup failures in Broker status.
 func (r *BrokerReconciler) reconcileBrokerCleanup(ctx context.Context, baseResource *mesheryv1alpha1.Broker) (ctrl.Result, error) {
-	pending, err := r.cleanupObsoleteBrokerResources(ctx, baseResource)
+	retryAfter, err := r.cleanupObsoleteBrokerResources(ctx, baseResource)
 	if err != nil {
 		err = ErrCleanupBroker(baseResource.Namespace, baseResource.Name, err)
 		_ = r.updateStatusCondition(ctx, baseResource, "Cleanup", v1.ConditionFalse, "CleanupFailed", err.Error())
 		return ctrl.Result{}, err
 	}
-	if pending {
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+	if retryAfter > 0 {
+		return ctrl.Result{RequeueAfter: retryAfter}, nil
 	}
 	if condition := meta.FindStatusCondition(baseResource.Status.Conditions, "Cleanup"); condition != nil && condition.Status != v1.ConditionTrue {
 		if err := r.updateStatusCondition(ctx, baseResource, "Cleanup", v1.ConditionTrue, "CleanupSucceeded", "No obsolete legacy broker workloads or services remain"); err != nil {
