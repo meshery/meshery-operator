@@ -109,7 +109,11 @@ func BuildImage(customRepo, version, defaultRepo, defaultTag string) (string, co
 
 	if v != "" {
 		tag := NormalizeImageTag(v)
-		if hasTagInRepo {
+		if hasDigestInRepo {
+			// A digest does not combine with a tag: drop "@sha256:..."
+			// before pinning the explicit version.
+			repo = repo[:strings.Index(repo, "@")]
+		} else if hasTagInRepo {
 			repo = repo[:lastColon]
 		}
 		return repo + ":" + tag, PullPolicyFor(tag)
