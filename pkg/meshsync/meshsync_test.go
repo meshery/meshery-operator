@@ -176,28 +176,73 @@ func TestApplyImage(t *testing.T) {
 }
 
 func TestGetServerObjectRepository(t *testing.T) {
-	m := &mesheryv1alpha1.MeshSync{
-		ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync", Namespace: "meshery"},
-		Spec: mesheryv1alpha1.MeshSyncSpec{
-			Repository: "myregistry.corp.internal/custom-sync",
-			Version:    "1.0.4",
-		},
-	}
-	obj := GetServerObject(m, "")
-	deploy, ok := obj.(*appsv1.Deployment)
-	if !ok {
-		t.Fatalf("expected *appsv1.Deployment, got %T", obj)
-	}
-	if len(deploy.Spec.Template.Spec.Containers) == 0 {
-		t.Fatal("deployment has no containers")
-	}
-	c := deploy.Spec.Template.Spec.Containers[0]
-	if want := "myregistry.corp.internal/custom-sync:1.0.4"; c.Image != want {
-		t.Errorf("GetServerObject container image = %q, want %q", c.Image, want)
-	}
-	if c.ImagePullPolicy != corev1.PullIfNotPresent {
-		t.Errorf("GetServerObject pullPolicy = %v, want IfNotPresent", c.ImagePullPolicy)
-	}
+	t.Run("custom repo with explicit version", func(t *testing.T) {
+		m := &mesheryv1alpha1.MeshSync{
+			ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync", Namespace: "meshery"},
+			Spec: mesheryv1alpha1.MeshSyncSpec{
+				Repository: "myregistry.corp.internal/custom-sync",
+				Version:    "1.0.4",
+			},
+		}
+		obj := GetServerObject(m, "")
+		deploy := obj.(*appsv1.Deployment)
+		c := deploy.Spec.Template.Spec.Containers[0]
+		if want := "myregistry.corp.internal/custom-sync:1.0.4"; c.Image != want {
+			t.Errorf("image = %q, want %q", c.Image, want)
+		}
+		if c.ImagePullPolicy != corev1.PullIfNotPresent {
+			t.Errorf("pullPolicy = %v, want IfNotPresent", c.ImagePullPolicy)
+		}
+		if c.ReadinessProbe == nil || c.LivenessProbe == nil || c.LivenessProbe.HTTPGet == nil {
+			t.Error("expected HTTP health probes for version 1.0.4")
+		}
+	})
+
+	t.Run("full-image repository override preserves embedded tag when spec.version is empty", func(t *testing.T) {
+		m := &mesheryv1alpha1.MeshSync{
+			ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync", Namespace: "meshery"},
+			Spec: mesheryv1alpha1.MeshSyncSpec{
+				Repository: "myregistry.corp.internal/custom-sync:1.0.4",
+			},
+		}
+		obj := GetServerObject(m, "")
+		deploy := obj.(*appsv1.Deployment)
+		c := deploy.Spec.Template.Spec.Containers[0]
+		if want := "myregistry.corp.internal/custom-sync:1.0.4"; c.Image != want {
+			t.Errorf("image = %q, want %q", c.Image, want)
+		}
+		if c.ImagePullPolicy != corev1.PullIfNotPresent {
+			t.Errorf("pullPolicy = %v, want IfNotPresent", c.ImagePullPolicy)
+		}
+		if c.ReadinessProbe == nil || c.LivenessProbe == nil || c.LivenessProbe.HTTPGet == nil {
+			t.Error("expected HTTP health probes derived from embedded tag 1.0.4")
+		}
+	})
+
+	t.Run("digest override preserves digest and retains safe exec probe fallback", func(t *testing.T) {
+		digestRepo := "myregistry.corp.internal/custom-sync@sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+		m := &mesheryv1alpha1.MeshSync{
+			ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync", Namespace: "meshery"},
+			Spec: mesheryv1alpha1.MeshSyncSpec{
+				Repository: digestRepo,
+			},
+		}
+		obj := GetServerObject(m, "")
+		deploy := obj.(*appsv1.Deployment)
+		c := deploy.Spec.Template.Spec.Containers[0]
+		if c.Image != digestRepo {
+			t.Errorf("image = %q, want %q", c.Image, digestRepo)
+		}
+		if c.ImagePullPolicy != corev1.PullIfNotPresent {
+			t.Errorf("pullPolicy = %v, want IfNotPresent", c.ImagePullPolicy)
+		}
+		if c.ReadinessProbe != nil {
+			t.Error("expected no readiness probe for digest without version")
+		}
+		if c.LivenessProbe == nil || c.LivenessProbe.Exec == nil {
+			t.Error("expected safe exec liveness probe fallback for digest without version")
+		}
+	})
 }
 
 // TestDefaultMeshSyncVersionIsPinned is the regression gate for the class of

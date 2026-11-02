@@ -190,6 +190,15 @@ func TestBuildImage(t *testing.T) {
 			wantPolicy:  corev1.PullIfNotPresent,
 		},
 		{
+			name:        "Custom repo with sha256 digest and explicit version (strips digest)",
+			customRepo:  "myregistry.corp.internal/meshery/meshsync@sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+			version:     "1.0.5",
+			defaultRepo: "meshery/meshsync",
+			defaultTag:  "1.0.3",
+			wantImage:   "myregistry.corp.internal/meshery/meshsync:1.0.5",
+			wantPolicy:  corev1.PullIfNotPresent,
+		},
+		{
 			name:        "Broker NATS custom repo with default chart tag",
 			customRepo:  "harbor.internal/nats",
 			version:     "",
