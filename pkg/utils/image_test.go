@@ -168,7 +168,7 @@ func TestBuildImage(t *testing.T) {
 			version:     "",
 			defaultRepo: "meshery/meshsync",
 			defaultTag:  "1.0.3",
-			wantImage:   "myregistry.corp.internal/meshery/meshsync:1.0.5",
+			wantImage:   "myregistry.corp.internal/meshery/meshsync:v1.0.5",
 			wantPolicy:  corev1.PullIfNotPresent,
 		},
 		{
@@ -196,6 +196,24 @@ func TestBuildImage(t *testing.T) {
 			defaultRepo: "meshery/meshsync",
 			defaultTag:  "1.0.3",
 			wantImage:   "myregistry.corp.internal/meshery/meshsync:1.0.5",
+			wantPolicy:  corev1.PullIfNotPresent,
+		},
+		{
+			name:        "Custom repo with tag plus digest and explicit version (strips both digest and tag)",
+			customRepo:  "myregistry.corp.internal/meshery/meshsync:v1.0@sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+			version:     "1.0.5",
+			defaultRepo: "meshery/meshsync",
+			defaultTag:  "1.0.3",
+			wantImage:   "myregistry.corp.internal/meshery/meshsync:1.0.5",
+			wantPolicy:  corev1.PullIfNotPresent,
+		},
+		{
+			name:        "Private registry host with port and tag plus digest with explicit version",
+			customRepo:  "localhost:5000/meshery/meshsync:v1.0@sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+			version:     "1.0.5",
+			defaultRepo: "meshery/meshsync",
+			defaultTag:  "1.0.3",
+			wantImage:   "localhost:5000/meshery/meshsync:1.0.5",
 			wantPolicy:  corev1.PullIfNotPresent,
 		},
 		{

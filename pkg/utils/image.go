@@ -113,7 +113,13 @@ func BuildImage(customRepo, version, defaultRepo, defaultTag string) (string, co
 			// A digest does not combine with a tag: drop "@sha256:..."
 			// before pinning the explicit version.
 			repo = repo[:strings.Index(repo, "@")]
-		} else if hasTagInRepo {
+		}
+		// If the repository also carried an embedded tag (including tag+digest references
+		// like "repo:tag@sha256:..."), strip the tag before appending the explicit version
+		// while safely preserving registry host ports.
+		lastSlash = strings.LastIndex(repo, "/")
+		lastColon = strings.LastIndex(repo, ":")
+		if lastColon > lastSlash {
 			repo = repo[:lastColon]
 		}
 		return repo + ":" + tag, PullPolicyFor(tag)
@@ -124,10 +130,11 @@ func BuildImage(customRepo, version, defaultRepo, defaultTag string) (string, co
 	}
 
 	if hasTagInRepo {
+		// When spec.version is empty, preserve the full-image override and its
+		// embedded tag as written (including any leading "v" a private registry uses)
+		// and derive the pull policy separately from that tag.
 		tag := repo[lastColon+1:]
-		normalizedTag := NormalizeImageTag(tag)
-		effectiveImage := repo[:lastColon] + ":" + normalizedTag
-		return effectiveImage, PullPolicyFor(normalizedTag)
+		return repo, PullPolicyFor(tag)
 	}
 
 	tag := NormalizeImageTag(defaultTag)
