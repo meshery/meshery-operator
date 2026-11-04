@@ -83,7 +83,7 @@ func NormalizeImageTag(tag string) string {
 //   - If version is empty and customRepo already carries an explicit tag (after the last '/')
 //     or digest ('@'), customRepo is used directly.
 //   - If version is provided, any existing tag on customRepo is stripped and replaced
-//     with the normalized version.
+//     with the normalized version, and any digest on customRepo is dropped.
 //   - Otherwise, customRepo is joined with the normalized version (or defaultTag).
 //
 // If customRepo is empty, defaultRepo is used with the normalized version (or defaultTag).
