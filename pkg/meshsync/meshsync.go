@@ -140,6 +140,9 @@ func resolveVersion(version string) string {
 // and air-gapped clusters work).
 func applyImage(c *corev1.Container, repository, version string) {
 	if repository == "" && version == "" {
+		// When both repository and version are omitted, leave the template container's
+		// pre-configured image (meshsyncImageRepo + ":" + defaultMeshSyncVersion) and its
+		// IfNotPresent pull policy untouched.
 		return
 	}
 	image, pullPolicy := utils.BuildImage(repository, version, meshsyncImageRepo, defaultMeshSyncVersion)

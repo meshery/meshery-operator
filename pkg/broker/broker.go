@@ -72,6 +72,9 @@ func overlayBrokerSpec(obj Object, m *mesheryv1alpha1.Broker) {
 			// policy from the effective tag.
 			for i := range o.Spec.Template.Spec.Containers {
 				if o.Spec.Template.Spec.Containers[i].Name == natsName {
+					// Extract default tag from the vendored chart template container image.
+					// Today the manifest pins nats:<NATS_CHART_VERSION>-alpine so a colon is
+					// guaranteed; BuildImage additionally guards against empty defaultTag.
 					defaultTag := ""
 					if idx := strings.LastIndex(o.Spec.Template.Spec.Containers[i].Image, ":"); idx != -1 {
 						defaultTag = o.Spec.Template.Spec.Containers[i].Image[idx+1:]

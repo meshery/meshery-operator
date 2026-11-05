@@ -137,6 +137,12 @@ func BuildImage(customRepo, version, defaultRepo, defaultTag string) (string, co
 		return repo, PullPolicyFor(tag)
 	}
 
+	if defaultTag == "" {
+		// If the underlying template carries no tag, return repo directly without
+		// producing an invalid "repo:" reference with a trailing colon.
+		return repo, corev1.PullIfNotPresent
+	}
+
 	tag := NormalizeImageTag(defaultTag)
 	return repo + ":" + tag, PullPolicyFor(tag)
 }

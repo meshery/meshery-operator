@@ -24,7 +24,8 @@ import (
 // unaffected.)
 type BrokerSpec struct {
 	// Repository overrides the default NATS image repository ("nats").
-	// When combined with Version, the full image is "<repository>:<version>".
+	// When combined with Version, the full image is "<repository>:<version>";
+	// any embedded tag or digest in Repository is replaced by the explicit Version.
 	// An air-gapped installation points this at a private registry.
 	// +optional
 	Repository string `json:"repository,omitempty" yaml:"repository,omitempty"`
