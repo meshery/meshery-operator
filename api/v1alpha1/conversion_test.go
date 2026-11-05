@@ -38,8 +38,9 @@ func TestBrokerConversionRoundTrip(t *testing.T) {
 	orig := &Broker{
 		ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Namespace: testNamespace, Labels: map[string]string{"app": "meshery"}},
 		Spec: BrokerSpec{
-			Version: "2.14.2-alpine",
-			Size:    3,
+			Repository: "myregistry.corp.internal/nats",
+			Version:    "2.14.2-alpine",
+			Size:       3,
 			Service: BrokerServiceSpec{
 				Type:                     corev1.ServiceTypeLoadBalancer,
 				Annotations:              map[string]string{"a": "b"},
@@ -75,9 +76,10 @@ func TestMeshSyncConversionRoundTrip(t *testing.T) {
 	orig := &MeshSync{
 		ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync", Namespace: testNamespace},
 		Spec: MeshSyncSpec{
-			Size:    2,
-			Version: "stable-latest",
-			Broker:  MeshsyncBroker{Native: NativeMeshsyncBroker{Name: testBrokerName, Namespace: testNamespace}},
+			Repository: "myregistry.corp.internal/meshery/meshsync",
+			Size:       2,
+			Version:    "stable-latest",
+			Broker:     MeshsyncBroker{Native: NativeMeshsyncBroker{Name: testBrokerName, Namespace: testNamespace}},
 			WatchList: corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: "meshery-meshsync-watch"},
 				Data:       map[string]string{whitelistKey: "[]"},

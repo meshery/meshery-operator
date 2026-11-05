@@ -99,37 +99,61 @@ func GetServerObject(m *mesheryv1alpha1.MeshSync, tokenSecret string) Object {
 	size := desiredReplicas(m)
 	obj.Spec.Replicas = &size
 	if len(obj.Spec.Template.Spec.Containers) > 0 {
-		version := resolveVersion(m.Spec.Version)
-		applyVersion(&obj.Spec.Template.Spec.Containers[0], version)
+		applyImage(&obj.Spec.Template.Spec.Containers[0], m.Spec.Repository, m.Spec.Version)
+		version := effectiveVersion(m.Spec.Repository, m.Spec.Version)
 		applyProbes(&obj.Spec.Template.Spec.Containers[0], version)
 		setBrokerURL(&obj.Spec.Template.Spec.Containers[0], m.Status.PublishingTo, tokenSecret)
 	}
 	return obj
 }
 
-// resolveVersion is the single place spec.version becomes a concrete image tag.
-// An unset spec.version falls back to the pinned defaultMeshSyncVersion (never
-// a moving channel tag - WS-3 §4.3 #9/#28), and a v-prefixed semver is
-// normalised to the bare form the registry actually publishes. Everything
-// downstream - image tag, pull policy, probe selection - reads this one value,
-// so the default can never take a different code path from an explicit pin.
-func resolveVersion(version string) string {
-	if version == "" {
-		return defaultMeshSyncVersion
+// effectiveVersion derives the concrete image tag used for probe selection and
+// version tracking. An explicit spec.version takes precedence. If spec.version is
+// empty and repository carries an explicit tag, that tag is used. If repository has
+// a digest, no version is assumed (falling back safely to exec probes). Otherwise,
+// it falls back to the pinned defaultMeshSyncVersion.
+func effectiveVersion(repository, version string) string {
+	if version != "" {
+		return utils.NormalizeImageTag(version)
 	}
-	return utils.NormalizeImageTag(version)
+	repo := strings.TrimSpace(repository)
+	if strings.Contains(repo, "@") {
+		return ""
+	}
+	lastSlash := strings.LastIndex(repo, "/")
+	lastColon := strings.LastIndex(repo, ":")
+	if lastColon > lastSlash {
+		return utils.NormalizeImageTag(repo[lastColon+1:])
+	}
+	return defaultMeshSyncVersion
 }
 
-// applyVersion maps a resolved version onto the MeshSync image tag and the pull
-// policy that matches its mutability (moving tags track their channel with
-// PullAlways; pinned tags use IfNotPresent so side-loaded images (kind) and
-// air-gapped clusters work).
-func applyVersion(c *corev1.Container, version string) {
-	if version == "" {
+// resolveVersion delegates to effectiveVersion for backward compatibility and callers
+// that only supply an explicit version.
+func resolveVersion(version string) string {
+	return effectiveVersion("", version)
+}
+
+// applyImage maps a resolved repository and version onto the MeshSync container
+// image and the pull policy that matches its mutability (moving tags track their
+// channel with PullAlways; pinned tags use IfNotPresent so side-loaded images (kind)
+// and air-gapped clusters work).
+func applyImage(c *corev1.Container, repository, version string) {
+	if repository == "" && version == "" {
+		// When both repository and version are omitted, leave the template container's
+		// pre-configured image (meshsyncImageRepo + ":" + defaultMeshSyncVersion) and its
+		// IfNotPresent pull policy untouched.
 		return
 	}
-	c.Image = meshsyncImageRepo + ":" + version
-	c.ImagePullPolicy = utils.PullPolicyFor(version)
+	image, pullPolicy := utils.BuildImage(repository, version, meshsyncImageRepo, defaultMeshSyncVersion)
+	c.Image = image
+	c.ImagePullPolicy = pullPolicy
+}
+
+// applyVersion is a delegating wrapper for applyImage that preserves the existing
+// call signature for backward compatibility and tests.
+func applyVersion(c *corev1.Container, version string) {
+	applyImage(c, "", version)
 }
 
 // applyProbes selects the container's health probes from the deployed MeshSync
