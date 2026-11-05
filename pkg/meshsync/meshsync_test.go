@@ -26,6 +26,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // testObjName is the name/namespace used for MeshSync CR fixtures in this file.
@@ -261,6 +262,42 @@ func TestServesHealthEndpoints(t *testing.T) {
 		if got := servesHealthEndpoints(version); got != want {
 			t.Errorf("servesHealthEndpoints(%q) = %v, want %v", version, got, want)
 		}
+	}
+}
+
+// TestGetServerObjectStrategy verifies the built Deployment specifies a
+// RollingUpdate strategy with maxSurge: 0 and maxUnavailable: 1 so that
+// upgrades terminate the existing pod before creating a replacement,
+// preventing hostPort deadlock (#933).
+func TestGetServerObjectStrategy(t *testing.T) {
+	m := &mesheryv1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: testObjName, Namespace: testObjName},
+		Spec:       mesheryv1alpha1.MeshSyncSpec{Size: 1},
+	}
+	dep, ok := GetServerObject(m, "").(*appsv1.Deployment)
+	if !ok {
+		t.Fatal("GetServerObject did not return a *appsv1.Deployment")
+	}
+
+	if dep.Spec.Strategy.Type != appsv1.RollingUpdateDeploymentStrategyType {
+		t.Fatalf("strategy type = %q, want %q", dep.Spec.Strategy.Type, appsv1.RollingUpdateDeploymentStrategyType)
+	}
+
+	ru := dep.Spec.Strategy.RollingUpdate
+	if ru == nil {
+		t.Fatal("expected rollingUpdate strategy configuration, got nil")
+	}
+	if ru.MaxSurge == nil {
+		t.Fatal("expected maxSurge to be set, got nil")
+	}
+	if got := ru.MaxSurge.IntValue(); got != 0 || ru.MaxSurge.Type != intstr.Int {
+		t.Errorf("maxSurge = %+v (int %d), want 0 (type int)", ru.MaxSurge, got)
+	}
+	if ru.MaxUnavailable == nil {
+		t.Fatal("expected maxUnavailable to be set, got nil")
+	}
+	if got := ru.MaxUnavailable.IntValue(); got != 1 || ru.MaxUnavailable.Type != intstr.Int {
+		t.Errorf("maxUnavailable = %+v (int %d), want 1 (type int)", ru.MaxUnavailable, got)
 	}
 }
 
