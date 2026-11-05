@@ -120,6 +120,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(clientSet).ToNot(BeNil())
 
 	brokerReconciler := &BrokerReconciler{
+		Recorder:   mgr.GetEventRecorderFor("meshery-operator-broker"),
 		Client:     mgr.GetClient(),
 		KubeConfig: cfg,
 		Clientset:  clientSet,

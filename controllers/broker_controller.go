@@ -34,6 +34,7 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -46,6 +47,7 @@ type BrokerReconciler struct {
 	KubeConfig *rest.Config
 	Clientset  *kubernetes.Clientset
 	Scheme     *runtime.Scheme
+	Recorder   record.EventRecorder
 	Log        logr.Logger
 }
 
@@ -62,6 +64,7 @@ const (
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services;configmaps;secrets,verbs=get;list;watch;create;update;patch;delete
 
@@ -193,8 +196,31 @@ func (r *BrokerReconciler) performReconciliation(ctx context.Context, log logr.L
 		log.Error(err, "Failed to update broker status to Ready")
 	}
 
-	// Patch the broker resource status
-	return r.patchBrokerStatus(ctx, log, baseResource)
+	// Publish first: MeshSync must see the new endpoint before cleanup waits
+	// for consumer rollouts. Do not prune on a failed/conflicting status patch.
+	if result, err := r.patchBrokerStatus(ctx, log, baseResource); err != nil || result.RequeueAfter > 0 {
+		return result, err
+	}
+	return r.reconcileBrokerCleanup(ctx, baseResource)
+}
+
+// reconcileBrokerCleanup schedules migration retries and reports cleanup failures in Broker status.
+func (r *BrokerReconciler) reconcileBrokerCleanup(ctx context.Context, baseResource *mesheryv1alpha1.Broker) (ctrl.Result, error) {
+	retryAfter, err := r.cleanupObsoleteBrokerResources(ctx, baseResource)
+	if err != nil {
+		err = ErrCleanupBroker(baseResource.Namespace, baseResource.Name, err)
+		_ = r.updateStatusCondition(ctx, baseResource, "Cleanup", v1.ConditionFalse, "CleanupFailed", err.Error())
+		return ctrl.Result{}, err
+	}
+	if retryAfter > 0 {
+		return ctrl.Result{RequeueAfter: retryAfter}, nil
+	}
+	if condition := meta.FindStatusCondition(baseResource.Status.Conditions, "Cleanup"); condition != nil && condition.Status != v1.ConditionTrue {
+		if err := r.updateStatusCondition(ctx, baseResource, "Cleanup", v1.ConditionTrue, "CleanupSucceeded", "No obsolete legacy broker workloads or services remain"); err != nil {
+			return ctrl.Result{}, ErrUpdateResource(err)
+		}
+	}
+	return ctrl.Result{}, nil
 }
 
 // deployBrokerResources deploys the broker controller and resources

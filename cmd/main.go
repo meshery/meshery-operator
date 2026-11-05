@@ -110,6 +110,7 @@ func main() {
 	}
 
 	bReconciler := &controllers.BrokerReconciler{
+		Recorder:   mgr.GetEventRecorderFor("meshery-operator-broker"),
 		KubeConfig: mgr.GetConfig(),
 		Client:     mgr.GetClient(),
 		Clientset:  clientset,

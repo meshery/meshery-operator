@@ -298,9 +298,75 @@ assert_resources() {
   assert_meshsync_broker_connectivity
   assert_conversion_webhook
   assert_networking_reconfiguration
+  if [ "${BROKER_UPGRADE_FIXTURE:-0}" = "1" ]; then
+    assert_legacy_broker_cleanup
+  fi
 
   echo "✅ All components (operator, meshsync, broker) are deployed and ready!"
   echo "✅ Operator functionality assertion completed successfully!"
+}
+
+# Seed the verified pre-chart naming/ownership, including an obsolete public
+# Service. The replacement must keep working while these children are pruned.
+seed_legacy_broker_resources() {
+  local broker_uid
+  broker_uid=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o jsonpath='{.metadata.uid}')
+  kubectl --namespace "$OPERATOR_NAMESPACE" apply -f - <<EOF
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: meshery-broker
+  labels: {app: meshery, component: broker}
+  ownerReferences:
+  - {apiVersion: meshery.io/v1alpha1, kind: Broker, name: meshery-broker, uid: "$broker_uid", controller: true}
+spec:
+  replicas: 1
+  serviceName: meshery-broker
+  selector:
+    matchLabels: {app: meshery, component: broker}
+  template:
+    metadata:
+      labels: {app: meshery, component: broker}
+    spec:
+      containers:
+      - {name: nats, image: "nats:2.8.2-alpine3.15"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meshery-broker
+  labels: {app: meshery, component: broker}
+  ownerReferences:
+  - {apiVersion: meshery.io/v1alpha1, kind: Broker, name: meshery-broker, uid: "$broker_uid", controller: true}
+spec:
+  type: LoadBalancer
+  selector: {app: meshery, component: broker}
+  ports:
+  - {name: client, port: 4222}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: legacy-broker-preserve
+  labels: {app: meshery, component: broker}
+  ownerReferences:
+  - {apiVersion: meshery.io/v1alpha1, kind: Broker, name: meshery-broker, uid: "$broker_uid", controller: true}
+data: {preserve: "outside the cleanup scope"}
+EOF
+}
+
+assert_legacy_broker_cleanup() {
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=delete --timeout=180s statefulset/meshery-broker service/meshery-broker
+  kubectl --namespace "$OPERATOR_NAMESPACE" get statefulset/meshery-nats service/meshery-nats configmap/legacy-broker-preserve
+  # Recheck connectivity after cleanup, rather than only before deletion.
+  assert_meshsync_broker_connectivity
+  local events
+  events=$(kubectl --namespace "$OPERATOR_NAMESPACE" get events --field-selector reason=ObsoleteBrokerResourceCleanup -o name)
+  if [ -z "$events" ]; then
+    echo "No cleanup event was recorded"
+    exit 1
+  fi
+  echo "Legacy broker resources removed; current broker, consumer and ConfigMap preserved"
 }
 
 setup() {
@@ -491,6 +557,10 @@ meshery/meshsync:$MESHSYNC_DEFAULT"
     echo "Pinning MeshSync CR to spec.version=$MESHSYNC_VERSION..."
     kubectl --namespace "$OPERATOR_NAMESPACE" patch meshsync meshery-meshsync --type=merge \
       -p "{\"spec\":{\"version\":\"$MESHSYNC_VERSION\"}}"
+  fi
+
+  if [ "${BROKER_UPGRADE_FIXTURE:-0}" = "1" ]; then
+    seed_legacy_broker_resources
   fi
 
   echo "Describing operator pod to verify image..."

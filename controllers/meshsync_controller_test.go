@@ -51,7 +51,7 @@ var _ = Describe("The test cases for customize resource: MeshSync's controller "
 		meshSync := &v1alpha1.MeshSync{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: testAPIVersion,
-				Kind:       "MeshSync",
+				Kind:       testMeshSyncKind,
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      defaultNamespace,
