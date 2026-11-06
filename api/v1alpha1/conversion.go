@@ -47,7 +47,7 @@ func convertJSON(in, out any) error {
 func (b *Broker) ConvertTo(dstRaw conversion.Hub) error {
 	dst, ok := dstRaw.(*v1alpha2.Broker)
 	if !ok || dst == nil {
-		return fmt.Errorf("expected non-nil *v1alpha2.Broker, got %T", dstRaw)
+		return ErrInvalidConversionHub(fmt.Sprintf("expected non-nil *v1alpha2.Broker, got %T", dstRaw))
 	}
 	b.ObjectMeta.DeepCopyInto(&dst.ObjectMeta)
 	if err := convertJSON(b.Spec, &dst.Spec); err != nil {
@@ -60,7 +60,7 @@ func (b *Broker) ConvertTo(dstRaw conversion.Hub) error {
 func (b *Broker) ConvertFrom(srcRaw conversion.Hub) error {
 	src, ok := srcRaw.(*v1alpha2.Broker)
 	if !ok || src == nil {
-		return fmt.Errorf("expected non-nil *v1alpha2.Broker, got %T", srcRaw)
+		return ErrInvalidConversionHub(fmt.Sprintf("expected non-nil *v1alpha2.Broker, got %T", srcRaw))
 	}
 	src.ObjectMeta.DeepCopyInto(&b.ObjectMeta)
 	if err := convertJSON(src.Spec, &b.Spec); err != nil {
@@ -73,7 +73,7 @@ func (b *Broker) ConvertFrom(srcRaw conversion.Hub) error {
 func (m *MeshSync) ConvertTo(dstRaw conversion.Hub) error {
 	dst, ok := dstRaw.(*v1alpha2.MeshSync)
 	if !ok || dst == nil {
-		return fmt.Errorf("expected non-nil *v1alpha2.MeshSync, got %T", dstRaw)
+		return ErrInvalidConversionHub(fmt.Sprintf("expected non-nil *v1alpha2.MeshSync, got %T", dstRaw))
 	}
 	m.ObjectMeta.DeepCopyInto(&dst.ObjectMeta)
 	if err := convertJSON(m.Spec, &dst.Spec); err != nil {
@@ -86,7 +86,7 @@ func (m *MeshSync) ConvertTo(dstRaw conversion.Hub) error {
 func (m *MeshSync) ConvertFrom(srcRaw conversion.Hub) error {
 	src, ok := srcRaw.(*v1alpha2.MeshSync)
 	if !ok || src == nil {
-		return fmt.Errorf("expected non-nil *v1alpha2.MeshSync, got %T", srcRaw)
+		return ErrInvalidConversionHub(fmt.Sprintf("expected non-nil *v1alpha2.MeshSync, got %T", srcRaw))
 	}
 	src.ObjectMeta.DeepCopyInto(&m.ObjectMeta)
 	if err := convertJSON(src.Spec, &m.Spec); err != nil {
