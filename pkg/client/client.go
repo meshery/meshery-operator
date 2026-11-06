@@ -30,7 +30,11 @@ func (c *Clientset) CoreV1Alpha1() v1alpha1.CoreInterface {
 	return c.corev1alpha1
 }
 
-func New(config *rest.Config) (Interface, error) {
+// New returns a Clientset for the meshery.io API group. It configures a copy of c,
+// so the caller's rest.Config (typically shared with other clients) is left
+// unchanged.
+func New(c *rest.Config) (Interface, error) {
+	config := rest.CopyConfig(c)
 	config.GroupVersion = &SchemeGroupVersion
 	config.APIPath = "/apis"
 	config.ContentType = runtime.ContentTypeJSON
