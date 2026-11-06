@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"encoding/json"
+	"fmt"
 
 	v1alpha2 "github.com/meshery/meshery-operator/api/v1alpha2"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
@@ -44,8 +45,11 @@ func convertJSON(in, out any) error {
 
 // ConvertTo converts this v1alpha1 Broker to the hub version (v1alpha2).
 func (b *Broker) ConvertTo(dstRaw conversion.Hub) error {
-	dst := dstRaw.(*v1alpha2.Broker)
-	dst.ObjectMeta = b.ObjectMeta
+	dst, ok := dstRaw.(*v1alpha2.Broker)
+	if !ok || dst == nil {
+		return fmt.Errorf("expected non-nil *v1alpha2.Broker, got %T", dstRaw)
+	}
+	b.ObjectMeta.DeepCopyInto(&dst.ObjectMeta)
 	if err := convertJSON(b.Spec, &dst.Spec); err != nil {
 		return err
 	}
@@ -54,8 +58,11 @@ func (b *Broker) ConvertTo(dstRaw conversion.Hub) error {
 
 // ConvertFrom converts from the hub version (v1alpha2) to this v1alpha1 Broker.
 func (b *Broker) ConvertFrom(srcRaw conversion.Hub) error {
-	src := srcRaw.(*v1alpha2.Broker)
-	b.ObjectMeta = src.ObjectMeta
+	src, ok := srcRaw.(*v1alpha2.Broker)
+	if !ok || src == nil {
+		return fmt.Errorf("expected non-nil *v1alpha2.Broker, got %T", srcRaw)
+	}
+	src.ObjectMeta.DeepCopyInto(&b.ObjectMeta)
 	if err := convertJSON(src.Spec, &b.Spec); err != nil {
 		return err
 	}
@@ -64,8 +71,11 @@ func (b *Broker) ConvertFrom(srcRaw conversion.Hub) error {
 
 // ConvertTo converts this v1alpha1 MeshSync to the hub version (v1alpha2).
 func (m *MeshSync) ConvertTo(dstRaw conversion.Hub) error {
-	dst := dstRaw.(*v1alpha2.MeshSync)
-	dst.ObjectMeta = m.ObjectMeta
+	dst, ok := dstRaw.(*v1alpha2.MeshSync)
+	if !ok || dst == nil {
+		return fmt.Errorf("expected non-nil *v1alpha2.MeshSync, got %T", dstRaw)
+	}
+	m.ObjectMeta.DeepCopyInto(&dst.ObjectMeta)
 	if err := convertJSON(m.Spec, &dst.Spec); err != nil {
 		return err
 	}
@@ -74,8 +84,11 @@ func (m *MeshSync) ConvertTo(dstRaw conversion.Hub) error {
 
 // ConvertFrom converts from the hub version (v1alpha2) to this v1alpha1 MeshSync.
 func (m *MeshSync) ConvertFrom(srcRaw conversion.Hub) error {
-	src := srcRaw.(*v1alpha2.MeshSync)
-	m.ObjectMeta = src.ObjectMeta
+	src, ok := srcRaw.(*v1alpha2.MeshSync)
+	if !ok || src == nil {
+		return fmt.Errorf("expected non-nil *v1alpha2.MeshSync, got %T", srcRaw)
+	}
+	src.ObjectMeta.DeepCopyInto(&m.ObjectMeta)
 	if err := convertJSON(src.Spec, &m.Spec); err != nil {
 		return err
 	}
