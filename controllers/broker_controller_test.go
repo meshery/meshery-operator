@@ -62,6 +62,7 @@ const (
 // place so the repeated literals do not trip golangci-lint goconst.
 const (
 	testMesheryNamespace = "meshery"
+	testAppName          = "meshery"
 	testOtherNamespace   = "other-namespace"
 	testBrokerName       = "test-broker"
 	testOverrideBroker   = "override-broker"
@@ -524,7 +525,7 @@ func (f *brokerCleanupFixture) replacementStatefulSet() *v1.StatefulSet {
 }
 
 func legacyBrokerTestLabels() map[string]string {
-	return map[string]string{appLabelKey: testMesheryNamespace, "component": brokerLabelValue}
+	return map[string]string{appLabelKey: testAppName, "component": brokerLabelValue}
 }
 
 // TestBrokerCleanupRetryIntervals distinguishes migration polling from deletion confirmation.
