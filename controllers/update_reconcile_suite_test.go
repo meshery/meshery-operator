@@ -214,7 +214,7 @@ var _ = Describe("Broker upgrade cleanup", func() {
 		}
 		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{Name: broker.Name, Namespace: namespace, Labels: labels, OwnerReferences: []metav1.OwnerReference{*owner}},
-			Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer, Selector: labels, Ports: []corev1.ServicePort{{Name: "client", Port: 4222}}},
+			Spec:       corev1.ServiceSpec{Type: corev1.ServiceTypeLoadBalancer, Selector: labels, Ports: []corev1.ServicePort{{Name: testNatsClientPort, Port: 4222}}},
 		}
 		Expect(k8sClient.Create(ctx, old)).To(Succeed())
 		Expect(k8sClient.Create(ctx, service)).To(Succeed())
