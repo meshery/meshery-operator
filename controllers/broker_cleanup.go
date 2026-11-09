@@ -207,7 +207,14 @@ func (r *BrokerReconciler) brokerMigrationReady(ctx context.Context, broker *mes
 	}
 	for i := range meshsyncs.Items {
 		m := &meshsyncs.Items[i]
-		if m.Spec.Broker.Native.Name != broker.Name || m.Spec.Broker.Native.Namespace != broker.Namespace {
+		if m.Spec.Broker.Native == (mesheryv1alpha1.NativeMeshsyncBroker{}) {
+			continue
+		}
+		targetNamespace := m.Spec.Broker.Native.Namespace
+		if targetNamespace == "" {
+			targetNamespace = m.Namespace
+		}
+		if (m.Spec.Broker.Native.Name != "" && m.Spec.Broker.Native.Name != broker.Name) || targetNamespace != broker.Namespace {
 			continue
 		}
 		ready, err := r.meshSyncBrokerRolledOut(ctx, broker, m)

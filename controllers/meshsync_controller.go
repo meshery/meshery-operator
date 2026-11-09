@@ -115,23 +115,40 @@ func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // meshsyncsForBroker maps a Broker event to reconcile requests for every
-// MeshSync that references it as a native broker.
+// MeshSync that references it as a native broker. It accepts any client.Object
+// so that Broker updates trigger re-reconciliation regardless of whether the
+// informer delivers v1alpha1 or v1alpha2 storage-version instances. It also
+// resolves omitted namespace references, defaulting them to the MeshSync's namespace.
 func (r *MeshSyncReconciler) meshsyncsForBroker(ctx context.Context, obj client.Object) []reconcile.Request {
-	broker, ok := obj.(*mesheryv1alpha1.Broker)
-	if !ok {
+	if obj == nil {
+		return nil
+	}
+	brokerName := obj.GetName()
+	brokerNamespace := obj.GetNamespace()
+	if brokerName == "" {
 		return nil
 	}
 
 	var meshsyncs mesheryv1alpha1.MeshSyncList
 	if err := r.List(ctx, &meshsyncs); err != nil {
-		r.Log.Error(err, "unable to list MeshSync resources for Broker watch", "broker", broker.Name)
+		r.Log.Error(err, "unable to list MeshSync resources for Broker watch", "broker", brokerName, "namespace", brokerNamespace)
 		return nil
 	}
 
 	var requests []reconcile.Request
 	for i := range meshsyncs.Items {
 		native := meshsyncs.Items[i].Spec.Broker.Native
-		if native.Name == broker.Name && native.Namespace == broker.Namespace {
+		if native == (mesheryv1alpha1.NativeMeshsyncBroker{}) {
+			continue
+		}
+		if native.Name != "" && native.Name != brokerName {
+			continue
+		}
+		targetNamespace := native.Namespace
+		if targetNamespace == "" {
+			targetNamespace = meshsyncs.Items[i].Namespace
+		}
+		if targetNamespace == brokerNamespace {
 			requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
 				Name:      meshsyncs.Items[i].Name,
 				Namespace: meshsyncs.Items[i].Namespace,
@@ -314,12 +331,30 @@ func (r *MeshSyncReconciler) updateStatusCondition(ctx context.Context, meshsync
 	return nil
 }
 
+// reconcileBrokerConfig derives the NATS endpoint for the MeshSync workload
+// from either a referenced native Broker or a custom broker URL. When a native
+// Broker name is specified, the Broker custom resource is fetched and validated,
+// preserving any external endpoint overrides. When only the namespace is specified,
+// it preserves namespace-only references by deriving the endpoint directly from
+// the namespace's client Service.
 func (r *MeshSyncReconciler) reconcileBrokerConfig(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
-	brokerresource := &mesheryv1alpha1.Broker{}
 	nullNativeResource := mesheryv1alpha1.NativeMeshsyncBroker{}
 	if baseResource.Spec.Broker.Native != nullNativeResource {
-		brokerresource.Namespace = baseResource.Spec.Broker.Native.Namespace
-		brokerresource.Name = baseResource.Spec.Broker.Native.Name
+		brokerNamespace := baseResource.Spec.Broker.Native.Namespace
+		if brokerNamespace == "" {
+			brokerNamespace = baseResource.Namespace
+		}
+		brokerName := baseResource.Spec.Broker.Native.Name
+
+		brokerresource := &mesheryv1alpha1.Broker{}
+		brokerresource.Namespace = brokerNamespace
+		if brokerName != "" {
+			brokerresource.Name = brokerName
+			if err := r.Get(ctx, types.NamespacedName{Name: brokerName, Namespace: brokerNamespace}, brokerresource); err != nil {
+				return ErrGetBroker(err)
+			}
+		}
+
 		err := brokerpackage.GetEndpoint(ctx, brokerresource, r.Client, r.KubeConfig.Host)
 		if err != nil {
 			return ErrGetEndpoint(err)
@@ -347,6 +382,9 @@ func (r *MeshSyncReconciler) ensureBrokerTokenSecret(ctx context.Context, m *mes
 		return "", nil
 	}
 	brokerNamespace := m.Spec.Broker.Native.Namespace
+	if brokerNamespace == "" {
+		brokerNamespace = m.Namespace
+	}
 	src := &corev1.Secret{}
 	if err := r.Get(ctx, types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: brokerNamespace}, src); err != nil {
 		if kubeerror.IsNotFound(err) {

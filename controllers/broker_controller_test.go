@@ -275,6 +275,28 @@ func (f *brokerCleanupFixture) addMeshSync() *v1.Deployment {
 	return d
 }
 
+func (f *brokerCleanupFixture) addMeshSyncSameNamespaceDefaulted() *v1.Deployment {
+	m := &v1alpha1.MeshSync{ObjectMeta: metav1.ObjectMeta{Name: "consumer-same-ns", Namespace: f.broker.Namespace, UID: "meshsync-same-ns-uid"}, Spec: v1alpha1.MeshSyncSpec{Size: 1, Broker: v1alpha1.MeshsyncBroker{Native: v1alpha1.NativeMeshsyncBroker{Name: f.broker.Name}}}}
+	m.Status.PublishingTo = natsURL(f.broker.Status.Endpoint.Internal)
+	d := meshsyncpackage.GetServerObject(m, brokerpackage.AuthSecretName).(*v1.Deployment)
+	d.Generation = 2
+	d.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(m, v1alpha1.GroupVersion.WithKind(testMeshSyncKind))}
+	d.Status = v1.DeploymentStatus{ObservedGeneration: 2, Replicas: 1, UpdatedReplicas: 1, ReadyReplicas: 1, AvailableReplicas: 1}
+	f.objects = append(f.objects, m, d)
+	return d
+}
+
+func (f *brokerCleanupFixture) addMeshSyncNamespaceOnly() *v1.Deployment {
+	m := &v1alpha1.MeshSync{ObjectMeta: metav1.ObjectMeta{Name: "consumer-ns-only", Namespace: f.broker.Namespace, UID: "meshsync-ns-only-uid"}, Spec: v1alpha1.MeshSyncSpec{Size: 1, Broker: v1alpha1.MeshsyncBroker{Native: v1alpha1.NativeMeshsyncBroker{Namespace: f.broker.Namespace}}}}
+	m.Status.PublishingTo = natsURL(f.broker.Status.Endpoint.Internal)
+	d := meshsyncpackage.GetServerObject(m, brokerpackage.AuthSecretName).(*v1.Deployment)
+	d.Generation = 2
+	d.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(m, v1alpha1.GroupVersion.WithKind(testMeshSyncKind))}
+	d.Status = v1.DeploymentStatus{ObservedGeneration: 2, Replicas: 1, UpdatedReplicas: 1, ReadyReplicas: 1, AvailableReplicas: 1}
+	f.objects = append(f.objects, m, d)
+	return d
+}
+
 func TestIsLegacyBrokerChild(t *testing.T) {
 	tests := []struct {
 		modify func(*v1alpha1.Broker, client.Object)
@@ -341,6 +363,9 @@ func TestBrokerCleanupMigrationGate(t *testing.T) {
 			f.replacementStatefulSet().Status.ObservedGeneration = 0
 		}, pending: true},
 		{name: "cross namespace consumer ready", modify: func(f *brokerCleanupFixture) { f.addMeshSync() }, pending: false},
+		{name: "same namespace consumer defaulted ready", modify: func(f *brokerCleanupFixture) { f.addMeshSyncSameNamespaceDefaulted() }, pending: false},
+		{name: "same namespace consumer defaulted pending rollout", modify: func(f *brokerCleanupFixture) { f.addMeshSyncSameNamespaceDefaulted().Status.UpdatedReplicas = 0 }, pending: true},
+		{name: "namespace-only consumer pending rollout", modify: func(f *brokerCleanupFixture) { f.addMeshSyncNamespaceOnly().Status.UpdatedReplicas = 0 }, pending: true},
 		{name: "consumer rollout pending", modify: func(f *brokerCleanupFixture) { f.addMeshSync().Status.UpdatedReplicas = 0 }, pending: true},
 		{name: "consumer generation unobserved", modify: func(f *brokerCleanupFixture) { f.addMeshSync().Status.ObservedGeneration = 1 }, pending: true},
 		{name: "consumer unavailable", modify: func(f *brokerCleanupFixture) { f.addMeshSync().Status.AvailableReplicas = 0 }, pending: true},
