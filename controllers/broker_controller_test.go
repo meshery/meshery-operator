@@ -58,6 +58,20 @@ const (
 	brokerLabelValue = "broker"
 )
 
+// Fixture names shared by the Broker/MeshSync reconcile tests, kept in one
+// place so the repeated literals do not trip golangci-lint goconst.
+const (
+	testMesheryNamespace = "meshery"
+	testOtherNamespace   = "other-namespace"
+	testBrokerName       = "test-broker"
+	testOverrideBroker   = "override-broker"
+	testMeshSyncName     = "test-meshsync"
+	testSyncName         = "test-sync"
+	testNatsClusterIP    = "10.96.0.10"
+	testNatsClientPort   = "client"
+	testNatsURL          = "nats://10.96.0.10:4222"
+)
+
 var _ = Describe("The test cases for customize resource: Broker's controller ", func() {
 
 	var (
@@ -265,7 +279,7 @@ func (f *brokerCleanupFixture) reconciler(t *testing.T) *BrokerReconciler {
 }
 
 func (f *brokerCleanupFixture) addMeshSync() *v1.Deployment {
-	m := &v1alpha1.MeshSync{ObjectMeta: metav1.ObjectMeta{Name: "consumer", Namespace: "other-namespace", UID: "meshsync-uid"}, Spec: v1alpha1.MeshSyncSpec{Size: 1, Broker: v1alpha1.MeshsyncBroker{Native: v1alpha1.NativeMeshsyncBroker{Name: f.broker.Name, Namespace: f.broker.Namespace}}}}
+	m := &v1alpha1.MeshSync{ObjectMeta: metav1.ObjectMeta{Name: "consumer", Namespace: testOtherNamespace, UID: "meshsync-uid"}, Spec: v1alpha1.MeshSyncSpec{Size: 1, Broker: v1alpha1.MeshsyncBroker{Native: v1alpha1.NativeMeshsyncBroker{Name: f.broker.Name, Namespace: f.broker.Namespace}}}}
 	m.Status.PublishingTo = natsURL(f.broker.Status.Endpoint.Internal)
 	d := meshsyncpackage.GetServerObject(m, brokerpackage.AuthSecretName).(*v1.Deployment)
 	d.Generation = 2
@@ -510,7 +524,7 @@ func (f *brokerCleanupFixture) replacementStatefulSet() *v1.StatefulSet {
 }
 
 func legacyBrokerTestLabels() map[string]string {
-	return map[string]string{appLabelKey: "meshery", "component": brokerLabelValue}
+	return map[string]string{appLabelKey: testMesheryNamespace, "component": brokerLabelValue}
 }
 
 // TestBrokerCleanupRetryIntervals distinguishes migration polling from deletion confirmation.

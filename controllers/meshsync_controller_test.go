@@ -134,32 +134,32 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 	t.Run("SuccessWithExplicitNamespace", func(t *testing.T) {
 		broker := &v1alpha1.Broker{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-broker",
-				Namespace: "meshery",
+				Name:      testBrokerName,
+				Namespace: testMesheryNamespace,
 			},
 		}
 		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "meshery-nats",
-				Namespace: "meshery",
+				Name:      natsObjectName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: corev1.ServiceSpec{
-				ClusterIP: "10.96.0.10",
+				ClusterIP: testNatsClusterIP,
 				Ports: []corev1.ServicePort{
-					{Name: "client", Port: 4222},
+					{Name: testNatsClientPort, Port: 4222},
 				},
 			},
 		}
 		meshsync := &v1alpha1.MeshSync{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-meshsync",
-				Namespace: "meshery",
+				Name:      testMeshSyncName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
 					Native: v1alpha1.NativeMeshsyncBroker{
-						Name:      "test-broker",
-						Namespace: "meshery",
+						Name:      testBrokerName,
+						Namespace: testMesheryNamespace,
 					},
 				},
 			},
@@ -172,7 +172,7 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		expectedURL := "nats://10.96.0.10:4222"
+		expectedURL := testNatsURL
 		if meshsync.Status.PublishingTo != expectedURL {
 			t.Errorf("PublishingTo = %q, want %q", meshsync.Status.PublishingTo, expectedURL)
 		}
@@ -181,32 +181,32 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 	t.Run("SuccessWithDefaultedNamespace", func(t *testing.T) {
 		broker := &v1alpha1.Broker{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-broker",
-				Namespace: "meshery",
+				Name:      testBrokerName,
+				Namespace: testMesheryNamespace,
 			},
 		}
 		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "meshery-nats",
-				Namespace: "meshery",
+				Name:      natsObjectName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: corev1.ServiceSpec{
-				ClusterIP: "10.96.0.10",
+				ClusterIP: testNatsClusterIP,
 				Ports: []corev1.ServicePort{
-					{Name: "client", Port: 4222},
+					{Name: testNatsClientPort, Port: 4222},
 				},
 			},
 		}
 		// Notice: native.Namespace is omitted ("")
 		meshsync := &v1alpha1.MeshSync{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-meshsync",
-				Namespace: "meshery",
+				Name:      testMeshSyncName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
 					Native: v1alpha1.NativeMeshsyncBroker{
-						Name: "test-broker",
+						Name: testBrokerName,
 					},
 				},
 			},
@@ -219,7 +219,7 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		expectedURL := "nats://10.96.0.10:4222"
+		expectedURL := testNatsURL
 		if meshsync.Status.PublishingTo != expectedURL {
 			t.Errorf("PublishingTo = %q, want %q", meshsync.Status.PublishingTo, expectedURL)
 		}
@@ -231,20 +231,20 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 		// directly from the meshery-nats Service in that namespace.
 		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "meshery-nats",
+				Name:      natsObjectName,
 				Namespace: "custom-broker-ns",
 			},
 			Spec: corev1.ServiceSpec{
 				ClusterIP: "10.96.0.25",
 				Ports: []corev1.ServicePort{
-					{Name: "client", Port: 4222},
+					{Name: testNatsClientPort, Port: 4222},
 				},
 			},
 		}
 		meshsync := &v1alpha1.MeshSync{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-meshsync",
-				Namespace: "meshery",
+				Name:      testMeshSyncName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
@@ -267,12 +267,19 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 			t.Errorf("PublishingTo = %q, want %q", meshsync.Status.PublishingTo, expectedURL)
 		}
 	})
+}
+
+// TestMeshSyncReconcileBrokerConfigOverrides covers the override, not-found,
+// and custom-URL paths. It is split from TestMeshSyncReconcileBrokerConfig so
+// neither function exceeds the cyclop complexity limit.
+func TestMeshSyncReconcileBrokerConfigOverrides(t *testing.T) {
+	scheme := setupMeshSyncTestScheme(t)
 
 	t.Run("EndpointResolutionPreservesExternalEndpointOverride", func(t *testing.T) {
 		broker := &v1alpha1.Broker{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "override-broker",
-				Namespace: "meshery",
+				Name:      testOverrideBroker,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: v1alpha1.BrokerSpec{
 				Service: v1alpha1.BrokerServiceSpec{
@@ -282,26 +289,26 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 		}
 		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "meshery-nats",
-				Namespace: "meshery",
+				Name:      natsObjectName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: corev1.ServiceSpec{
-				ClusterIP: "10.96.0.10",
+				ClusterIP: testNatsClusterIP,
 				Ports: []corev1.ServicePort{
-					{Name: "client", Port: 4222},
+					{Name: testNatsClientPort, Port: 4222},
 				},
 			},
 		}
 		meshsync := &v1alpha1.MeshSync{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-meshsync",
-				Namespace: "meshery",
+				Name:      testMeshSyncName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
 					Native: v1alpha1.NativeMeshsyncBroker{
-						Name:      "override-broker",
-						Namespace: "meshery",
+						Name:      testOverrideBroker,
+						Namespace: testMesheryNamespace,
 					},
 				},
 			},
@@ -312,7 +319,7 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 
 		// Fetch the broker using the reconciler's lookup logic to verify the fetched struct retains spec
 		fetched := &v1alpha1.Broker{}
-		if err := r.Get(context.Background(), types.NamespacedName{Name: "override-broker", Namespace: "meshery"}, fetched); err != nil {
+		if err := r.Get(context.Background(), types.NamespacedName{Name: testOverrideBroker, Namespace: testMesheryNamespace}, fetched); err != nil {
 			t.Fatalf("failed to fetch broker: %v", err)
 		}
 		if err := brokerpackage.GetEndpoint(context.Background(), fetched, c, r.KubeConfig.Host); err != nil {
@@ -326,8 +333,8 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 		if err := r.reconcileBrokerConfig(context.Background(), meshsync); err != nil {
 			t.Fatalf("reconcileBrokerConfig failed: %v", err)
 		}
-		if meshsync.Status.PublishingTo != "nats://10.96.0.10:4222" {
-			t.Errorf("PublishingTo = %q, want %q", meshsync.Status.PublishingTo, "nats://10.96.0.10:4222")
+		if meshsync.Status.PublishingTo != testNatsURL {
+			t.Errorf("PublishingTo = %q, want %q", meshsync.Status.PublishingTo, testNatsURL)
 		}
 	})
 
@@ -336,23 +343,23 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 		// verify the Broker CR itself and return ErrGetBroker when absent.
 		service := &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "meshery-nats",
-				Namespace: "meshery",
+				Name:      natsObjectName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: corev1.ServiceSpec{
-				ClusterIP: "10.96.0.10",
+				ClusterIP: testNatsClusterIP,
 			},
 		}
 		meshsync := &v1alpha1.MeshSync{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-meshsync",
-				Namespace: "meshery",
+				Name:      testMeshSyncName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
 					Native: v1alpha1.NativeMeshsyncBroker{
 						Name:      "missing-broker",
-						Namespace: "meshery",
+						Namespace: testMesheryNamespace,
 					},
 				},
 			},
@@ -373,8 +380,8 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 	t.Run("CustomBrokerURL", func(t *testing.T) {
 		meshsync := &v1alpha1.MeshSync{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-meshsync",
-				Namespace: "meshery",
+				Name:      testMeshSyncName,
+				Namespace: testMesheryNamespace,
 			},
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
@@ -403,7 +410,7 @@ func TestMeshSyncEnsureBrokerTokenSecret(t *testing.T) {
 
 	t.Run("NoNativeBroker", func(t *testing.T) {
 		m := &v1alpha1.MeshSync{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-sync", Namespace: "meshery"},
+			ObjectMeta: metav1.ObjectMeta{Name: testSyncName, Namespace: testMesheryNamespace},
 		}
 		c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(m).Build()
 		r := &MeshSyncReconciler{Client: c, Scheme: scheme, Log: logr.Discard()}
@@ -421,17 +428,17 @@ func TestMeshSyncEnsureBrokerTokenSecret(t *testing.T) {
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      brokerpackage.AuthSecretName,
-				Namespace: "meshery",
+				Namespace: testMesheryNamespace,
 			},
 			Data: map[string][]byte{"token": []byte("test-token")},
 		}
 		m := &v1alpha1.MeshSync{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-sync", Namespace: "meshery"},
+			ObjectMeta: metav1.ObjectMeta{Name: testSyncName, Namespace: testMesheryNamespace},
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
 					Native: v1alpha1.NativeMeshsyncBroker{
-						Name:      "test-broker",
-						Namespace: "meshery",
+						Name:      testBrokerName,
+						Namespace: testMesheryNamespace,
 					},
 				},
 			},
@@ -452,17 +459,17 @@ func TestMeshSyncEnsureBrokerTokenSecret(t *testing.T) {
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      brokerpackage.AuthSecretName,
-				Namespace: "meshery",
+				Namespace: testMesheryNamespace,
 			},
 			Data: map[string][]byte{"token": []byte("test-token")},
 		}
 		// Namespace omitted in native
 		m := &v1alpha1.MeshSync{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-sync", Namespace: "meshery"},
+			ObjectMeta: metav1.ObjectMeta{Name: testSyncName, Namespace: testMesheryNamespace},
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
 					Native: v1alpha1.NativeMeshsyncBroker{
-						Name: "test-broker",
+						Name: testBrokerName,
 					},
 				},
 			},
@@ -481,12 +488,12 @@ func TestMeshSyncEnsureBrokerTokenSecret(t *testing.T) {
 
 	t.Run("TokenAuthNotInUse", func(t *testing.T) {
 		m := &v1alpha1.MeshSync{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-sync", Namespace: "meshery"},
+			ObjectMeta: metav1.ObjectMeta{Name: testSyncName, Namespace: testMesheryNamespace},
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
 					Native: v1alpha1.NativeMeshsyncBroker{
-						Name:      "test-broker",
-						Namespace: "meshery",
+						Name:      testBrokerName,
+						Namespace: testMesheryNamespace,
 					},
 				},
 			},
@@ -512,13 +519,13 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	msExplicit := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ms-explicit",
-			Namespace: "meshery",
+			Namespace: testMesheryNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
 			Broker: v1alpha1.MeshsyncBroker{
 				Native: v1alpha1.NativeMeshsyncBroker{
-					Name:      "test-broker",
-					Namespace: "meshery",
+					Name:      testBrokerName,
+					Namespace: testMesheryNamespace,
 				},
 			},
 		},
@@ -527,12 +534,12 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	msDefaulted := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ms-defaulted",
-			Namespace: "meshery",
+			Namespace: testMesheryNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
 			Broker: v1alpha1.MeshsyncBroker{
 				Native: v1alpha1.NativeMeshsyncBroker{
-					Name: "test-broker",
+					Name: testBrokerName,
 				},
 			},
 		},
@@ -541,13 +548,13 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	msCrossNamespace := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ms-cross-ns",
-			Namespace: "other-namespace",
+			Namespace: testOtherNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
 			Broker: v1alpha1.MeshsyncBroker{
 				Native: v1alpha1.NativeMeshsyncBroker{
-					Name:      "test-broker",
-					Namespace: "meshery",
+					Name:      testBrokerName,
+					Namespace: testMesheryNamespace,
 				},
 			},
 		},
@@ -556,12 +563,12 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	msOtherNsDefaulted := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ms-other-ns-defaulted",
-			Namespace: "other-namespace",
+			Namespace: testOtherNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
 			Broker: v1alpha1.MeshsyncBroker{
 				Native: v1alpha1.NativeMeshsyncBroker{
-					Name: "test-broker",
+					Name: testBrokerName,
 				},
 			},
 		},
@@ -570,13 +577,13 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	msOther := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ms-other",
-			Namespace: "meshery",
+			Namespace: testMesheryNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
 			Broker: v1alpha1.MeshsyncBroker{
 				Native: v1alpha1.NativeMeshsyncBroker{
 					Name:      "other-broker",
-					Namespace: "meshery",
+					Namespace: testMesheryNamespace,
 				},
 			},
 		},
@@ -585,12 +592,12 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	msNamespaceOnly := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ms-ns-only",
-			Namespace: "meshery",
+			Namespace: testMesheryNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
 			Broker: v1alpha1.MeshsyncBroker{
 				Native: v1alpha1.NativeMeshsyncBroker{
-					Namespace: "meshery",
+					Namespace: testMesheryNamespace,
 				},
 			},
 		},
@@ -599,12 +606,12 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	msOtherNsNamespaceOnly := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ms-other-ns-only",
-			Namespace: "other-namespace",
+			Namespace: testOtherNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
 			Broker: v1alpha1.MeshsyncBroker{
 				Native: v1alpha1.NativeMeshsyncBroker{
-					Namespace: "other-namespace",
+					Namespace: testOtherNamespace,
 				},
 			},
 		},
@@ -613,7 +620,7 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	msNoNative := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ms-no-native",
-			Namespace: "meshery",
+			Namespace: testMesheryNamespace,
 		},
 	}
 
@@ -623,8 +630,8 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	t.Run("MatchesV1alpha1BrokerAndResolvesDefaultedNamespace", func(t *testing.T) {
 		broker := &v1alpha1.Broker{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-broker",
-				Namespace: "meshery",
+				Name:      testBrokerName,
+				Namespace: testMesheryNamespace,
 			},
 		}
 
@@ -636,25 +643,25 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 		for _, req := range reqs {
 			matched[req.NamespacedName] = true
 		}
-		if !matched[types.NamespacedName{Name: "ms-explicit", Namespace: "meshery"}] {
+		if !matched[types.NamespacedName{Name: "ms-explicit", Namespace: testMesheryNamespace}] {
 			t.Errorf("missing request for ms-explicit in meshery")
 		}
-		if !matched[types.NamespacedName{Name: "ms-defaulted", Namespace: "meshery"}] {
+		if !matched[types.NamespacedName{Name: "ms-defaulted", Namespace: testMesheryNamespace}] {
 			t.Errorf("missing request for ms-defaulted in meshery")
 		}
-		if !matched[types.NamespacedName{Name: "ms-cross-ns", Namespace: "other-namespace"}] {
+		if !matched[types.NamespacedName{Name: "ms-cross-ns", Namespace: testOtherNamespace}] {
 			t.Errorf("missing request for ms-cross-ns in other-namespace")
 		}
-		if !matched[types.NamespacedName{Name: "ms-ns-only", Namespace: "meshery"}] {
+		if !matched[types.NamespacedName{Name: "ms-ns-only", Namespace: testMesheryNamespace}] {
 			t.Errorf("missing request for ms-ns-only in meshery")
 		}
-		if matched[types.NamespacedName{Name: "ms-other-ns-defaulted", Namespace: "other-namespace"}] {
+		if matched[types.NamespacedName{Name: "ms-other-ns-defaulted", Namespace: testOtherNamespace}] {
 			t.Errorf("unexpected request for ms-other-ns-defaulted; namespace isolation was violated")
 		}
-		if matched[types.NamespacedName{Name: "ms-other-ns-only", Namespace: "other-namespace"}] {
+		if matched[types.NamespacedName{Name: "ms-other-ns-only", Namespace: testOtherNamespace}] {
 			t.Errorf("unexpected request for ms-other-ns-only; namespace isolation was violated")
 		}
-		if matched[types.NamespacedName{Name: "ms-no-native", Namespace: "meshery"}] {
+		if matched[types.NamespacedName{Name: "ms-no-native", Namespace: testMesheryNamespace}] {
 			t.Errorf("unexpected request for ms-no-native; unconfigured native broker was matched")
 		}
 	})
@@ -662,8 +669,8 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	t.Run("MatchesV1alpha2StorageVersionBroker", func(t *testing.T) {
 		brokerHub := &mesheryv1alpha2.Broker{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-broker",
-				Namespace: "meshery",
+				Name:      testBrokerName,
+				Namespace: testMesheryNamespace,
 			},
 		}
 
