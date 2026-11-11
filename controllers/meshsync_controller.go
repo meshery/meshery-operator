@@ -95,7 +95,13 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	}
 	// Strip the finalizer earlier releases added, from Terminating MeshSyncs
 	// too: on those it is the only thing holding deletion.
-	if res, err := migrateLegacyFinalizer(ctx, r.Client, log, baseResource, legacyMeshsyncFinalizer); err != nil || res.RequeueAfter > 0 {
+	if stop, res, err := migrateLegacyFinalizer(ctx, r.Client, log, baseResource, legacyMeshsyncFinalizer); stop {
+		if err != nil {
+			// Best effort, like the controller's other failure conditions: the
+			// status subresource is a separate permission and may still accept
+			// the write that explains why deletion is pending.
+			_ = r.updateStatusCondition(ctx, baseResource, "Ready", v1.ConditionFalse, "LegacyFinalizerRemovalFailed", err.Error())
+		}
 		return res, err
 	}
 

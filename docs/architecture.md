@@ -80,7 +80,14 @@ stop if deleting → main reconcile → health check → status patch) and imple
   holding deletion. The resourceVersion-guarded merge patch leaves other writers'
   finalizers untouched (`controllers/legacy_finalizer.go`). A CR left stuck by an
   older release is released as soon as an operator with this change runs, and
-  garbage collection then removes its children. A CR that was Terminating cannot be
+  garbage collection then removes its children. A conflict retries after five
+  seconds; a CR deleted meanwhile ends the reconcile (it must not continue on a
+  stale copy and re-apply children owned by a deleted UID); any other failure
+  returns `ErrRemoveLegacyFinalizer` and sets `Ready=False` with reason
+  `LegacyFinalizerRemovalFailed`. When no operator can run, remove only the
+  legacy finalizer by hand (a JSON patch with a `test` op on its index, as that
+  error's remediation spells out), never the whole `finalizers` list, which would
+  also drop other controllers' finalizers. A CR that was Terminating cannot be
   revived; whoever installs the CRs (the meshery-operator chart) must re-create it.
 - **`*/finalizers` RBAC stays.** `update` on `brokers/finalizers` and
   `meshsyncs/finalizers` is not for a finalizer of the operator's own:

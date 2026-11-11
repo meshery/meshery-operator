@@ -997,40 +997,106 @@ func TestStripLegacyFinalizerStaleCopyConflicts(t *testing.T) {
 	}
 }
 
-func TestStripLegacyFinalizerAlreadyDeletedIsSuccess(t *testing.T) {
+func TestStripLegacyFinalizerReportsNotFound(t *testing.T) {
 	removed, err := stripLegacyFinalizer(context.Background(), newLegacyFinalizerTestClient(t), newLegacyFinalizerTestBroker(legacyBrokerFinalizer), legacyBrokerFinalizer)
-	if !removed || err != nil {
-		t.Fatalf("removed=%v err=%v; an already deleted object is the desired end state", removed, err)
+	if removed || !apierrors.IsNotFound(err) {
+		t.Fatalf("removed=%v err=%v; an object deleted meanwhile must surface as NotFound for the caller to stop on", removed, err)
 	}
 }
 
-func TestMigrateLegacyFinalizerFailures(t *testing.T) {
+func TestMigrateLegacyFinalizerOutcomes(t *testing.T) {
 	ctx := context.Background()
 	broker := &v1alpha1.Broker{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Namespace: testMesheryNamespace, Finalizers: []string{legacyBrokerFinalizer}}}
 	failWith := func(t *testing.T, patchErr error) client.Client {
 		t.Helper()
-		base := fake.NewClientBuilder().WithScheme(setupMeshSyncTestScheme(t)).WithObjects(broker.DeepCopy()).Build()
-		return interceptor.NewClient(base, interceptor.Funcs{
+		return interceptor.NewClient(newLegacyFinalizerTestClient(t, broker.DeepCopy()), interceptor.Funcs{
 			Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
 				return patchErr
 			},
 		})
 	}
+	brokers := schema.GroupResource{Group: "meshery.io", Resource: "brokers"}
 
-	t.Run("conflict requeues without a reconcile error", func(t *testing.T) {
-		c := failWith(t, apierrors.NewConflict(schema.GroupResource{Group: "meshery.io", Resource: "brokers"}, broker.Name, nil))
-		result, err := migrateLegacyFinalizer(ctx, c, logr.Discard(), broker.DeepCopy(), legacyBrokerFinalizer)
-		if err != nil || result.RequeueAfter != legacyFinalizerConflictRetry {
-			t.Fatalf("result=%+v err=%v; want a %v requeue", result, err, legacyFinalizerConflictRetry)
+	t.Run("removed: the reconcile continues", func(t *testing.T) {
+		c := newLegacyFinalizerTestClient(t, broker.DeepCopy())
+		stop, result, err := migrateLegacyFinalizer(ctx, c, logr.Discard(), getLegacyFinalizerTestBroker(t, c), legacyBrokerFinalizer)
+		if stop || err != nil || result.RequeueAfter != 0 {
+			t.Fatalf("stop=%v result=%+v err=%v; want the reconcile to continue", stop, result, err)
 		}
 	})
 
-	t.Run("other API errors surface as a structured error naming the CR", func(t *testing.T) {
-		c := failWith(t, apierrors.NewForbidden(schema.GroupResource{Group: "meshery.io", Resource: "brokers"}, broker.Name, nil))
-		result, err := migrateLegacyFinalizer(ctx, c, logr.Discard(), broker.DeepCopy(), legacyBrokerFinalizer)
-		if result.RequeueAfter != 0 {
-			t.Fatalf("RequeueAfter = %v; errors must use controller backoff", result.RequeueAfter)
+	t.Run("already deleted: stop without an error", func(t *testing.T) {
+		stop, result, err := migrateLegacyFinalizer(ctx, failWith(t, apierrors.NewNotFound(brokers, broker.Name)), logr.Discard(), broker.DeepCopy(), legacyBrokerFinalizer)
+		if !stop || err != nil || result.RequeueAfter != 0 {
+			t.Fatalf("stop=%v result=%+v err=%v; a deleted CR must end the reconcile cleanly", stop, result, err)
+		}
+	})
+
+	t.Run("conflict: stop and requeue without a reconcile error", func(t *testing.T) {
+		stop, result, err := migrateLegacyFinalizer(ctx, failWith(t, apierrors.NewConflict(brokers, broker.Name, nil)), logr.Discard(), broker.DeepCopy(), legacyBrokerFinalizer)
+		if !stop || err != nil || result.RequeueAfter != legacyFinalizerConflictRetry {
+			t.Fatalf("stop=%v result=%+v err=%v; want a %v requeue", stop, result, err, legacyFinalizerConflictRetry)
+		}
+	})
+
+	t.Run("other API errors: stop with a structured error naming the CR", func(t *testing.T) {
+		stop, result, err := migrateLegacyFinalizer(ctx, failWith(t, apierrors.NewForbidden(brokers, broker.Name, nil)), logr.Discard(), broker.DeepCopy(), legacyBrokerFinalizer)
+		if !stop || result.RequeueAfter != 0 {
+			t.Fatalf("stop=%v RequeueAfter=%v; errors must stop the reconcile and use controller backoff", stop, result.RequeueAfter)
 		}
 		assertMeshkitError(t, err, ErrRemoveLegacyFinalizerCode, legacyBrokerFinalizer+" on "+testMesheryNamespace+"/"+testBrokerName)
 	})
+}
+
+// TestBrokerReconcileLegacyFinalizerFailures drives Reconcile when the legacy
+// finalizer cannot be stripped: a failure is recorded on the Ready condition,
+// and a CR deleted meanwhile ends the reconcile without re-applying children
+// owned by its deleted UID.
+func TestBrokerReconcileLegacyFinalizerFailures(t *testing.T) {
+	brokers := schema.GroupResource{Group: "meshery.io", Resource: "brokers"}
+	for name, patchErr := range map[string]error{
+		"forbidden": apierrors.NewForbidden(brokers, testBrokerName, nil),
+		"not found": apierrors.NewNotFound(brokers, testBrokerName),
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			broker := &v1alpha1.Broker{ObjectMeta: metav1.ObjectMeta{
+				Name: testBrokerName, Namespace: testMesheryNamespace, UID: "broker-migration-failure-uid", Finalizers: []string{legacyBrokerFinalizer},
+			}}
+			f := &brokerCleanupFixture{broker: broker, objects: []client.Object{broker}}
+			r := f.reconciler(t)
+			r.Client = interceptor.NewClient(r.Client.(client.WithWatch), interceptor.Funcs{
+				Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+					return patchErr
+				},
+			})
+
+			result, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(broker)})
+			if result.RequeueAfter != 0 {
+				t.Fatalf("RequeueAfter = %v; want controller backoff or a clean exit", result.RequeueAfter)
+			}
+			current := &v1alpha1.Broker{}
+			if getErr := r.Get(ctx, client.ObjectKeyFromObject(broker), current); getErr != nil {
+				t.Fatal(getErr)
+			}
+			ready := meta.FindStatusCondition(current.Status.Conditions, "Ready")
+			if apierrors.IsNotFound(patchErr) {
+				if err != nil || ready != nil {
+					t.Fatalf("err=%v Ready=%+v; a CR deleted meanwhile must end the reconcile quietly", err, ready)
+				}
+			} else {
+				assertMeshkitError(t, err, ErrRemoveLegacyFinalizerCode, legacyBrokerFinalizer)
+				if ready == nil || ready.Status != metav1.ConditionFalse || ready.Reason != "LegacyFinalizerRemovalFailed" || ready.Message != err.Error() {
+					t.Fatalf("Ready condition = %+v; want False/LegacyFinalizerRemovalFailed carrying %q", ready, err.Error())
+				}
+			}
+			statefulSets := &v1.StatefulSetList{}
+			if listErr := r.List(ctx, statefulSets, client.InNamespace(testMesheryNamespace)); listErr != nil {
+				t.Fatal(listErr)
+			}
+			if len(statefulSets.Items) != 0 {
+				t.Fatalf("no children may be applied while the legacy finalizer migration is failing, found %d StatefulSets", len(statefulSets.Items))
+			}
+		})
+	}
 }

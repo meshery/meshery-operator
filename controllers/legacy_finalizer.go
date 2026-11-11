@@ -59,25 +59,37 @@ const (
 )
 
 // migrateLegacyFinalizer is the reconcile step that strips a legacy finalizer
-// (see stripLegacyFinalizer). A conflict means the cached copy is stale; it is
-// retried shortly instead of being reported as a reconcile error. Any other
-// failure is returned as a structured error naming the CR, and stops the
-// reconcile so controller-runtime backs off and retries.
-func migrateLegacyFinalizer(ctx context.Context, c client.Client, log logr.Logger, obj client.Object, finalizer string) (ctrl.Result, error) {
+// (see stripLegacyFinalizer). stop reports that the reconcile must end now,
+// returning result and err:
+//   - the CR is already gone (NotFound): nothing is left to reconcile, and
+//     carrying on with the stale copy would re-apply children owned by a
+//     deleted UID;
+//   - a conflict: the cached copy is stale, so retry shortly rather than
+//     report a reconcile error;
+//   - any other failure: a structured error naming the CR, so
+//     controller-runtime backs off and retries. Callers also record it on
+//     the CR's Ready condition.
+//
+// Otherwise (finalizer absent, or removed) the reconcile continues with obj,
+// which reflects the server's copy after a successful patch.
+func migrateLegacyFinalizer(ctx context.Context, c client.Client, log logr.Logger, obj client.Object, finalizer string) (stop bool, result ctrl.Result, err error) {
 	removed, err := stripLegacyFinalizer(ctx, c, obj, finalizer)
-	if err != nil {
-		if apierrors.IsConflict(err) {
-			log.V(1).Info("Conflict while removing legacy finalizer, requeuing to retry", "finalizer", finalizer)
-			return ctrl.Result{RequeueAfter: legacyFinalizerConflictRetry}, nil
-		}
+	switch {
+	case apierrors.IsNotFound(err):
+		log.Info("Resource already deleted while removing legacy finalizer", "finalizer", finalizer)
+		return true, ctrl.Result{}, nil
+	case apierrors.IsConflict(err):
+		log.V(1).Info("Conflict while removing legacy finalizer, requeuing to retry", "finalizer", finalizer)
+		return true, ctrl.Result{RequeueAfter: legacyFinalizerConflictRetry}, nil
+	case err != nil:
 		err = ErrRemoveLegacyFinalizer(finalizer, obj.GetNamespace(), obj.GetName(), err)
 		log.Error(err, "Failed to remove legacy finalizer", "finalizer", finalizer)
-		return ctrl.Result{}, err
+		return true, ctrl.Result{}, err
 	}
 	if removed {
 		log.Info("Removed legacy finalizer; owned objects are cleaned up by garbage collection", "finalizer", finalizer)
 	}
-	return ctrl.Result{}, nil
+	return false, ctrl.Result{}, nil
 }
 
 // stripLegacyFinalizer removes a finalizer an earlier operator release added,
@@ -85,13 +97,13 @@ func migrateLegacyFinalizer(ctx context.Context, c client.Client, log logr.Logge
 // lets deletion complete; garbage collection then removes the owned objects
 // through their ownerReferences, so no explicit cleanup runs first.
 //
-// It reports whether the finalizer is gone from the server's copy. The JSON
-// merge patch carries the object's resourceVersion as an optimistic lock, so a
-// finalizer list another writer changed concurrently is never clobbered: the
-// API server rejects the stale patch with a Conflict, which the caller
-// retries. A NotFound means the object is already gone - the desired end
-// state - and is not an error. On success obj reflects the server's response;
-// on failure it is left untouched.
+// It reports whether it patched the object. The JSON merge patch carries the
+// object's resourceVersion as an optimistic lock, so a finalizer list another
+// writer changed concurrently is never clobbered: the API server rejects the
+// stale patch with a Conflict, which the caller retries. API errors, including
+// NotFound for an object deleted meanwhile, are returned unwrapped for the
+// caller to classify. On success obj reflects the server's response; on
+// failure it is left untouched.
 func stripLegacyFinalizer(ctx context.Context, c client.Client, obj client.Object, finalizer string) (bool, error) {
 	if !controllerutil.ContainsFinalizer(obj, finalizer) {
 		return false, nil
@@ -110,9 +122,6 @@ func stripLegacyFinalizer(ctx context.Context, c client.Client, obj client.Objec
 		return false, err
 	}
 	if err := c.Patch(ctx, obj, client.RawPatch(types.MergePatchType, patch)); err != nil {
-		if apierrors.IsNotFound(err) {
-			return true, nil
-		}
 		return false, err
 	}
 	return true, nil
