@@ -59,7 +59,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2026-07-01T13:05:15Z"
+    createdAt: "2026-11-11T20:07:47Z"
     olm.skipRange: '>=0.0.1 <0.1.0'
     operators.operatorframework.io/builder: operator-sdk-v1.42.3
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
@@ -194,6 +194,9 @@ spec:
                 - --health-probe-bind-address=:8081
                 command:
                 - /manager
+                env:
+                - name: MESHSYNC_SERVICE_ACCOUNT
+                  value: meshery-meshsync
                 image: meshery/meshery-operator:1.0.6
                 imagePullPolicy: IfNotPresent
                 livenessProbe:

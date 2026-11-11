@@ -284,6 +284,74 @@ assert_meshsync_broker_connectivity() {
   exit 1
 }
 
+# MeshSync runs under its own read-only ServiceAccount (MESHSYNC_SERVICE_ACCOUNT
+# on the operator; config/manager/meshsync_service_account.yaml bound to
+# config/rbac/meshsync_workload_role.yaml), not the operator's least-privilege
+# one, which cannot read most of what MeshSync watches. Assert the identity, the
+# RBAC boundary in both directions, and that the API server is not refusing
+# MeshSync - the "forbidden" flood this ServiceAccount exists to end.
+assert_meshsync_rbac() {
+  echo "🔍 Asserting MeshSync's ServiceAccount and RBAC boundary..."
+  local ns="$OPERATOR_NAMESPACE"
+  local meshsync_sa="system:serviceaccount:$ns:meshery-meshsync"
+  local operator_sa="system:serviceaccount:$ns:meshery-operator"
+
+  local sa
+  sa=$(kubectl --namespace "$ns" get deployment/meshery-meshsync -o jsonpath='{.spec.template.spec.serviceAccountName}')
+  if [ "$sa" != "meshery-meshsync" ]; then
+    echo "❌ MeshSync runs under ServiceAccount '$sa', want meshery-meshsync"
+    exit 1
+  fi
+
+  # Reads MeshSync needs, including cluster-scoped kinds and CRDs (the operator
+  # role grants none of these), and pods/log for log streaming.
+  local allowed=(
+    "list nodes"
+    "watch persistentvolumes"
+    "list storageclasses.storage.k8s.io"
+    "watch customresourcedefinitions.apiextensions.k8s.io"
+    "list clusterroles.rbac.authorization.k8s.io"
+    "get pods --subresource=log"
+  )
+  # Read-only: no writes anywhere, and no interactive exec unless opted in.
+  local denied=(
+    "create pods"
+    "delete deployments.apps"
+    "patch meshsyncs.meshery.io"
+    "create pods --subresource=exec"
+  )
+  local check
+  for check in "${allowed[@]}"; do
+    # shellcheck disable=SC2086 # each check is a verb + resource (+ flag) word list
+    if ! kubectl auth can-i $check --all-namespaces --as="$meshsync_sa" --quiet; then
+      echo "❌ meshery-meshsync must be allowed to: $check"
+      exit 1
+    fi
+  done
+  for check in "${denied[@]}"; do
+    # shellcheck disable=SC2086
+    if kubectl auth can-i $check --all-namespaces --as="$meshsync_sa" --quiet; then
+      echo "❌ meshery-meshsync must NOT be allowed to: $check"
+      exit 1
+    fi
+  done
+  # The operator keeps its least-privilege role: MeshSync's reads did not leak
+  # into it.
+  if kubectl auth can-i list nodes --as="$operator_sa" --quiet; then
+    echo "❌ meshery-operator must stay least-privilege, but it can list nodes"
+    exit 1
+  fi
+
+  local forbidden
+  forbidden=$(kubectl --namespace "$ns" logs deployment/meshery-meshsync --tail=-1 | grep -ci 'forbidden' || true)
+  if [ "${forbidden:-0}" -gt 0 ]; then
+    echo "❌ MeshSync logged $forbidden 'forbidden' lines:"
+    kubectl --namespace "$ns" logs deployment/meshery-meshsync --tail=-1 | grep -i 'forbidden' | head -10
+    exit 1
+  fi
+  echo "✅ MeshSync runs as meshery-meshsync with read-only cluster access and no forbidden errors"
+}
+
 assert_resources() {
   echo "🔍 Asserting operator functionality..."
 
@@ -296,6 +364,7 @@ assert_resources() {
   assert_resources_cr_broker_status
   assert_meshsync_broker_url
   assert_meshsync_broker_connectivity
+  assert_meshsync_rbac
   assert_conversion_webhook
   assert_networking_reconfiguration
   if [ "${BROKER_UPGRADE_FIXTURE:-0}" = "1" ]; then

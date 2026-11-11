@@ -50,6 +50,11 @@ type MeshSyncReconciler struct {
 	Clientset  *kubernetes.Clientset
 	Scheme     *runtime.Scheme
 	Log        logr.Logger
+	// ServiceAccountName is the ServiceAccount MeshSync pods run under, resolved
+	// once at startup from MESHSYNC_SERVICE_ACCOUNT
+	// (meshsyncpackage.ResolveServiceAccountName). Empty keeps the builder's
+	// legacy default, the operator's own ServiceAccount.
+	ServiceAccountName string
 }
 
 const (
@@ -428,7 +433,7 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, baseResource
 	if err != nil {
 		return ErrReconcileMeshsync(err)
 	}
-	desired := meshsyncpackage.GetServerObject(baseResource, tokenSecret)
+	desired := meshsyncpackage.GetServerObject(baseResource, tokenSecret, meshsyncpackage.WithServiceAccountName(r.ServiceAccountName))
 	desired.SetNamespace(baseResource.Namespace)
 	if err := util.SetControllerReference(baseResource, desired, r.Scheme); err != nil {
 		return ErrReconcileMeshsync(err)

@@ -106,6 +106,8 @@ var _ = Describe("Controller update reconciliation", func() {
 			g.Expect(deployment.Spec.Template.Spec.Containers).ToNot(BeEmpty())
 			g.Expect(deployment.Spec.Template.Spec.Containers[0].Env).ToNot(BeEmpty())
 			g.Expect(deployment.Spec.Template.Spec.Containers[0].Env[0].Value).To(Equal("nats://broker-old:4222"))
+			g.Expect(deployment.Spec.Template.Spec.ServiceAccountName).To(Equal(testMeshSyncServiceAccount),
+				"MeshSync pods must run under the ServiceAccount the operator was configured with")
 		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
 
 		Eventually(func() error {

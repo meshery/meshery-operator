@@ -36,6 +36,8 @@ Meshery Operator ([docs](https://docs.meshery.io/concepts/architecture/operator)
 <a href="https://github.com/meshery/meshsync"><img align="left" src="https://raw.githubusercontent.com/meshery/meshsync/master/.github/readme/images/meshsync.svg"  width="165px" /></a>
 MeshSync ([docs](https://docs.meshery.io/concepts/architecture/meshsync)) is an event-driven, continuous synchronization controller responsibe for the task of ensuring that the state of configuration and status of operation of any infrastructure under management are known to Meshery. MeshSync runs as a Kubernetes custom controller under the control of Meshery Operator.
 
+MeshSync runs under its own read-only ServiceAccount, `meshery-meshsync` (cluster-wide `get`/`list`/`watch`, no writes), kept separate from the operator's least-privilege identity. The operator selects it from the `MESHSYNC_SERVICE_ACCOUNT` environment variable on its Deployment; when unset it falls back to its own `meshery-operator` ServiceAccount. See [MeshSync identity and RBAC](docs/architecture.md#meshsync-identity-and-rbac-meshsync_service_account).
+
 <br />
 <br />
 <br />

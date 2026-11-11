@@ -17,6 +17,12 @@ limitations under the License.
 package meshsync
 
 import (
+	"context"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -25,8 +31,14 @@ import (
 	"github.com/meshery/meshery-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/yaml"
+	k8sscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // testObjName is the name/namespace used for MeshSync CR fixtures in this file.
@@ -382,4 +394,227 @@ func versionLabel(v string) string {
 		return "default"
 	}
 	return v
+}
+
+// Cross-repo contract names: the meshery-operator Helm chart in meshery/meshery
+// creates these same objects and sets MESHSYNC_SERVICE_ACCOUNT to the same value.
+const (
+	contractMeshSyncServiceAccount = "meshery-meshsync"
+	contractMeshSyncClusterRole    = "meshery-meshsync-role"
+	contractMeshSyncBinding        = "meshery-meshsync-rolebinding"
+	contractOperatorClusterRole    = "meshery-operator-role"
+)
+
+func TestResolveServiceAccountName(t *testing.T) {
+	for value, want := range map[string]string{
+		"":                             LegacyServiceAccountName,
+		contractMeshSyncServiceAccount: contractMeshSyncServiceAccount,
+		"custom.sa-1":                  "custom.sa-1",
+	} {
+		got, err := ResolveServiceAccountName(value)
+		if err != nil || got != want {
+			t.Errorf("ResolveServiceAccountName(%q) = %q, %v; want %q", value, got, err, want)
+		}
+	}
+	for _, value := range []string{"Meshery-MeshSync", "meshery_meshsync", " meshery-meshsync", "-leading-dash", strings.Repeat("a", 254)} {
+		got, err := ResolveServiceAccountName(value)
+		if got != "" {
+			t.Errorf("ResolveServiceAccountName(%q) = %q; an invalid name must not be used", value, got)
+		}
+		assertMeshkitError(t, err, ErrInvalidServiceAccountNameCode, "MESHSYNC_SERVICE_ACCOUNT=")
+	}
+}
+
+func TestGetServerObjectServiceAccount(t *testing.T) {
+	m := &mesheryv1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: testObjName, Namespace: testObjName},
+		Spec:       mesheryv1alpha1.MeshSyncSpec{Size: 1},
+	}
+	cases := []struct {
+		name string
+		want string
+		opts []ServerOption
+	}{
+		{name: "no option keeps the legacy default", want: LegacyServiceAccountName},
+		{name: "empty name keeps the legacy default", opts: []ServerOption{WithServiceAccountName("")}, want: LegacyServiceAccountName},
+		{name: "configured name is applied", opts: []ServerOption{WithServiceAccountName(contractMeshSyncServiceAccount)}, want: contractMeshSyncServiceAccount},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dep, ok := GetServerObject(m, "", tc.opts...).(*appsv1.Deployment)
+			if !ok {
+				t.Fatal("GetServerObject did not return a *appsv1.Deployment")
+			}
+			if got := dep.Spec.Template.Spec.ServiceAccountName; got != tc.want {
+				t.Errorf("serviceAccountName = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	if got := Deployment.Spec.Template.Spec.ServiceAccountName; got != LegacyServiceAccountName {
+		t.Errorf("options must not mutate the shared template, which now names %q", got)
+	}
+}
+
+// TestCheckHealthReportsReplicaFailure verifies a Deployment that cannot create
+// its pods (here: a missing ServiceAccount) surfaces that reason in the health
+// error, and so in the MeshSync Ready condition.
+func TestCheckHealthReportsReplicaFailure(t *testing.T) {
+	m := &mesheryv1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: testObjName, Namespace: testObjName},
+		Spec:       mesheryv1alpha1.MeshSyncSpec{Size: 1},
+	}
+	const reason = `pods "test-abc" is forbidden: error looking up service account test/meshery-meshsync: serviceaccount "meshery-meshsync" not found`
+	unready := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: testObjName, Namespace: testObjName},
+		Status: appsv1.DeploymentStatus{Conditions: []appsv1.DeploymentCondition{
+			{Type: appsv1.DeploymentProgressing, Status: corev1.ConditionTrue, Message: "unrelated"},
+			{Type: appsv1.DeploymentReplicaFailure, Status: corev1.ConditionTrue, Reason: "FailedCreate", Message: reason},
+		}},
+	}
+	c := fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(unready).Build()
+	err := CheckHealth(context.Background(), m, c)
+	assertMeshkitError(t, err, ErrMeshsyncReplicasNotReadyCode, "0 of 1 replicas ready: "+reason)
+	if strings.Contains(err.Error(), "unrelated") {
+		t.Errorf("only ReplicaFailure conditions belong in the health error, got: %s", err)
+	}
+
+	ready := unready.DeepCopy()
+	ready.ResourceVersion = ""
+	ready.Status = appsv1.DeploymentStatus{ReadyReplicas: 1}
+	c = fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(ready).Build()
+	if err := CheckHealth(context.Background(), m, c); err != nil {
+		t.Fatalf("a ready Deployment must be healthy, got %v", err)
+	}
+}
+
+// TestRenderedInstallManifestWiresMeshSyncServiceAccount guards the cross-repo
+// contract in the rendered install manifest (config/manifests/default.yaml,
+// kept in sync with config/ by the manifests-drift CI gate): the operator
+// Deployment names a ServiceAccount through MESHSYNC_SERVICE_ACCOUNT, that
+// ServiceAccount exists in the operator's namespace, it is bound to a read-only
+// ClusterRole, and the operator's own role stays wildcard-free. kustomize once
+// rendered the binding subject unprefixed here (binding nothing), so the test
+// reads the rendered output rather than the source files.
+func TestRenderedInstallManifestWiresMeshSyncServiceAccount(t *testing.T) {
+	objects := renderedInstallManifest(t)
+
+	operator := &appsv1.Deployment{}
+	decodeRendered(t, objects, "Deployment", "meshery-operator", operator)
+	serviceAccountName := renderedServiceAccountEnv(t, operator)
+
+	serviceAccount := &corev1.ServiceAccount{}
+	decodeRendered(t, objects, "ServiceAccount", serviceAccountName, serviceAccount)
+	if serviceAccount.Namespace != operator.Namespace {
+		t.Errorf("ServiceAccount %s is in namespace %q, want the operator's %q", serviceAccountName, serviceAccount.Namespace, operator.Namespace)
+	}
+
+	binding := &rbacv1.ClusterRoleBinding{}
+	decodeRendered(t, objects, "ClusterRoleBinding", contractMeshSyncBinding, binding)
+	if binding.RoleRef.Kind != "ClusterRole" || binding.RoleRef.Name != contractMeshSyncClusterRole {
+		t.Errorf("%s roleRef = %+v, want ClusterRole %s", contractMeshSyncBinding, binding.RoleRef, contractMeshSyncClusterRole)
+	}
+	wantSubject := rbacv1.Subject{Kind: "ServiceAccount", Name: serviceAccountName, Namespace: operator.Namespace}
+	if len(binding.Subjects) != 1 || binding.Subjects[0] != wantSubject {
+		t.Errorf("%s subjects = %+v, want exactly %+v", contractMeshSyncBinding, binding.Subjects, wantSubject)
+	}
+
+	role := &rbacv1.ClusterRole{}
+	decodeRendered(t, objects, "ClusterRole", contractMeshSyncClusterRole, role)
+	assertReadEverythingWriteNothing(t, role)
+
+	operatorRole := &rbacv1.ClusterRole{}
+	decodeRendered(t, objects, "ClusterRole", contractOperatorClusterRole, operatorRole)
+	for _, rule := range operatorRole.Rules {
+		if slices.Contains(rule.APIGroups, "*") || slices.Contains(rule.Resources, "*") || slices.Contains(rule.Verbs, "*") {
+			t.Errorf("%s must stay least-privilege, found wildcard rule %+v", contractOperatorClusterRole, rule)
+		}
+	}
+}
+
+// renderedServiceAccountEnv returns the operator's MESHSYNC_SERVICE_ACCOUNT,
+// failing unless it is the contract value and resolves cleanly.
+func renderedServiceAccountEnv(t *testing.T, operator *appsv1.Deployment) string {
+	t.Helper()
+	value := ""
+	for _, container := range operator.Spec.Template.Spec.Containers {
+		for _, e := range container.Env {
+			if e.Name == ServiceAccountEnv {
+				value = e.Value
+			}
+		}
+	}
+	if value != contractMeshSyncServiceAccount {
+		t.Fatalf("operator Deployment %s = %q, want %q", ServiceAccountEnv, value, contractMeshSyncServiceAccount)
+	}
+	if resolved, err := ResolveServiceAccountName(value); err != nil || resolved != value {
+		t.Fatalf("ResolveServiceAccountName(%q) = %q, %v", value, resolved, err)
+	}
+	return value
+}
+
+// assertReadEverythingWriteNothing checks MeshSync's role: read on every group
+// and resource (it watches CRDs discovered at runtime), and no other verb.
+func assertReadEverythingWriteNothing(t *testing.T, role *rbacv1.ClusterRole) {
+	t.Helper()
+	readsEverything := false
+	for _, rule := range role.Rules {
+		for _, verb := range rule.Verbs {
+			if !slices.Contains([]string{"get", "list", "watch"}, verb) {
+				t.Errorf("%s grants %q; MeshSync's role must stay read-only", role.Name, verb)
+			}
+		}
+		if len(rule.NonResourceURLs) > 0 {
+			t.Errorf("%s grants nonResourceURLs %v; MeshSync needs none", role.Name, rule.NonResourceURLs)
+		}
+		if slices.Contains(rule.APIGroups, "*") && slices.Contains(rule.Resources, "*") {
+			readsEverything = true
+		}
+	}
+	if !readsEverything {
+		t.Errorf("%s must read every group and resource: MeshSync watches arbitrary CRDs discovered at runtime", role.Name)
+	}
+}
+
+// renderedInstallManifest decodes every document of config/manifests/default.yaml.
+func renderedInstallManifest(t *testing.T) []*unstructured.Unstructured {
+	t.Helper()
+	f, err := os.Open(filepath.Join("..", "..", "config", "manifests", "default.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	var objects []*unstructured.Unstructured
+	decoder := yaml.NewYAMLOrJSONDecoder(f, 4096)
+	for {
+		object := &unstructured.Unstructured{}
+		if err := decoder.Decode(&object.Object); err != nil {
+			if errors.Is(err, io.EOF) {
+				return objects
+			}
+			t.Fatal(err)
+		}
+		if len(object.Object) > 0 {
+			objects = append(objects, object)
+		}
+	}
+}
+
+// decodeRendered converts the single rendered object of kind/name into out.
+func decodeRendered(t *testing.T, objects []*unstructured.Unstructured, kind, name string, out any) {
+	t.Helper()
+	var found *unstructured.Unstructured
+	for _, object := range objects {
+		if object.GetKind() == kind && object.GetName() == name {
+			if found != nil {
+				t.Fatalf("rendered manifest has more than one %s %q", kind, name)
+			}
+			found = object
+		}
+	}
+	if found == nil {
+		t.Fatalf("rendered manifest has no %s %q", kind, name)
+	}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(found.Object, out); err != nil {
+		t.Fatal(err)
+	}
 }

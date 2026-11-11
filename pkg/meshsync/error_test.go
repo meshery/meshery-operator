@@ -56,12 +56,16 @@ func TestErrMeshsyncConditionFalse(t *testing.T) {
 	assertMeshkitError(t, ErrMeshsyncConditionFalse("condition false"), ErrMeshsyncConditionFalseCode, "condition false")
 }
 
+func TestErrInvalidServiceAccountName(t *testing.T) {
+	assertMeshkitError(t, ErrInvalidServiceAccountName("Bad_Name", "must be lowercase"), ErrInvalidServiceAccountNameCode, `MESHSYNC_SERVICE_ACCOUNT="Bad_Name": must be lowercase`)
+}
+
 // TestErrorCodesDistinctFromBroker documents that the meshsync registry was
 // renumbered (1018-1021) to no longer collide with the broker registry
 // (1013-1016).
 func TestErrorCodesDistinctFromBroker(t *testing.T) {
 	brokerCodes := map[string]bool{"1013": true, "1014": true, "1015": true, "1016": true}
-	for _, c := range []string{ErrGettingMeshsyncResourceCode, ErrMeshsyncReplicasNotReadyCode, ErrMeshsyncConditionFalseCode, ErrGettingMeshsyncEndpointCode} {
+	for _, c := range []string{ErrGettingMeshsyncResourceCode, ErrMeshsyncReplicasNotReadyCode, ErrMeshsyncConditionFalseCode, ErrGettingMeshsyncEndpointCode, ErrInvalidServiceAccountNameCode} {
 		if brokerCodes[c] {
 			t.Errorf("meshsync error code %q collides with the broker registry", c)
 		}

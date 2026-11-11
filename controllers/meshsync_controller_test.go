@@ -24,16 +24,20 @@ import (
 	"github.com/meshery/meshery-operator/api/v1alpha1"
 	mesheryv1alpha2 "github.com/meshery/meshery-operator/api/v1alpha2"
 	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
+	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
 	meshkiterrors "github.com/meshery/meshkit/errors"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
 var _ = Describe("The test cases for customize resource: MeshSync's controller ", func() {
@@ -510,6 +514,40 @@ func TestMeshSyncEnsureBrokerTokenSecret(t *testing.T) {
 			t.Errorf("secretName = %q, want empty", secretName)
 		}
 	})
+}
+
+// TestMeshSyncReconcileAppliesServiceAccount verifies the Deployment the
+// controller applies runs under the ServiceAccount resolved at startup, and
+// under the legacy default when none was configured.
+func TestMeshSyncReconcileAppliesServiceAccount(t *testing.T) {
+	scheme := setupMeshSyncTestScheme(t)
+	for configured, want := range map[string]string{
+		"":                 meshsyncpackage.LegacyServiceAccountName,
+		"meshery-meshsync": "meshery-meshsync",
+	} {
+		t.Run("configured="+configured, func(t *testing.T) {
+			m := &v1alpha1.MeshSync{ObjectMeta: metav1.ObjectMeta{Name: testSyncName, Namespace: testMesheryNamespace, UID: "meshsync-identity-uid"}}
+			var applied *appsv1.Deployment
+			c := interceptor.NewClient(fake.NewClientBuilder().WithScheme(scheme).WithObjects(m).Build(), interceptor.Funcs{
+				Patch: func(_ context.Context, _ client.WithWatch, o client.Object, _ client.Patch, _ ...client.PatchOption) error {
+					if d, ok := o.(*appsv1.Deployment); ok {
+						applied = d.DeepCopy()
+					}
+					return nil
+				},
+			})
+			r := &MeshSyncReconciler{Client: c, Scheme: scheme, Log: logr.Discard(), ServiceAccountName: configured}
+			if err := r.reconcileMeshsync(context.Background(), m); err != nil {
+				t.Fatal(err)
+			}
+			if applied == nil {
+				t.Fatal("no Deployment was applied")
+			}
+			if got := applied.Spec.Template.Spec.ServiceAccountName; got != want {
+				t.Errorf("applied serviceAccountName = %q, want %q", got, want)
+			}
+		})
+	}
 }
 
 func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
