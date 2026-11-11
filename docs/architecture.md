@@ -208,7 +208,9 @@ least-privilege it was MeshSync: every watch failed with `forbidden`.
   enumerated at install time, so an explicit list reproduces the `forbidden`
   failure for every kind left off it. MeshSync performs no writes, so the verbs
   are the boundary. It is strictly narrower than the `*`/`*`/all-verbs role
-  MeshSync had before 1.0.
+  MeshSync had before 1.0. Trivy reports it as KSV-0046 ("manage all
+  resources", a check that ignores verbs); `.trivyignore.yaml` excludes that
+  check for this role's files only, so a wildcard anywhere else still surfaces.
 - **What wildcard read includes.** Every Secret in the cluster (Secrets are in
   MeshSync's default watch list anyway), and `get` on subresources: `pods/log`
   (which log streaming uses) and the proxy subresources (`nodes/proxy`,
