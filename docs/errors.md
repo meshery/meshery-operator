@@ -66,6 +66,13 @@ a code and message are available, but it is deprecated - prefer the full
   adding or changing an error.
 - `make error-util` assigns codes to any new placeholder constants and bumps
   `next_error_code` in `helpers/component_info.json`.
+- Both run errorutil as a `go tool` (the `tool` directive in `go.mod`), so its own
+  dependencies are pinned in `go.sum` and nothing needs installing. A bare
+  `go run github.com/meshery/meshkit/cmd/errorutil` fails with a missing `go.sum`
+  entry, and `go run ...@version` is refused because meshkit's `go.mod` carries
+  `replace` directives.
+- `helpers/errorutil_errors_index.json` is regenerated and committed by the
+  `error-ref-publisher` workflow after merge; do not hand-edit it.
 
 ## Status
 
