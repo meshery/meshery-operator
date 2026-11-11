@@ -301,9 +301,59 @@ assert_resources() {
   if [ "${BROKER_UPGRADE_FIXTURE:-0}" = "1" ]; then
     assert_legacy_broker_cleanup
   fi
-
   echo "✅ All components (operator, meshsync, broker) are deployed and ready!"
+
+  # Destructive (deletes both CRs), so it must stay last.
+  assert_uninstall_garbage_collection
+
   echo "✅ Operator functionality assertion completed successfully!"
+}
+
+# Reproduce the uninstall that used to deadlock. Meshery Server's Helm uninstall
+# of the operator chart removes the operator in the same pass as its CRs, so no
+# operator is left to run a finalizer. Cleanup now rests on controller
+# ownerReferences: a CR must disappear without the operator, and the garbage
+# collector (absent from envtest, which is why this lives here) must remove its
+# workloads. The Broker is first given the finalizer that releases up to 1.0.6
+# added; it must stay Terminating while no operator runs - the field incident -
+# and be released by an operator carrying the legacy-finalizer migration, which
+# is how clusters already stuck recover.
+assert_uninstall_garbage_collection() {
+  echo "🔍 Asserting CR deletion and garbage collection without the operator..."
+  local ns="$OPERATOR_NAMESPACE"
+
+  echo "Stopping the operator, as an uninstall would..."
+  kubectl --namespace "$ns" scale deployment/meshery-operator --replicas=0
+  kubectl --namespace "$ns" wait --for=delete pod -l app=meshery,component=operator --timeout=120s
+
+  echo "Giving the Broker the legacy finalizer an older operator release would have added..."
+  kubectl --namespace "$ns" patch broker meshery-broker --type=merge \
+    -p '{"metadata":{"finalizers":["broker.meshery.io/finalizer"]}}'
+
+  echo "Deleting both CRs while no operator runs..."
+  kubectl --namespace "$ns" delete meshsync meshery-meshsync --wait=false
+  kubectl --namespace "$ns" delete broker meshery-broker --wait=false
+
+  echo "The finalizer-free MeshSync must go at once, and GC must collect its Deployment..."
+  kubectl --namespace "$ns" wait --for=delete meshsync/meshery-meshsync --timeout=30s
+  kubectl --namespace "$ns" wait --for=delete deployment/meshery-meshsync --timeout=180s
+
+  echo "The legacy-finalized Broker must stay Terminating, its NATS workload intact, while no operator runs..."
+  sleep 10
+  if [ -z "$(kubectl --namespace "$ns" get broker meshery-broker -o jsonpath='{.metadata.deletionTimestamp}')" ]; then
+    echo "❌ expected broker/meshery-broker to be Terminating behind its legacy finalizer"
+    exit 1
+  fi
+  kubectl --namespace "$ns" get statefulset/meshery-nats >/dev/null
+
+  echo "Starting the operator: it must strip the legacy finalizer and release the Broker..."
+  kubectl --namespace "$ns" scale deployment/meshery-operator --replicas=1
+  kubectl --namespace "$ns" wait --for=delete broker/meshery-broker --timeout=180s
+  kubectl --namespace "$ns" wait --for=delete --timeout=180s \
+    statefulset/meshery-nats service/meshery-nats service/meshery-nats-headless \
+    configmap/meshery-nats-config secret/meshery-nats-auth
+
+  echo "✅ CRs deleted without the operator; garbage collection removed every owned workload"
 }
 
 # Seed the verified pre-chart naming/ownership, including an obsolete public

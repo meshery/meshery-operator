@@ -73,12 +73,12 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 Why this shape:
 
 - **One defer, every exit path.** Reconcile has several early returns (not found,
-  finalizer requeue, reconcile error). A single deferred closure records the count
+  legacy-finalizer conflict requeue, deleting CR, reconcile error). A single deferred closure records the count
   and duration on *all* of them and bumps the error counter only when
   `reconcileErr` is non-nil - no per-return bookkeeping to forget.
 - **Named returns are required for it to work.** The closure reads `reconcileErr`
   after the body has set it. Switching to named returns is the only control-flow
-  change; it also means an inner `result` variable (e.g. from `ensureFinalizer`)
+  change; it also means an inner `result` variable (e.g. from `migrateLegacyFinalizer`)
   must be renamed (`res`) to avoid shadowing the named return - `govet`'s shadow
   analyzer flags this.
 - **Controller name is a constant.** `brokerControllerName` / `meshsyncControllerName`

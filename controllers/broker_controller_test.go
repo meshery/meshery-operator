@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -41,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -71,6 +73,10 @@ const (
 	testNatsClusterIP    = "10.96.0.10"
 	testNatsClientPort   = "client"
 	testNatsURL          = "nats://10.96.0.10:4222"
+	// testHoldFinalizer stands in for another writer's finalizer: it keeps a
+	// deleted CR observable while Terminating, and must survive the legacy
+	// finalizer migration untouched.
+	testHoldFinalizer = "test.meshery.io/hold"
 )
 
 var _ = Describe("The test cases for customize resource: Broker's controller ", func() {
@@ -408,7 +414,7 @@ func TestBrokerCleanupMigrationGate(t *testing.T) {
 		{name: "Broker deletion path", modify: func(f *brokerCleanupFixture) {
 			now := metav1.Now()
 			f.broker.DeletionTimestamp = &now
-			f.broker.Finalizers = []string{brokerFinalizer}
+			f.broker.Finalizers = []string{legacyBrokerFinalizer}
 		}, pending: false},
 	}
 	for _, test := range tests {
@@ -759,4 +765,272 @@ func TestBrokerCleanupFailureRecovery(t *testing.T) {
 	if condition == nil || condition.Status != metav1.ConditionTrue {
 		t.Fatal("successful cleanup must clear the failure condition")
 	}
+}
+
+// expectControlledBy asserts obj carries the controller ownerReference that
+// Kubernetes garbage collection follows to delete it together with its owner.
+// envtest runs no kube-controller-manager, so the garbage collector itself never
+// runs in these suites; this reference is exactly what it acts on in a real
+// cluster, which is why owned-object cleanup needs no finalizer.
+func expectControlledBy(g Gomega, obj, owner client.Object, kind string) {
+	ref := metav1.GetControllerOf(obj)
+	g.Expect(ref).ToNot(BeNil(), "%T %s/%s has no controller ownerReference", obj, obj.GetNamespace(), obj.GetName())
+	g.Expect(ref.UID).To(Equal(owner.GetUID()))
+	g.Expect(ref.Name).To(Equal(owner.GetName()))
+	g.Expect(ref.Kind).To(Equal(kind))
+	g.Expect(ref.APIVersion).To(HavePrefix(v1alpha1.GroupVersion.Group + "/"))
+	g.Expect(ref.BlockOwnerDeletion).ToNot(BeNil())
+	g.Expect(*ref.BlockOwnerDeletion).To(BeTrue())
+}
+
+// createTestNamespace creates a namespace unique to this run for a lifecycle spec.
+func createTestNamespace(ctx context.Context, prefix string) string {
+	name := fmt.Sprintf("%s-%d", prefix, GinkgoRandomSeed())
+	Expect(k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}})).To(Succeed())
+	return name
+}
+
+var _ = Describe("Broker lifecycle without finalizers", func() {
+	ctx := context.Background()
+
+	newBroker := func(prefix string, finalizers ...string) *v1alpha1.Broker {
+		broker := &v1alpha1.Broker{
+			ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Namespace: createTestNamespace(ctx, prefix), Finalizers: finalizers},
+			Spec:       v1alpha1.BrokerSpec{Size: 1},
+		}
+		Expect(k8sClient.Create(ctx, broker)).To(Succeed())
+		return broker
+	}
+
+	It("adds no finalizer, owns every object it creates, and deletes without operator involvement", func() {
+		broker := newBroker("broker-gc")
+		key := client.ObjectKeyFromObject(broker)
+
+		By("every object the reconcile creates carries a controller ownerReference to the Broker")
+		owned := []client.Object{&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: brokerpackage.AuthSecretName, Namespace: broker.Namespace}}}
+		for _, object := range brokerpackage.GetObjects(broker) {
+			owned = append(owned, object)
+		}
+		Expect(owned).To(HaveLen(5), "auth Secret + chart ConfigMap, headless and client Services, StatefulSet")
+		Eventually(func(g Gomega) {
+			for _, object := range owned {
+				current, ok := object.DeepCopyObject().(client.Object)
+				g.Expect(ok).To(BeTrue())
+				g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(object), current)).To(Succeed())
+				g.Expect(current.GetNamespace()).To(Equal(broker.Namespace), "owned objects must be namespaced with their owner for GC to follow the reference")
+				expectControlledBy(g, current, broker, testBrokerKind)
+			}
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		By("the reconciled Broker carries no finalizer")
+		Consistently(func(g Gomega) {
+			current := &v1alpha1.Broker{}
+			g.Expect(k8sClient.Get(ctx, key, current)).To(Succeed())
+			g.Expect(current.Finalizers).To(BeEmpty())
+		}, time.Second, 100*time.Millisecond).Should(Succeed())
+
+		By("deleting the Broker completes synchronously: nothing waits on the operator")
+		Expect(k8sClient.Delete(ctx, broker)).To(Succeed())
+		Expect(apierrors.IsNotFound(k8sClient.Get(ctx, key, &v1alpha1.Broker{}))).To(BeTrue())
+	})
+
+	It("strips the legacy finalizer from a live Broker and keeps reconciling it", func() {
+		broker := newBroker("broker-legacy", legacyBrokerFinalizer)
+		Eventually(func(g Gomega) {
+			current := &v1alpha1.Broker{}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(broker), current)).To(Succeed())
+			g.Expect(current.Finalizers).To(BeEmpty())
+			g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: natsObjectName, Namespace: broker.Namespace}, &v1.StatefulSet{})).To(Succeed())
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+	})
+
+	It("strips the legacy finalizer from a Terminating Broker so its deletion can complete", func() {
+		// The hold finalizer keeps the Broker observable while Terminating. In
+		// the field the legacy finalizer is usually the only one, so stripping
+		// it lets the API server remove the Broker outright.
+		broker := newBroker("broker-terminating", legacyBrokerFinalizer, testHoldFinalizer)
+		key := client.ObjectKeyFromObject(broker)
+		Expect(k8sClient.Delete(ctx, broker)).To(Succeed())
+		Eventually(func(g Gomega) {
+			current := &v1alpha1.Broker{}
+			g.Expect(k8sClient.Get(ctx, key, current)).To(Succeed())
+			g.Expect(current.DeletionTimestamp).ToNot(BeNil())
+			g.Expect(current.Finalizers).To(ConsistOf(testHoldFinalizer))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		By("releasing the other writer's finalizer, the Broker is removed")
+		Eventually(func() error {
+			current := &v1alpha1.Broker{}
+			if err := k8sClient.Get(ctx, key, current); err != nil {
+				return err
+			}
+			current.Finalizers = nil
+			return k8sClient.Update(ctx, current)
+		}, 5*time.Second, 100*time.Millisecond).Should(Succeed())
+		Eventually(func() bool {
+			return apierrors.IsNotFound(k8sClient.Get(ctx, key, &v1alpha1.Broker{}))
+		}, 5*time.Second, 100*time.Millisecond).Should(BeTrue())
+	})
+})
+
+// TestBrokerReconcileTerminatingLegacyFinalizer drives Reconcile directly so
+// the Terminating branch is exercised deterministically (the envtest spec races
+// the live manager for which branch strips the finalizer). A deleting Broker
+// must lose only the legacy finalizer and must not have children re-applied.
+func TestBrokerReconcileTerminatingLegacyFinalizer(t *testing.T) {
+	tests := []struct {
+		name       string
+		finalizers []string
+		wantGone   bool
+	}{
+		{name: "legacy finalizer only: deletion completes", finalizers: []string{legacyBrokerFinalizer}, wantGone: true},
+		{name: "another writer's finalizer survives", finalizers: []string{testHoldFinalizer, legacyBrokerFinalizer}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			now := metav1.Now()
+			broker := &v1alpha1.Broker{ObjectMeta: metav1.ObjectMeta{
+				Name: testBrokerName, Namespace: testMesheryNamespace, UID: "broker-uid",
+				DeletionTimestamp: &now, Finalizers: test.finalizers,
+			}}
+			f := &brokerCleanupFixture{broker: broker, objects: []client.Object{broker}}
+			r := f.reconciler(t)
+
+			result, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(broker)})
+			if err != nil || result.RequeueAfter != 0 {
+				t.Fatalf("Reconcile() = %+v, %v; want a clean exit", result, err)
+			}
+			current := &v1alpha1.Broker{}
+			err = r.Get(ctx, client.ObjectKeyFromObject(broker), current)
+			if test.wantGone {
+				if !apierrors.IsNotFound(err) {
+					t.Fatalf("Broker must be removed once its legacy finalizer is stripped, got err=%v finalizers=%v", err, current.Finalizers)
+				}
+			} else {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if want := []string{testHoldFinalizer}; !slices.Equal(current.Finalizers, want) {
+					t.Fatalf("finalizers = %v, want %v", current.Finalizers, want)
+				}
+			}
+			statefulSets := &v1.StatefulSetList{}
+			if err := r.List(ctx, statefulSets, client.InNamespace(testMesheryNamespace)); err != nil {
+				t.Fatal(err)
+			}
+			if len(statefulSets.Items) != 0 {
+				t.Fatalf("a Terminating Broker must not have children re-applied, found %d StatefulSets", len(statefulSets.Items))
+			}
+		})
+	}
+}
+
+// newLegacyFinalizerTestBroker builds the Broker the stripLegacyFinalizer tests
+// seed into a fake client.
+func newLegacyFinalizerTestBroker(finalizers ...string) *v1alpha1.Broker {
+	return &v1alpha1.Broker{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Namespace: testMesheryNamespace, Finalizers: finalizers}}
+}
+
+// getLegacyFinalizerTestBroker reads the seeded Broker back from c.
+func getLegacyFinalizerTestBroker(t *testing.T, c client.Client) *v1alpha1.Broker {
+	t.Helper()
+	current := &v1alpha1.Broker{}
+	if err := c.Get(context.Background(), client.ObjectKeyFromObject(newLegacyFinalizerTestBroker()), current); err != nil {
+		t.Fatal(err)
+	}
+	return current
+}
+
+func newLegacyFinalizerTestClient(t *testing.T, objects ...client.Object) client.WithWatch {
+	t.Helper()
+	return fake.NewClientBuilder().WithScheme(setupMeshSyncTestScheme(t)).WithObjects(objects...).Build()
+}
+
+func TestStripLegacyFinalizerAbsentIssuesNoWrite(t *testing.T) {
+	patches := 0
+	c := interceptor.NewClient(newLegacyFinalizerTestClient(t, newLegacyFinalizerTestBroker(testHoldFinalizer)), interceptor.Funcs{
+		Patch: func(ctx context.Context, c client.WithWatch, o client.Object, p client.Patch, opts ...client.PatchOption) error {
+			patches++
+			return c.Patch(ctx, o, p, opts...)
+		},
+	})
+	removed, err := stripLegacyFinalizer(context.Background(), c, getLegacyFinalizerTestBroker(t, c), legacyBrokerFinalizer)
+	if removed || err != nil || patches != 0 {
+		t.Fatalf("removed=%v err=%v patches=%d; want a no-op", removed, err, patches)
+	}
+}
+
+func TestStripLegacyFinalizerRemovesOnlyTheLegacyFinalizer(t *testing.T) {
+	c := newLegacyFinalizerTestClient(t, newLegacyFinalizerTestBroker("a.example/first", legacyBrokerFinalizer, "b.example/last"))
+	current := getLegacyFinalizerTestBroker(t, c)
+	removed, err := stripLegacyFinalizer(context.Background(), c, current, legacyBrokerFinalizer)
+	if !removed || err != nil {
+		t.Fatalf("removed=%v err=%v", removed, err)
+	}
+	want := []string{"a.example/first", "b.example/last"}
+	if !slices.Equal(current.Finalizers, want) {
+		t.Fatalf("in-memory finalizers = %v, want %v", current.Finalizers, want)
+	}
+	if stored := getLegacyFinalizerTestBroker(t, c); !slices.Equal(stored.Finalizers, want) {
+		t.Fatalf("stored finalizers = %v, want %v", stored.Finalizers, want)
+	}
+}
+
+func TestStripLegacyFinalizerStaleCopyConflicts(t *testing.T) {
+	c := newLegacyFinalizerTestClient(t, newLegacyFinalizerTestBroker(legacyBrokerFinalizer))
+	stale := getLegacyFinalizerTestBroker(t, c)
+	concurrent := stale.DeepCopy()
+	concurrent.Finalizers = append(concurrent.Finalizers, testHoldFinalizer)
+	if err := c.Update(context.Background(), concurrent); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := stripLegacyFinalizer(context.Background(), c, stale, legacyBrokerFinalizer)
+	if removed || !apierrors.IsConflict(err) {
+		t.Fatalf("removed=%v err=%v; want a Conflict rather than clobbering the concurrent writer", removed, err)
+	}
+	if want := []string{legacyBrokerFinalizer}; !slices.Equal(stale.Finalizers, want) {
+		t.Fatalf("a failed patch must leave the in-memory object untouched, got %v", stale.Finalizers)
+	}
+	if want, stored := []string{legacyBrokerFinalizer, testHoldFinalizer}, getLegacyFinalizerTestBroker(t, c); !slices.Equal(stored.Finalizers, want) {
+		t.Fatalf("stored finalizers = %v, want %v", stored.Finalizers, want)
+	}
+}
+
+func TestStripLegacyFinalizerAlreadyDeletedIsSuccess(t *testing.T) {
+	removed, err := stripLegacyFinalizer(context.Background(), newLegacyFinalizerTestClient(t), newLegacyFinalizerTestBroker(legacyBrokerFinalizer), legacyBrokerFinalizer)
+	if !removed || err != nil {
+		t.Fatalf("removed=%v err=%v; an already deleted object is the desired end state", removed, err)
+	}
+}
+
+func TestMigrateLegacyFinalizerFailures(t *testing.T) {
+	ctx := context.Background()
+	broker := &v1alpha1.Broker{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Namespace: testMesheryNamespace, Finalizers: []string{legacyBrokerFinalizer}}}
+	failWith := func(t *testing.T, patchErr error) client.Client {
+		t.Helper()
+		base := fake.NewClientBuilder().WithScheme(setupMeshSyncTestScheme(t)).WithObjects(broker.DeepCopy()).Build()
+		return interceptor.NewClient(base, interceptor.Funcs{
+			Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+				return patchErr
+			},
+		})
+	}
+
+	t.Run("conflict requeues without a reconcile error", func(t *testing.T) {
+		c := failWith(t, apierrors.NewConflict(schema.GroupResource{Group: "meshery.io", Resource: "brokers"}, broker.Name, nil))
+		result, err := migrateLegacyFinalizer(ctx, c, logr.Discard(), broker.DeepCopy(), legacyBrokerFinalizer)
+		if err != nil || result.RequeueAfter != legacyFinalizerConflictRetry {
+			t.Fatalf("result=%+v err=%v; want a %v requeue", result, err, legacyFinalizerConflictRetry)
+		}
+	})
+
+	t.Run("other API errors surface as a structured error naming the CR", func(t *testing.T) {
+		c := failWith(t, apierrors.NewForbidden(schema.GroupResource{Group: "meshery.io", Resource: "brokers"}, broker.Name, nil))
+		result, err := migrateLegacyFinalizer(ctx, c, logr.Discard(), broker.DeepCopy(), legacyBrokerFinalizer)
+		if result.RequeueAfter != 0 {
+			t.Fatalf("RequeueAfter = %v; errors must use controller backoff", result.RequeueAfter)
+		}
+		assertMeshkitError(t, err, ErrRemoveLegacyFinalizerCode, legacyBrokerFinalizer+" on "+testMesheryNamespace+"/"+testBrokerName)
+	})
 }

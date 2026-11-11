@@ -12,14 +12,18 @@ Meshery Server ──(installs & manages via pkg/client typed clientset)──�
                  Broker controller                                                  MeshSync controller
                  reconciles Broker CR                                               reconciles MeshSync CR
                         │                                                                   │
-            ┌───────────┼───────────────┐                                                   ▼
-            ▼           ▼               ▼                                              Deployment
-       StatefulSet   Service        2x ConfigMap                                       meshery/meshsync
-        (NATS)       (client)       (nats.conf, accounts)                              BROKER_URL env
+      ┌─────────────────┼───────────────────┬─────────────────┐                       ┌─────┴─────────────┐
+      ▼                 ▼                   ▼                 ▼                       ▼                   ▼
+ StatefulSet       2x Service          ConfigMap           Secret                Deployment            Secret
+   (NATS)      (client, headless)     (nats.conf)   (meshery-nats-auth)       meshery/meshsync   (auth mirror for a
+                                                                               BROKER_URL env   Broker in another ns)
                         │
                         └──▶ endpoint derivation ──▶ Broker.Status.Endpoint.{Internal,External}
                                                               │
                                                               └──▶ injected as the MeshSync broker URL
+
+Every object the controllers create carries a controller ownerReference to its
+CR, so Kubernetes garbage collection deletes it with the CR (see Controllers).
 ```
 
 ## Custom resources (`api/v1alpha1`, `api/v1alpha2`)
@@ -47,11 +51,43 @@ so the webhook must be running for either version to be served.
 
 ## Controllers (`controllers/`)
 
-Both reconcilers follow the same shape (`Reconcile` → finalizer → main reconcile
-→ health check → status patch) and implement:
+Both reconcilers follow the same shape (`Reconcile` → legacy-finalizer migration →
+stop if deleting → main reconcile → health check → status patch) and implement:
 
-- **Finalizers** - owned objects are cleaned up on delete before the finalizer
-  clears.
+- **Cleanup by garbage collection, not finalizers.** Every object a controller
+  creates carries a controller `ownerReference` (with `blockOwnerDeletion`) to its
+  CR and lives in the CR's namespace: the NATS ConfigMap, client and headless
+  Services, StatefulSet and `meshery-nats-auth` Secret for a `Broker`; the
+  Deployment and any mirrored auth Secret for a `MeshSync`. Nothing cluster-scoped
+  is created. Deleting a CR therefore completes at once, and the Kubernetes garbage
+  collector removes its children - also when the operator itself is gone. A
+  deleting CR is not reconciled further, so a controller never re-applies children
+  that garbage collection (background or foreground) is removing.
+- **Why there is no finalizer.** Releases up to 1.0.6 added
+  `broker.meshery.io/finalizer` and `meshsync.meshery.io/finalizer`, whose cleanup
+  only repeated garbage collection. When the operator was removed in the same pass
+  as its CRs - a Helm uninstall of the operator chart, which Meshery Server performs
+  on disconnect or when a connection switches to embedded MeshSync - nothing was
+  left to run them: the CRs stayed Terminating forever, their NATS and MeshSync
+  workloads were never collected (MeshSync kept running on a deleted
+  ServiceAccount), and a later reinstall adopted the Terminating CRs only for the
+  new operator to finalize them away, leaving it with no Broker. **Do not
+  reintroduce a finalizer** unless a controller starts creating something garbage
+  collection cannot reach (a cluster-scoped object, or one in another namespace),
+  and then scope it to that object alone.
+- **Legacy-finalizer migration.** Every reconcile strips the legacy finalizer from a
+  CR that still carries it, Terminating CRs included - there it is the only thing
+  holding deletion. The resourceVersion-guarded merge patch leaves other writers'
+  finalizers untouched (`controllers/legacy_finalizer.go`). A CR left stuck by an
+  older release is released as soon as an operator with this change runs, and
+  garbage collection then removes its children. A CR that was Terminating cannot be
+  revived; whoever installs the CRs (the meshery-operator chart) must re-create it.
+- **`*/finalizers` RBAC stays.** `update` on `brokers/finalizers` and
+  `meshsyncs/finalizers` is not for a finalizer of the operator's own:
+  `SetControllerReference` sets `blockOwnerDeletion`, and the
+  `OwnerReferencesPermissionEnforcement` admission plugin (on by default on
+  OpenShift) admits that only when the writer may update the owner's `finalizers`
+  subresource.
 - **Typed status `Conditions`** via `meta.SetStatusCondition`.
 - **An "update existing owned object" path** - on reconcile, existing owned
   objects are synced toward the desired spec.
@@ -64,15 +100,12 @@ Each `Reconcile` uses one `defer` with **named return values** to record
 manager with leader election (stable lease `meshery-operator-leader.meshery.io`),
 `healthz`/`readyz`, and a metrics server.
 
-### Known structural debt (tracked in the modernization plan)
-
-- The reconcile sync overwrites `existing.Spec = desired.Spec` and gates on
-  `Semantic.DeepEqual`, which fights server-defaulted fields and can hot-loop.
-  Server-Side Apply replaces this in WS-3 (#785).
-- Only the primary workload is `Owns()`'d; the broker `Service`/`ConfigMap`s are
-  not watched, so endpoint changes are not re-triggered (WS-3).
-- Endpoint derivation performs blocking TCP dials in the reconcile path; it
-  becomes a pure, non-blocking function over the `Service` in WS-3/WS-4.
+The structural debt this section used to list was retired by WS-3/WS-4 (see the
+modernization plan): owned objects are Server-Side Applied with a stable field
+manager instead of a `Semantic.DeepEqual` spec overwrite, every owned kind
+(StatefulSet, Service, ConfigMap, Secret; Deployment) is watched so endpoint
+changes re-trigger reconciliation, and endpoint derivation is a pure,
+non-blocking read of the client `Service`.
 
 ## Resource builders (`pkg/broker`, `pkg/meshsync`)
 
@@ -101,7 +134,8 @@ endpoints would connection-refuse and crashloop it).
 Earlier broker builders named their StatefulSet and LoadBalancer Service after
 the Broker CR. The chart-based builder uses `meshery-nats` instead. Normal
 reconciliation now prunes the verified legacy StatefulSet and Service after
-publishing the replacement endpoint. This is separate from Broker finalization.
+publishing the replacement endpoint. This is unrelated to Broker deletion, which is
+left to garbage collection.
 
 A candidate must be in the Broker namespace, named after that Broker, carry
 `app=meshery,component=broker`, and have a controlling `meshery.io` Broker owner

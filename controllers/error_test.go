@@ -49,10 +49,6 @@ func TestErrCreateMeshsync(t *testing.T) {
 	assertMeshkitError(t, ErrCreateMeshsync(errors.New("boom")), ErrCreateMeshsyncCode, "boom")
 }
 
-func TestErrDeleteMeshsync(t *testing.T) {
-	assertMeshkitError(t, ErrDeleteMeshsync(errors.New("boom")), ErrDeleteMeshsyncCode, "boom")
-}
-
 func TestErrReconcileMeshsync(t *testing.T) {
 	assertMeshkitError(t, ErrReconcileMeshsync(errors.New("boom")), ErrReconcileMeshsyncCode, "boom")
 }
@@ -63,10 +59,6 @@ func TestErrGetBroker(t *testing.T) {
 
 func TestErrCreateBroker(t *testing.T) {
 	assertMeshkitError(t, ErrCreateBroker(errors.New("boom")), ErrCreateBrokerCode, "boom")
-}
-
-func TestErrDeleteBroker(t *testing.T) {
-	assertMeshkitError(t, ErrDeleteBroker(errors.New("boom")), ErrDeleteBrokerCode, "boom")
 }
 
 func TestErrReconcileBroker(t *testing.T) {
@@ -100,8 +92,9 @@ func TestErrorCodesUnique(t *testing.T) {
 	codes := []string{
 		ErrGetMeshsyncCode, ErrCreateMeshsyncCode, ErrReconcileMeshsyncCode,
 		ErrGetBrokerCode, ErrCreateBrokerCode, ErrReconcileBrokerCode,
-		ErrReconcileCRCode, ErrDeleteMeshsyncCode, ErrDeleteBrokerCode,
-		ErrCheckHealthCode, ErrGetEndpointCode, ErrUpdateResourceCode, ErrMarshalCode,
+		ErrReconcileCRCode, ErrCheckHealthCode, ErrGetEndpointCode,
+		ErrUpdateResourceCode, ErrMarshalCode, ErrCleanupBrokerCode,
+		ErrRemoveLegacyFinalizerCode,
 	}
 	seen := make(map[string]bool, len(codes))
 	for _, c := range codes {
@@ -114,4 +107,9 @@ func TestErrorCodesUnique(t *testing.T) {
 
 func TestErrCleanupBroker(t *testing.T) {
 	assertMeshkitError(t, ErrCleanupBroker("namespace", "broker", errors.New("boom")), ErrCleanupBrokerCode, "namespace/broker: boom")
+}
+
+func TestErrRemoveLegacyFinalizer(t *testing.T) {
+	err := ErrRemoveLegacyFinalizer(legacyBrokerFinalizer, "namespace", "broker", errors.New("boom"))
+	assertMeshkitError(t, err, ErrRemoveLegacyFinalizerCode, legacyBrokerFinalizer+" on namespace/broker: boom")
 }

@@ -31,13 +31,14 @@ const (
 	ErrCreateBrokerCode      = "1005"
 	ErrReconcileBrokerCode   = "1006"
 	ErrReconcileCRCode       = "1007"
-	ErrDeleteMeshsyncCode    = "1008"
-	ErrDeleteBrokerCode      = "1009"
 	ErrCheckHealthCode       = "1010"
 	ErrGetEndpointCode       = "1011"
 	ErrUpdateResourceCode    = "1012"
 	ErrMarshalCode           = "1017"
 	ErrCleanupBrokerCode     = "1022"
+	// 1008 and 1009 (ErrDeleteMeshsync, ErrDeleteBroker) are retired with the
+	// finalizers whose cleanup they reported; codes are never reused.
+	ErrRemoveLegacyFinalizerCode = "1023"
 )
 
 // ErrGetMeshsync is returned when the MeshSync custom resource cannot be fetched.
@@ -56,15 +57,6 @@ func ErrCreateMeshsync(err error) error {
 		[]string{err.Error()},
 		[]string{"The MeshSync Deployment or its owned objects could not be created"},
 		[]string{"Check the operator RBAC for deployments and inspect the events in the MeshSync namespace"})
-}
-
-// ErrDeleteMeshsync is returned when MeshSync-owned objects cannot be deleted.
-func ErrDeleteMeshsync(err error) error {
-	return meshkiterrors.New(ErrDeleteMeshsyncCode, meshkiterrors.Alert,
-		[]string{"Unable to delete the MeshSync workload"},
-		[]string{err.Error()},
-		[]string{"Owned MeshSync objects could not be deleted during finalization"},
-		[]string{"Inspect the MeshSync finalizers and confirm the operator RBAC grants delete on deployments"})
 }
 
 // ErrReconcileMeshsync is returned when MeshSync reconciliation fails.
@@ -92,15 +84,6 @@ func ErrCreateBroker(err error) error {
 		[]string{err.Error()},
 		[]string{"The NATS StatefulSet, Service, or ConfigMaps could not be created"},
 		[]string{"Check the operator RBAC and inspect the events on the owned objects in the broker namespace"})
-}
-
-// ErrDeleteBroker is returned when Broker-owned objects cannot be deleted.
-func ErrDeleteBroker(err error) error {
-	return meshkiterrors.New(ErrDeleteBrokerCode, meshkiterrors.Alert,
-		[]string{"Unable to delete the Broker workload"},
-		[]string{err.Error()},
-		[]string{"Owned broker objects could not be deleted during finalization"},
-		[]string{"Inspect the Broker finalizers and confirm the operator RBAC grants delete on statefulsets, services, and configmaps"})
 }
 
 // ErrReconcileBroker is returned when Broker reconciliation fails.
@@ -164,4 +147,14 @@ func ErrCleanupBroker(namespace, name string, err error) error {
 		[]string{fmt.Sprintf("Broker %s/%s: %s", namespace, name, err.Error())},
 		[]string{"The operator could not inspect or delete obsolete broker workloads and services during an upgrade"},
 		[]string{"Inspect the Broker Cleanup condition and operator logs, and confirm RBAC permits listing MeshSync deployments and deleting broker StatefulSets and Services"})
+}
+
+// ErrRemoveLegacyFinalizer is returned when the finalizer an earlier operator
+// release added to a Broker or MeshSync cannot be stripped.
+func ErrRemoveLegacyFinalizer(finalizer, namespace, name string, err error) error {
+	return meshkiterrors.New(ErrRemoveLegacyFinalizerCode, meshkiterrors.Alert,
+		[]string{"Unable to remove a legacy finalizer from a Meshery custom resource"},
+		[]string{fmt.Sprintf("Finalizer %s on %s/%s: %s", finalizer, namespace, name, err.Error())},
+		[]string{"The operator could not patch the custom resource's metadata to drop a finalizer that operator releases up to 1.0.6 added; until it is removed, deleting the resource stays pending"},
+		[]string{"Confirm the operator's ClusterRole grants patch on brokers.meshery.io and meshsyncs.meshery.io and that the conversion webhook is serving; the controller will retry. If the operator is not running, remove the finalizer with: kubectl patch <broker|meshsync> <name> -n <namespace> --type=merge -p '{\"metadata\":{\"finalizers\":null}}'"})
 }

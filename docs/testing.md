@@ -33,6 +33,17 @@ Because envtest has no kubelet, any test resource you create must still be valid
 to the apiserver. For example, a `StatefulSet`/`Deployment` pod template must
 declare at least one container, or the apiserver rejects it with a `422`.
 
+envtest also runs no `kube-controller-manager`, so the **garbage collector never
+runs**: deleting a `Broker` or `MeshSync` leaves its children in place. The
+lifecycle specs therefore assert what garbage collection acts on - every owned
+object carries a controller `ownerReference` (with `blockOwnerDeletion`) to its CR
+in the CR's namespace - and that the CR itself is gone the moment it is deleted
+(no finalizer waits on the operator). The legacy-finalizer migration is covered
+twice: envtest checks the end state on live and Terminating CRs, and fake-client
+unit tests drive `Reconcile` directly so the Terminating branch runs
+deterministically instead of racing the live manager. Only a kind cluster can show
+the collection itself.
+
 Controller regression tests also distinguish one-minute migration polling from
 five-second deletion confirmation. Environment tests accept equivalent required
 Secret selectors while rejecting changed endpoints and authentication sources;
@@ -83,6 +94,15 @@ that matters: `BROKER_URL` carries no literal credential (token flows through a
 server** (checked via the broker's `connz` monitoring endpoint) - deployments
 being Available proves nothing about broker connectivity.
 
+The last, destructive assertion reproduces an uninstall: it scales the operator to
+zero, gives the Broker the finalizer that releases up to 1.0.6 added, and deletes
+both CRs. The finalizer-free MeshSync must vanish without the operator and garbage
+collection must remove its Deployment; the Broker must stay Terminating until the
+operator is scaled back up, strips the legacy finalizer, and garbage collection
+removes every NATS object. This is the only tier with a garbage collector, so it is
+the only proof that cleanup works with no operator running. `make e2e-dev`
+re-applies the sample CRs in its setup step, so the loop still works after it.
+
 The optional Broker upgrade fixture creates the previous generation's
 StatefulSet and LoadBalancer Service with the sample Broker's controlling owner
 UID and legacy labels. It verifies their deletion, preservation of current
@@ -94,7 +114,7 @@ deprovisioning.
 
 > The current e2e harness is bash-on-kind with a single Service-type path. A
 > richer matrix (ClusterIP/NodePort/LoadBalancer, networking reconfiguration,
-> conversion/upgrade, finalizer cleanup, leader election) and CI promotion are
+> conversion/upgrade, uninstall cleanup by garbage collection, leader election) and CI promotion are
 > delivered in WS-7 (#789).
 
 ## Release scripts (`hack/`)
