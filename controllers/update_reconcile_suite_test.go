@@ -12,7 +12,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Controller update reconciliation", func() {
@@ -189,6 +191,37 @@ var _ = Describe("Controller update reconciliation", func() {
 		err := k8sClient.Create(ctx, broker)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("loadBalancerClass is only valid when service type is LoadBalancer"))
+	})
+
+	It("rejects a malformed loadBalancerSourceRanges entry at admission, in every served version", func() {
+		namespace := fmt.Sprintf("broker-cidr-%d", GinkgoRandomSeed())
+		createNamespace(namespace)
+
+		newBroker := func(version string, ranges ...interface{}) *unstructured.Unstructured {
+			broker := &unstructured.Unstructured{Object: map[string]interface{}{
+				"apiVersion": "meshery.io/" + version,
+				"kind":       testBrokerKind,
+				"metadata":   map[string]interface{}{"name": "broker-cidr-" + version, "namespace": namespace},
+				"spec": map[string]interface{}{
+					"size": int64(1),
+					"service": map[string]interface{}{
+						"type":                     string(corev1.ServiceTypeLoadBalancer),
+						"loadBalancerSourceRanges": ranges,
+					},
+				},
+			}}
+			return broker
+		}
+
+		for _, version := range []string{"v1alpha1", "v1alpha2"} {
+			By("a server-side dry run of an unrendered template placeholder fails validation (" + version + ")")
+			err := k8sClient.Create(ctx, newBroker(version, "203.0.113.0/24", "${PLAYGROUND_EGRESS_CIDR}"), client.DryRunAll)
+			Expect(apierrors.IsInvalid(err)).To(BeTrue(), "want an Invalid admission error, got %v", err)
+			Expect(err.Error()).To(ContainSubstring("spec.service.loadBalancerSourceRanges[1]"))
+
+			By("IPv4 and IPv6 CIDRs are admitted (" + version + ")")
+			Expect(k8sClient.Create(ctx, newBroker(version, "203.0.113.0/24", "2001:db8::/32", "::ffff:192.0.2.1/128"), client.DryRunAll)).To(Succeed())
+		}
 	})
 })
 

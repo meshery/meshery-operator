@@ -75,8 +75,21 @@ type BrokerServiceSpec struct {
 	// +optional
 	ExternalEndpointOverride string `json:"externalEndpointOverride,omitempty" yaml:"externalEndpointOverride,omitempty"`
 
+	// Implementation note (kept out of the generated API docs by the blank line
+	// below): entries are validated at admission so a malformed value - an
+	// unrendered template placeholder, a bare IP, a hostname - is rejected when
+	// the Broker is written, instead of surfacing as a perpetual reconcile error
+	// once the operator applies the client Service. Kubernetes 1.31+ has CEL
+	// isCIDR(), but older API servers reject any CRD that uses it, so this is an
+	// OpenAPI pattern, which every Kubernetes version accepts. The pattern is
+	// duplicated in the other API version; TestLoadBalancerSourceRangesPattern
+	// (api/v1alpha1) keeps the generated copies identical and checks them
+	// against net.ParseCIDR.
+
 	// LoadBalancerSourceRanges restricts client access to the given CIDRs
-	// (LoadBalancer type only).
+	// (LoadBalancer type only). Each entry must be an IPv4 or IPv6 CIDR, such as
+	// 203.0.113.0/24 or 2001:db8::/32.
+	// +kubebuilder:validation:items:Pattern=`^(((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])/(3[0-2]|[12][0-9]|[0-9])|(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}|:((:[0-9a-fA-F]{1,4}){1,7}|:)|(([0-9a-fA-F]{1,4}:){6}|([0-9a-fA-F]{1,4}:){1,5}:|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1}:|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,2}:|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,3}:|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,4}:|::([0-9a-fA-F]{1,4}:){0,5})((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))/(12[0-8]|1[01][0-9]|[1-9][0-9]|[0-9]))$`
 	// +optional
 	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty" yaml:"loadBalancerSourceRanges,omitempty"`
 }
