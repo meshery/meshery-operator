@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -30,8 +31,11 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -513,6 +517,66 @@ func TestMeshSyncEnsureBrokerTokenSecret(t *testing.T) {
 		if secretName != "" {
 			t.Errorf("secretName = %q, want empty", secretName)
 		}
+	})
+}
+
+// TestMeshSyncFailuresAreReportedOnReady verifies reconcile and health failures
+// set Ready=False with the reason and the structured error, rather than the
+// contradictory Failed=False condition earlier releases wrote ("not failed",
+// with a failure message), and that a leftover Failed condition is dropped.
+func TestMeshSyncFailuresAreReportedOnReady(t *testing.T) {
+	scheme := setupMeshSyncTestScheme(t)
+	newMeshSync := func() *v1alpha1.MeshSync {
+		m := &v1alpha1.MeshSync{
+			ObjectMeta: metav1.ObjectMeta{Name: testSyncName, Namespace: testMesheryNamespace, UID: "meshsync-status-uid"},
+			Spec:       v1alpha1.MeshSyncSpec{Size: 1},
+		}
+		m.Status.Conditions = []metav1.Condition{{
+			Type: legacyFailedCondition, Status: metav1.ConditionFalse, Reason: "HealthCheckFailed",
+			Message: "Meshsync health check failed", LastTransitionTime: metav1.Now(),
+		}}
+		return m
+	}
+	assertReadyFalse := func(t *testing.T, c client.Client, wantReason string, returned error) {
+		t.Helper()
+		if returned == nil {
+			t.Fatal("expected the step to fail")
+		}
+		current := &v1alpha1.MeshSync{}
+		if err := c.Get(context.Background(), types.NamespacedName{Name: testSyncName, Namespace: testMesheryNamespace}, current); err != nil {
+			t.Fatal(err)
+		}
+		ready := meta.FindStatusCondition(current.Status.Conditions, meshsyncReadyCondition)
+		if ready == nil || ready.Status != metav1.ConditionFalse || ready.Reason != wantReason {
+			t.Fatalf("Ready condition = %+v, want False/%s", ready, wantReason)
+		}
+		if !strings.Contains(ready.Message, returned.Error()) {
+			t.Errorf("Ready message %q must carry the structured error %q", ready.Message, returned.Error())
+		}
+		if failed := meta.FindStatusCondition(current.Status.Conditions, legacyFailedCondition); failed != nil {
+			t.Errorf("the legacy %s condition must be dropped, found %+v", legacyFailedCondition, failed)
+		}
+	}
+
+	t.Run("health check failure", func(t *testing.T) {
+		m := newMeshSync()
+		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&v1alpha1.MeshSync{}).WithObjects(m).Build()
+		r := &MeshSyncReconciler{Client: c, Scheme: scheme, Log: logr.Discard()}
+		err := r.checkMeshsyncHealth(context.Background(), m)
+		assertReadyFalse(t, c, "HealthCheckFailed", err)
+	})
+
+	t.Run("workload apply failure", func(t *testing.T) {
+		m := newMeshSync()
+		base := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&v1alpha1.MeshSync{}).WithObjects(m).Build()
+		c := interceptor.NewClient(base, interceptor.Funcs{
+			Patch: func(_ context.Context, _ client.WithWatch, o client.Object, _ client.Patch, _ ...client.PatchOption) error {
+				return apierrors.NewForbidden(schema.GroupResource{Group: "apps", Resource: "deployments"}, o.GetName(), nil)
+			},
+		})
+		r := &MeshSyncReconciler{Client: c, Scheme: scheme, Log: logr.Discard()}
+		_, err := r.deployMeshsyncResources(context.Background(), logr.Discard(), m)
+		assertReadyFalse(t, c, "ReconciliationFailed", err)
 	})
 }
 
