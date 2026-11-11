@@ -342,11 +342,19 @@ assert_meshsync_rbac() {
     exit 1
   fi
 
+  # Capture the logs first and require that read to succeed: a failed
+  # `kubectl logs` piped straight into grep would leave `forbidden` at 0
+  # and pass the assertion without reading any logs.
+  local logs
+  if ! logs=$(kubectl --namespace "$ns" logs deployment/meshery-meshsync --tail=-1); then
+    echo "❌ could not read MeshSync logs"
+    exit 1
+  fi
   local forbidden
-  forbidden=$(kubectl --namespace "$ns" logs deployment/meshery-meshsync --tail=-1 | grep -ci 'forbidden' || true)
+  forbidden=$(printf '%s\n' "$logs" | grep -ci 'forbidden' || true)
   if [ "${forbidden:-0}" -gt 0 ]; then
     echo "❌ MeshSync logged $forbidden 'forbidden' lines:"
-    kubectl --namespace "$ns" logs deployment/meshery-meshsync --tail=-1 | grep -i 'forbidden' | head -10
+    printf '%s\n' "$logs" | grep -i 'forbidden' | head -10
     exit 1
   fi
   echo "✅ MeshSync runs as meshery-meshsync with read-only cluster access and no forbidden errors"

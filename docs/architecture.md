@@ -188,7 +188,9 @@ least-privilege it was MeshSync: every watch failed with `forbidden`.
 - **Namespace.** A pod can only use a ServiceAccount in its own namespace, so the
   ServiceAccount must exist in each MeshSync CR's namespace. The shipped
   configuration (and the chart) put the operator, the CRs and the ServiceAccount in
-  `meshery`. The legacy default had the same constraint.
+  `meshery`. The legacy default had the same constraint. The bundled OLM
+  ClusterRoleBinding names `meshery/meshery-meshsync`, so a bundle/OLM install
+  must target the `meshery` namespace too.
 - **What ships.** `config/manager/meshsync_service_account.yaml`
   (`meshery-meshsync`), `config/rbac/meshsync_workload_role.yaml`
   (`meshery-meshsync-role`) and `config/rbac/meshsync_workload_role_binding.yaml`
@@ -220,9 +222,10 @@ least-privilege it was MeshSync: every watch failed with `forbidden`.
   `pods/exec`, a write-class permission. Bind an additional role to
   `meshery-meshsync` to opt in.
 - **Cross-repo contract.** The three names and the env var value are shared with
-  the meshery-operator Helm chart in meshery/meshery, which creates the same
-  objects and sets `MESHSYNC_SERVICE_ACCOUNT=meshery-meshsync`. See
-  [release-process.md § Invariants](release-process.md#invariants) for release
+  the meshery-operator Helm chart in meshery/meshery, which must create the same
+  objects and set `MESHSYNC_SERVICE_ACCOUNT=meshery-meshsync` in its own change
+  (pending as of this PR; until it lands, the operator keeps the legacy default).
+  See [release-process.md § Invariants](release-process.md#invariants) for release
   ordering.
 
 ### Vendored NATS chart (`pkg/broker/chart/`, `pkg/broker/manifests/nats.gen.yaml`)

@@ -30,7 +30,9 @@ const (
 	// that config/manager/meshsync_service_account.yaml defines and
 	// config/rbac/meshsync_workload_role*.yaml binds to the read-only
 	// "meshery-meshsync-role", and the meshery-operator Helm chart in
-	// meshery/meshery creates the same three objects and sets the same value.
+	// meshery/meshery is expected to create the same three objects and set the
+	// same value (pending chart change; until then the operator keeps the
+	// legacy default).
 	ServiceAccountEnv = "MESHSYNC_SERVICE_ACCOUNT"
 
 	// LegacyServiceAccountName is what MeshSync runs under when
