@@ -373,6 +373,23 @@
       "suggestedRemediation": [
         "Inspect the Broker Cleanup condition and operator logs, and confirm RBAC permits listing MeshSync deployments and deleting broker StatefulSets and Services"
       ]
+    },
+    {
+      "code": "meshery-operator-1024",
+      "moniker": "ErrInvalidServiceAccountNameCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1024",
+      "severity": "alert",
+      "shortDescription": "Invalid MeshSync ServiceAccount name",
+      "probableCause": [
+        "The MESHSYNC_SERVICE_ACCOUNT environment variable on the meshery-operator Deployment is not a valid Kubernetes ServiceAccount name (a DNS-1123 subdomain)"
+      ],
+      "suggestedRemediation": [
+        "Set MESHSYNC_SERVICE_ACCOUNT to the ServiceAccount MeshSync should run under (meshery-meshsync for the meshery-operator chart and config/default), or unset it to use the operator's own ServiceAccount"
+      ]
     }
   ],
   "schemaVersion": 2
