@@ -26,6 +26,12 @@ import (
 )
 
 const (
+	metadataEnvKey     = "env"
+	productionEnvValue = "production"
+	stagingEnvValue    = "staging"
+)
+
+const (
 	testNamespace  = "meshery"
 	testBrokerName = "meshery-broker"
 	// whitelistKey is the WatchList ConfigMap key MeshSync reads its resource
@@ -111,49 +117,65 @@ func TestMeshSyncConversionRoundTrip(t *testing.T) {
 // both kinds.
 func TestBrokerConversionObjectMetaIsolation(t *testing.T) {
 	t.Run("Broker ConvertTo", func(t *testing.T) {
-		orig := &Broker{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{"env": "production"}}}
+		orig := &Broker{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{metadataEnvKey: productionEnvValue}, Annotations: map[string]string{"key": "original"}}}
 		hub := &v1alpha2.Broker{}
 		if err := orig.ConvertTo(hub); err != nil {
 			t.Fatalf("ConvertTo failed: %v", err)
 		}
-		hub.Labels["env"] = "staging"
-		if orig.Labels["env"] != "production" {
+		hub.Annotations["key"] = "changed"
+		if orig.Annotations["key"] != "original" {
+			t.Errorf("Leaked annotation mutation: got %q", orig.Annotations["key"])
+		}
+		hub.Labels[metadataEnvKey] = stagingEnvValue
+		if orig.Labels[metadataEnvKey] != productionEnvValue {
 			t.Errorf("Leaked metadata mutation: orig.Labels['env'] = %q, want 'production'", orig.Labels["env"])
 		}
 	})
 
 	t.Run("Broker ConvertFrom", func(t *testing.T) {
-		hub := &v1alpha2.Broker{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{"env": "production"}}}
+		hub := &v1alpha2.Broker{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{metadataEnvKey: productionEnvValue}, Annotations: map[string]string{"key": "original"}}}
 		spoke := &Broker{}
 		if err := spoke.ConvertFrom(hub); err != nil {
 			t.Fatalf("ConvertFrom failed: %v", err)
 		}
-		spoke.Labels["env"] = "staging"
-		if hub.Labels["env"] != "production" {
+		spoke.Annotations["key"] = "changed"
+		if hub.Annotations["key"] != "original" {
+			t.Errorf("Leaked annotation mutation: got %q", hub.Annotations["key"])
+		}
+		spoke.Labels[metadataEnvKey] = stagingEnvValue
+		if hub.Labels[metadataEnvKey] != productionEnvValue {
 			t.Errorf("Leaked metadata mutation: hub.Labels['env'] = %q, want 'production'", hub.Labels["env"])
 		}
 	})
 
 	t.Run("MeshSync ConvertTo", func(t *testing.T) {
-		orig := &MeshSync{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{"env": "production"}}}
+		orig := &MeshSync{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{metadataEnvKey: productionEnvValue}, Annotations: map[string]string{"key": "original"}}}
 		hub := &v1alpha2.MeshSync{}
 		if err := orig.ConvertTo(hub); err != nil {
 			t.Fatalf("ConvertTo failed: %v", err)
 		}
-		hub.Labels["env"] = "staging"
-		if orig.Labels["env"] != "production" {
+		hub.Annotations["key"] = "changed"
+		if orig.Annotations["key"] != "original" {
+			t.Errorf("Leaked annotation mutation: got %q", orig.Annotations["key"])
+		}
+		hub.Labels[metadataEnvKey] = stagingEnvValue
+		if orig.Labels[metadataEnvKey] != productionEnvValue {
 			t.Errorf("Leaked metadata mutation: orig.Labels['env'] = %q, want 'production'", orig.Labels["env"])
 		}
 	})
 
 	t.Run("MeshSync ConvertFrom", func(t *testing.T) {
-		hub := &v1alpha2.MeshSync{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{"env": "production"}}}
+		hub := &v1alpha2.MeshSync{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{metadataEnvKey: productionEnvValue}, Annotations: map[string]string{"key": "original"}}}
 		spoke := &MeshSync{}
 		if err := spoke.ConvertFrom(hub); err != nil {
 			t.Fatalf("ConvertFrom failed: %v", err)
 		}
-		spoke.Labels["env"] = "staging"
-		if hub.Labels["env"] != "production" {
+		spoke.Annotations["key"] = "changed"
+		if hub.Annotations["key"] != "original" {
+			t.Errorf("Leaked annotation mutation: got %q", hub.Annotations["key"])
+		}
+		spoke.Labels[metadataEnvKey] = stagingEnvValue
+		if hub.Labels[metadataEnvKey] != productionEnvValue {
 			t.Errorf("Leaked metadata mutation: hub.Labels['env'] = %q, want 'production'", hub.Labels["env"])
 		}
 	})
