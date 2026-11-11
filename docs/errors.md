@@ -66,12 +66,22 @@ a code and message are available, but it is deprecated - prefer the full
   adding or changing an error.
 - `make error-util` assigns codes to any new placeholder constants and bumps
   `next_error_code` in `helpers/component_info.json`.
+- Both run errorutil as a `go tool` (the `tool` directive in `go.mod`), so its own
+  dependencies are pinned in `go.sum` and nothing needs installing. A bare
+  `go run github.com/meshery/meshkit/cmd/errorutil` fails with a missing `go.sum`
+  entry, and `go run ...@version` is refused because meshkit's `go.mod` carries
+  `replace` directives.
+- `helpers/errorutil_errors_index.json` is regenerated and committed by the
+  `error-ref-publisher` workflow after merge; do not hand-edit it.
 
 ## Status
 
 All three error registries use the MeshKit form: `controllers/error.go` (codes
-`1001`-`1012` and `1017`), `pkg/broker/error.go` (`1013`-`1016`), and
-`pkg/meshsync/error.go` (`1018`-`1021`). The meshsync registry was renumbered and
+`1001`-`1007`, `1010`-`1012`, `1017`, `1022` and `1023`), `pkg/broker/error.go` (`1013`-`1016`), and
+`pkg/meshsync/error.go` (`1018`-`1021`). Codes `1008` (`ErrDeleteMeshsync`) and
+`1009` (`ErrDeleteBroker`) are retired: they reported the finalizer cleanup the
+controllers no longer perform (see [architecture.md](architecture.md#controllers-controllers)),
+and retired codes are never reallocated. The meshsync registry was renumbered and
 renamed from its original `1013`-`1016` to resolve a code-and-name collision with the
 broker registry, and the controllers' `ErrMarshal` outlier (`11049`) was renumbered
 to `1017`. `make error` reports no duplicate codes or names.

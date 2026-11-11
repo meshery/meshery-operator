@@ -191,13 +191,17 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes.
 tidy: ## Run go mod tidy against code.
 	go mod tidy
 
+# errorutil is a `tool` dependency in go.mod, so its own imports (e.g. logrus,
+# which the manager never links) are pinned in go.sum. A bare `go run` of the
+# package fails with "missing go.sum entry", and `go run pkg@version` is refused
+# because meshkit's go.mod carries replace directives.
 .PHONY: error
 error: ## Analyze MeshKit error codes (read-only); writes errorutil_*.json to ./helpers.
-	go run github.com/meshery/meshkit/cmd/errorutil -d . analyze -i ./helpers -o ./helpers
+	go tool errorutil -d . analyze -i ./helpers -o ./helpers
 
 .PHONY: error-util
 error-util: ## Assign/update MeshKit error codes and regenerate the error reference export.
-	go run github.com/meshery/meshkit/cmd/errorutil -d . update -i ./helpers -o ./helpers
+	go tool errorutil -d . update -i ./helpers -o ./helpers
 
 .PHONY: test
 test: manifests generate fmt vet test-env ## Run tests.

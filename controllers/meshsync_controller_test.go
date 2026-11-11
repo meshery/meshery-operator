@@ -18,7 +18,9 @@ package controllers
 
 import (
 	"context"
+	"slices"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/meshery/meshery-operator/api/v1alpha1"
@@ -27,13 +29,17 @@ import (
 	meshkiterrors "github.com/meshery/meshkit/errors"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	types "k8s.io/apimachinery/pkg/types"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var _ = Describe("The test cases for customize resource: MeshSync's controller ", func() {
@@ -703,4 +709,144 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 			t.Errorf("expected nil for empty broker name, got %+v", reqs)
 		}
 	})
+}
+
+var _ = Describe("MeshSync lifecycle without finalizers", func() {
+	ctx := context.Background()
+
+	newMeshSync := func(namespace string, broker v1alpha1.MeshsyncBroker, finalizers ...string) *v1alpha1.MeshSync {
+		meshsync := &v1alpha1.MeshSync{
+			ObjectMeta: metav1.ObjectMeta{Name: testMeshSyncName, Namespace: namespace, Finalizers: finalizers},
+			Spec:       v1alpha1.MeshSyncSpec{Size: 1, Broker: broker},
+		}
+		Expect(k8sClient.Create(ctx, meshsync)).To(Succeed())
+		return meshsync
+	}
+	customBroker := v1alpha1.MeshsyncBroker{Custom: v1alpha1.CustomMeshsyncBroker{URL: "nats://custom-broker:4222"}}
+
+	It("adds no finalizer, owns its Deployment and mirrored auth Secret, and deletes without operator involvement", func() {
+		// A Broker in another namespace makes the reconcile mirror the NATS
+		// auth Secret into the MeshSync's namespace - the second object this
+		// controller creates.
+		brokerNamespace := createTestNamespace(ctx, "meshsync-gc-broker")
+		Expect(k8sClient.Create(ctx, &v1alpha1.Broker{
+			ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Namespace: brokerNamespace},
+			Spec:       v1alpha1.BrokerSpec{Size: 1},
+		})).To(Succeed())
+		meshsync := newMeshSync(createTestNamespace(ctx, "meshsync-gc"),
+			v1alpha1.MeshsyncBroker{Native: v1alpha1.NativeMeshsyncBroker{Name: testBrokerName, Namespace: brokerNamespace}})
+		key := client.ObjectKeyFromObject(meshsync)
+
+		By("the Deployment and the mirrored Secret carry a controller ownerReference to the MeshSync")
+		Eventually(func(g Gomega) {
+			for _, current := range []client.Object{&appsv1.Deployment{}, &corev1.Secret{}} {
+				name := meshsync.Name
+				if _, ok := current.(*corev1.Secret); ok {
+					name = brokerpackage.AuthSecretName
+				}
+				g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: meshsync.Namespace}, current)).To(Succeed())
+				expectControlledBy(g, current, meshsync, testMeshSyncKind)
+			}
+		}, 20*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		By("the reconciled MeshSync carries no finalizer")
+		Consistently(func(g Gomega) {
+			current := &v1alpha1.MeshSync{}
+			g.Expect(k8sClient.Get(ctx, key, current)).To(Succeed())
+			g.Expect(current.Finalizers).To(BeEmpty())
+		}, time.Second, 100*time.Millisecond).Should(Succeed())
+
+		By("deleting the MeshSync completes synchronously: nothing waits on the operator")
+		Expect(k8sClient.Delete(ctx, meshsync)).To(Succeed())
+		Expect(apierrors.IsNotFound(k8sClient.Get(ctx, key, &v1alpha1.MeshSync{}))).To(BeTrue())
+	})
+
+	It("strips the legacy finalizer from a live MeshSync and keeps reconciling it", func() {
+		meshsync := newMeshSync(createTestNamespace(ctx, "meshsync-legacy"), customBroker, legacyMeshsyncFinalizer)
+		Eventually(func(g Gomega) {
+			current := &v1alpha1.MeshSync{}
+			g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(meshsync), current)).To(Succeed())
+			g.Expect(current.Finalizers).To(BeEmpty())
+			g.Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(meshsync), &appsv1.Deployment{})).To(Succeed())
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+	})
+
+	It("strips the legacy finalizer from a Terminating MeshSync so its deletion can complete", func() {
+		meshsync := newMeshSync(createTestNamespace(ctx, "meshsync-terminating"), customBroker, legacyMeshsyncFinalizer, testHoldFinalizer)
+		key := client.ObjectKeyFromObject(meshsync)
+		Expect(k8sClient.Delete(ctx, meshsync)).To(Succeed())
+		Eventually(func(g Gomega) {
+			current := &v1alpha1.MeshSync{}
+			g.Expect(k8sClient.Get(ctx, key, current)).To(Succeed())
+			g.Expect(current.DeletionTimestamp).ToNot(BeNil())
+			g.Expect(current.Finalizers).To(ConsistOf(testHoldFinalizer))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		By("releasing the other writer's finalizer, the MeshSync is removed")
+		Eventually(func() error {
+			current := &v1alpha1.MeshSync{}
+			if err := k8sClient.Get(ctx, key, current); err != nil {
+				return err
+			}
+			current.Finalizers = nil
+			return k8sClient.Update(ctx, current)
+		}, 5*time.Second, 100*time.Millisecond).Should(Succeed())
+		Eventually(func() bool {
+			return apierrors.IsNotFound(k8sClient.Get(ctx, key, &v1alpha1.MeshSync{}))
+		}, 5*time.Second, 100*time.Millisecond).Should(BeTrue())
+	})
+})
+
+// TestMeshSyncReconcileTerminatingLegacyFinalizer is the MeshSync twin of
+// TestBrokerReconcileTerminatingLegacyFinalizer: Reconcile is driven directly so
+// the Terminating branch runs deterministically, and must neither keep the CR
+// alive nor re-apply its Deployment.
+func TestMeshSyncReconcileTerminatingLegacyFinalizer(t *testing.T) {
+	tests := []struct {
+		name       string
+		finalizers []string
+		wantGone   bool
+	}{
+		{name: "legacy finalizer only: deletion completes", finalizers: []string{legacyMeshsyncFinalizer}, wantGone: true},
+		{name: "another writer's finalizer survives", finalizers: []string{legacyMeshsyncFinalizer, testHoldFinalizer}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := context.Background()
+			scheme := setupMeshSyncTestScheme(t)
+			now := metav1.Now()
+			meshsync := &v1alpha1.MeshSync{ObjectMeta: metav1.ObjectMeta{
+				Name: testMeshSyncName, Namespace: testMesheryNamespace, UID: "meshsync-uid",
+				DeletionTimestamp: &now, Finalizers: test.finalizers,
+			}}
+			c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&v1alpha1.MeshSync{}).WithObjects(meshsync).Build()
+			r := &MeshSyncReconciler{Client: c, Scheme: scheme, Log: logr.Discard()}
+
+			result, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(meshsync)})
+			if err != nil || result.RequeueAfter != 0 {
+				t.Fatalf("Reconcile() = %+v, %v; want a clean exit", result, err)
+			}
+			current := &v1alpha1.MeshSync{}
+			err = c.Get(ctx, client.ObjectKeyFromObject(meshsync), current)
+			if test.wantGone {
+				if !apierrors.IsNotFound(err) {
+					t.Fatalf("MeshSync must be removed once its legacy finalizer is stripped, got err=%v finalizers=%v", err, current.Finalizers)
+				}
+			} else {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if want := []string{testHoldFinalizer}; !slices.Equal(current.Finalizers, want) {
+					t.Fatalf("finalizers = %v, want %v", current.Finalizers, want)
+				}
+			}
+			deployments := &appsv1.DeploymentList{}
+			if err := c.List(ctx, deployments, client.InNamespace(testMesheryNamespace)); err != nil {
+				t.Fatal(err)
+			}
+			if len(deployments.Items) != 0 {
+				t.Fatalf("a Terminating MeshSync must not have its Deployment re-applied, found %d", len(deployments.Items))
+			}
+		})
+	}
 }

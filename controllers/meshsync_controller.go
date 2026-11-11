@@ -53,7 +53,6 @@ type MeshSyncReconciler struct {
 }
 
 const (
-	meshsyncFinalizer = "meshsync.meshery.io/finalizer"
 	// meshsyncControllerName labels this controller's reconciliation metrics.
 	meshsyncControllerName = "meshsync"
 	// meshsyncFieldManager is the stable Server-Side Apply field manager for the
@@ -63,6 +62,9 @@ const (
 
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/status,verbs=get;update;patch
+// meshsyncs/finalizers backs blockOwnerDeletion on owned objects, not a
+// finalizer of the operator's own; see the brokers/finalizers note in
+// broker_controller.go.
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/finalizers,verbs=update
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
@@ -91,16 +93,26 @@ func (r *MeshSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	if err != nil {
 		return r.handleGetError(log, err)
 	}
-	// resource deletion
-	if baseResource.GetDeletionTimestamp() != nil {
-		return r.handleDeletion(ctx, log, baseResource)
-	}
-
-	if res, err := r.ensureFinalizer(ctx, log, baseResource); err != nil || res.RequeueAfter > 0 {
+	// Strip the finalizer earlier releases added, from Terminating MeshSyncs
+	// too: on those it is the only thing holding deletion.
+	if stop, res, err := migrateLegacyFinalizer(ctx, r.Client, log, baseResource, legacyMeshsyncFinalizer); stop {
+		if err != nil {
+			// Best effort, like the controller's other failure conditions: the
+			// status subresource is a separate permission and may still accept
+			// the write that explains why deletion is pending.
+			_ = r.updateStatusCondition(ctx, baseResource, "Ready", v1.ConditionFalse, "LegacyFinalizerRemovalFailed", err.Error())
+		}
 		return res, err
 	}
-	return r.performReconciliation(ctx, log, baseResource)
 
+	// A deleting MeshSync needs nothing from the operator: garbage collection
+	// removes the Deployment (and any mirrored auth Secret) through its
+	// controller ownerReference. Reconciling further would re-apply them.
+	if baseResource.GetDeletionTimestamp() != nil {
+		log.Info("MeshSync is being deleted; owned objects are garbage-collected through their ownerReferences")
+		return ctrl.Result{}, nil
+	}
+	return r.performReconciliation(ctx, log, baseResource)
 }
 
 func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -229,57 +241,6 @@ func (r *MeshSyncReconciler) patchMeshsyncStatus(ctx context.Context, log logr.L
 	return ctrl.Result{}, nil
 }
 
-func (r *MeshSyncReconciler) ensureFinalizer(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync) (ctrl.Result, error) {
-	if util.ContainsFinalizer(baseResource, meshsyncFinalizer) {
-		return ctrl.Result{}, nil
-	}
-
-	log.Info("Adding finalizer to meshsync")
-	util.AddFinalizer(baseResource, meshsyncFinalizer)
-	if err := r.Update(ctx, baseResource); err != nil {
-		if kubeerror.IsConflict(err) {
-			log.Error(err, "Conflict while adding finalizer, requeuing to retry")
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
-		log.Error(err, "Failed to add finalizer")
-		return ctrl.Result{}, err
-	}
-	log.Info("Finalizer added successfully, requeuing for next reconcile")
-	return ctrl.Result{RequeueAfter: 0}, nil
-
-}
-
-func (r *MeshSyncReconciler) handleDeletion(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync) (ctrl.Result, error) {
-	if !util.ContainsFinalizer(baseResource, meshsyncFinalizer) {
-		log.Info("meshsync resource is being deleted (no finalizers)")
-		return ctrl.Result{}, nil
-	}
-	log.Info("Executing meshsync finalizers")
-	if err := r.Cleanup(ctx, baseResource); err != nil {
-		// update the status condition
-		log.Error(err, "Failed to cleanup meshsync")
-		_ = r.updateStatusCondition(ctx, baseResource, "Cleanup", v1.ConditionFalse, "CleanupFailed", err.Error())
-		return ctrl.Result{}, ErrDeleteMeshsync(err)
-	}
-
-	return r.removeFinalizer(ctx, log, baseResource)
-}
-
-// removeFinalizer removes the finalizer from the meshsync resource
-func (r *MeshSyncReconciler) removeFinalizer(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync) (ctrl.Result, error) {
-	util.RemoveFinalizer(baseResource, meshsyncFinalizer)
-	if err := r.Update(ctx, baseResource); err != nil {
-		if kubeerror.IsConflict(err) {
-			log.Error(err, "Conflict while removing finalizer, requeuing to retry")
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
-		log.Error(err, "Failed to remove finalizer")
-		return ctrl.Result{}, err
-	}
-	log.Info("MeshSync finalizers executed successfully, resource will be deleted")
-	return ctrl.Result{}, nil
-}
-
 func (r *MeshSyncReconciler) handleGetError(log logr.Logger, err error) (ctrl.Result, error) {
 	if kubeerror.IsNotFound(err) {
 		log.Info("meshsync resource not found, likely already deleted")
@@ -287,27 +248,6 @@ func (r *MeshSyncReconciler) handleGetError(log logr.Logger, err error) (ctrl.Re
 	}
 	log.Error(err, "unable to get meshsync resource")
 	return ctrl.Result{}, ErrGetMeshsync(err)
-}
-
-func (r *MeshSyncReconciler) Cleanup(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
-	log := r.Log.WithValues("meshsync", baseResource.Name, "namespace", baseResource.Namespace)
-	objects := meshsyncpackage.GetObjects(baseResource, "")
-	log.Info("Cleaning up meshsync resources")
-	for _, object := range objects {
-		log.Info("Deleting meshsync object", "kind", object.GetObjectKind().GroupVersionKind().Kind, "name", object.GetName())
-		err := r.Delete(ctx, object)
-		if err != nil {
-			if kubeerror.IsNotFound(err) {
-				log.V(1).Info("Object not found, skipping", "name", object.GetName())
-				// skip this is normal
-				continue
-			}
-			log.Error(err, "Unable to delete meshsync object", "name", object.GetName())
-			return ErrDeleteMeshsync(err)
-		}
-	}
-	log.Info("Successfully cleaned up meshsync resources")
-	return nil
 }
 
 // updateStatusCondition updates the status condition and handles conflicts gracefully

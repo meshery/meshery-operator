@@ -309,7 +309,7 @@ The objective is to make the **full lifecycle** — create → reconcile → bec
 - **Networking reconfiguration:** create a `ClusterIP` broker, assert internal endpoint + MeshSync connectivity; patch to `NodePort`, assert no Service churn (observe `metadata.generation`/managedFields), endpoint recomputed, MeshSync re‑enqueued and reconnected.
 - **Delayed LoadBalancer IP:** create a `LoadBalancer` broker with no ingress IP; assert `Pending` condition + requeue; inject `status.loadBalancer.ingress`; assert endpoint resolves.
 - **Upgrade/conversion:** apply a `v1alpha1` `Broker`, assert conversion to `v1alpha2` storage and round‑trip read via the served `v1alpha1`.
-- **Finalizer/cleanup:** delete a `Broker`, assert owned objects are removed and the finalizer clears (the recently‑added finalizer path gains regression coverage).
+- **Uninstall/cleanup:** delete the operator Deployment together with its `Broker` and `MeshSync` (the Helm-uninstall shape), assert both CRs disappear without the operator and garbage collection removes the NATS and MeshSync workloads. The controllers no longer add finalizers; cleanup rests on controller ownerReferences (see `docs/architecture.md` § Controllers). envtest covers the ownerReferences and finalizer migration, but has no garbage collector, so only kind can prove the collection itself.
 - **Leader election:** two manager replicas elect exactly one leader (regression for #12).
 
 ### 7.3 CI wiring

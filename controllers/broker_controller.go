@@ -38,7 +38,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // BrokerReconciler reconciles a Broker object
@@ -52,7 +51,6 @@ type BrokerReconciler struct {
 }
 
 const (
-	brokerFinalizer = "broker.meshery.io/finalizer"
 	// brokerControllerName labels this controller's reconciliation metrics.
 	brokerControllerName = "broker"
 	// brokerFieldManager is the stable Server-Side Apply field manager for all
@@ -63,6 +61,11 @@ const (
 
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers/status,verbs=get;update;patch
+// brokers/finalizers is not for a finalizer of the operator's own (it adds none;
+// see legacy_finalizer.go). SetControllerReference sets blockOwnerDeletion on
+// every owned object, and the OwnerReferencesPermissionEnforcement admission
+// plugin (enabled by default on OpenShift) admits that only when the writer may
+// update the owner's finalizers subresource.
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=get;list;watch;create;update;patch;delete
@@ -88,14 +91,24 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return r.handleGetError(log, err)
 	}
 
-	// resource deletion
-	if baseResource.GetDeletionTimestamp() != nil {
-		return r.handleDeletion(ctx, log, baseResource)
+	// Strip the finalizer earlier releases added, from Terminating Brokers too:
+	// on those it is the only thing holding deletion.
+	if stop, res, err := migrateLegacyFinalizer(ctx, r.Client, log, baseResource, legacyBrokerFinalizer); stop {
+		if err != nil {
+			// Best effort, like the controller's other failure conditions: the
+			// status subresource is a separate permission and may still accept
+			// the write that explains why deletion is pending.
+			_ = r.updateStatusCondition(ctx, baseResource, "Ready", v1.ConditionFalse, "LegacyFinalizerRemovalFailed", err.Error())
+		}
+		return res, err
 	}
 
-	// finalizer exists
-	if res, err := r.ensureFinalizer(ctx, log, baseResource); err != nil || res.RequeueAfter > 0 {
-		return res, err
+	// A deleting Broker needs nothing from the operator: garbage collection
+	// removes every owned object through its controller ownerReference.
+	// Reconciling further would re-apply the children GC is removing.
+	if baseResource.GetDeletionTimestamp() != nil {
+		log.Info("Broker is being deleted; owned objects are garbage-collected through their ownerReferences")
+		return ctrl.Result{}, nil
 	}
 
 	// main reconciliation
@@ -110,62 +123,6 @@ func (r *BrokerReconciler) handleGetError(log logr.Logger, err error) (ctrl.Resu
 	}
 	log.Error(err, "Failed to get broker resource")
 	return ctrl.Result{}, ErrGetBroker(err)
-}
-
-// handleDeletion handles the deletion of a broker resource with finalizers
-func (r *BrokerReconciler) handleDeletion(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.Broker) (ctrl.Result, error) {
-	if !controllerutil.ContainsFinalizer(baseResource, brokerFinalizer) {
-		log.Info("Broker is being deleted (no finalizers)")
-		return ctrl.Result{}, nil
-	}
-
-	log.Info("Executing broker finalizers")
-	if err := r.Cleanup(ctx, baseResource); err != nil {
-		log.Error(err, "Failed to cleanup broker")
-		_ = r.updateStatusCondition(ctx, baseResource, "Cleanup", v1.ConditionFalse, "CleanupFailed", err.Error())
-		return ctrl.Result{}, ErrDeleteBroker(err)
-	}
-
-	return r.removeFinalizer(ctx, log, baseResource)
-}
-
-// removeFinalizer removes the finalizer from the broker resource
-func (r *BrokerReconciler) removeFinalizer(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.Broker) (ctrl.Result, error) {
-	if removed := controllerutil.RemoveFinalizer(baseResource, brokerFinalizer); !removed {
-		log.Info("Finalizer not found, likely already removed")
-		return ctrl.Result{}, nil
-	}
-	if err := r.Update(ctx, baseResource); err != nil {
-		if kubeerror.IsConflict(err) {
-			log.Error(err, "Conflict while removing finalizer, requeuing to retry")
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
-		log.Error(err, "Failed to remove finalizer")
-		return ctrl.Result{}, err
-	}
-	log.Info("Broker finalizers executed successfully, resource will be deleted")
-	return ctrl.Result{RequeueAfter: 0}, nil
-}
-
-// ensureFinalizer adds the finalizer if it doesn't exist
-func (r *BrokerReconciler) ensureFinalizer(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.Broker) (ctrl.Result, error) {
-	if controllerutil.ContainsFinalizer(baseResource, brokerFinalizer) {
-		return ctrl.Result{}, nil
-	}
-
-	log.Info("Adding finalizer to broker")
-	controllerutil.AddFinalizer(baseResource, brokerFinalizer)
-	if err := r.Update(ctx, baseResource); err != nil {
-		if kubeerror.IsConflict(err) {
-			log.Error(err, "Conflict while adding finalizer, requeuing to retry")
-			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
-		}
-		log.Error(err, "Failed to add finalizer")
-		return ctrl.Result{}, err
-	}
-
-	log.Info("Finalizer added successfully, requeuing for next reconcile")
-	return ctrl.Result{RequeueAfter: 0}, nil
 }
 
 // performReconciliation performs the main broker reconciliation logic
@@ -309,27 +266,6 @@ func (r *BrokerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Secret{}).
 		Complete(r)
-}
-
-func (r *BrokerReconciler) Cleanup(ctx context.Context, baseResource *mesheryv1alpha1.Broker) error {
-	log := r.Log.WithValues("broker", baseResource.Name, "namespace", baseResource.Namespace)
-	log.Info("Cleaning up broker resources")
-	objects := brokerpackage.GetObjects(baseResource)
-	for _, object := range objects {
-		log.Info("Deleting broker object", "kind", object.GetObjectKind().GroupVersionKind().Kind, "name", object.GetName())
-		err := r.Delete(ctx, object)
-		if err != nil {
-			// check if this request is due to object not found
-			if kubeerror.IsNotFound(err) {
-				log.V(1).Info("Object not found, skipping", "name", object.GetName())
-				continue
-			}
-			log.Error(err, "Unable to delete broker object", "name", object.GetName())
-			return ErrDeleteBroker(err)
-		}
-	}
-	log.Info("Successfully cleaned up broker resources")
-	return nil
 }
 
 // reconcileBroker drives every broker-owned object to its desired state with a

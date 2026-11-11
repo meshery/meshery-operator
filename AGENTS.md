@@ -8,8 +8,8 @@ Meshery Operator is a [Kubebuilder `go/v4`](https://book.kubebuilder.io) Kuberne
 operator. Meshery Server installs one per managed cluster and thereafter manages its
 health/config. It owns two CRDs and reconciles each into concrete workloads:
 
-- **`Broker`** (`brokers.meshery.io`) - a NATS message broker → `StatefulSet`, client `Service`, and `nats.conf`/accounts `ConfigMap`s.
-- **`MeshSync`** (`meshsyncs.meshery.io`) - the cluster-state synchronizer → `Deployment`.
+- **`Broker`** (`brokers.meshery.io`) - a NATS message broker → `StatefulSet`, client + headless `Service`s, `nats.conf` `ConfigMap`, and the `meshery-nats-auth` token `Secret`.
+- **`MeshSync`** (`meshsyncs.meshery.io`) - the cluster-state synchronizer → `Deployment` (plus a mirrored auth `Secret` when its Broker is in another namespace).
 
 ## Commands
 
@@ -39,7 +39,7 @@ to be on `PATH`. Go version is pinned in `go.mod` (CI resolves it via `go-versio
 Component map - full detail in [docs/architecture.md](docs/architecture.md) and the [modernization plan](docs/proposals/operator-modernization-plan.md):
 
 - `api/v1alpha1/`, `api/v1alpha2/` - CRD Go types; `v1alpha2` is the conversion hub (storage version), `v1alpha1` a spoke served via the conversion webhook.
-- `controllers/` - Broker/MeshSync reconcilers: finalizer → create-or-sync owned objects → health check → status `Condition` patch; `pkg/metrics` recorded via named returns.
+- `controllers/` - Broker/MeshSync reconcilers: strip legacy finalizer → stop if deleting → Server-Side Apply owned objects → health check → status `Condition` patch; `pkg/metrics` recorded via named returns. No finalizers: every owned object has a controller ownerReference and garbage collection cleans up, also when the operator is uninstalled with its CRs - do not add one back ([why](docs/architecture.md#controllers-controllers)).
 - `pkg/broker/` + `pkg/meshsync/` - hand-authored resource builders; the NATS topology is rendered from the vendored chart (`make nats-manifests`).
 - `pkg/client/v1alpha1/` - typed clientset consumed by Meshery Server; any `v1alpha1` change must preserve this surface.
 - `config/` - Kustomize bases; `bundle/` - the OLM bundle generated from `config/manifests`.
