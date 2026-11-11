@@ -307,7 +307,7 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, c client.Clie
 	if obj.Status.ReadyReplicas != desired {
 		reason := fmt.Sprintf("%d of %d replicas ready", obj.Status.ReadyReplicas, desired)
 		for _, condition := range obj.Status.Conditions {
-			if condition.Type == v1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
+			if condition.Type == v1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue && condition.Message != "" {
 				reason += ": " + condition.Message
 			}
 		}

@@ -478,6 +478,17 @@ func TestCheckHealthReportsReplicaFailure(t *testing.T) {
 		t.Errorf("only ReplicaFailure conditions belong in the health error, got: %s", err)
 	}
 
+	// A ReplicaFailure condition with no message (reason only) must not leave
+	// a trailing ": " on the health error.
+	blank := unready.DeepCopy()
+	blank.Status.Conditions[1].Message = ""
+	c = fake.NewClientBuilder().WithScheme(k8sscheme.Scheme).WithObjects(blank).Build()
+	err = CheckHealth(context.Background(), m, c)
+	assertMeshkitError(t, err, ErrMeshsyncReplicasNotReadyCode, "0 of 1 replicas ready")
+	if strings.HasSuffix(err.Error(), ": ") {
+		t.Errorf("an empty ReplicaFailure message must not leave a trailing ': ', got: %s", err)
+	}
+
 	ready := unready.DeepCopy()
 	ready.ResourceVersion = ""
 	ready.Status = appsv1.DeploymentStatus{ReadyReplicas: 1}
