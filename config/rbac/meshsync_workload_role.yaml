@@ -1,0 +1,36 @@
+# Read-only access for the MeshSync workload's ServiceAccount, meshery-meshsync
+# (rendered as meshery-meshsync-role; bound in meshsync_workload_role_binding.yaml).
+#
+# Why a wildcard rather than an explicit list: MeshSync's watch set is open-ended.
+# Its default pipeline spans dozens of kinds across many API groups, including
+# cluster-scoped ones (nodes, persistentvolumes, storageclasses, clusterroles,
+# apiservices, ...); the MeshSync CR's watch-list is user-editable; and MeshSync
+# watches CustomResourceDefinitions and starts an informer for every CRD it finds
+# at runtime. CRD groups cannot be enumerated at install time, so any explicit
+# list reproduces the "forbidden" failure this role exists to fix for every kind
+# left off it.
+#
+# The verbs are what bounds it: get, list and watch only. MeshSync performs no
+# writes. Know what wildcard read includes, though: every Secret in the cluster
+# (secrets are in MeshSync's default watch list anyway), and GET on subresources
+# such as pods/log (used by log streaming) and the proxy subresources
+# (nodes/proxy, services/proxy, pods/proxy). Interactive exec needs create on
+# pods/exec and is deliberately NOT granted; bind an additional role to this
+# ServiceAccount to opt in. Clusters that narrow MeshSync's watch-list can
+# replace this role with an enumerated one.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: meshsync-role
+  labels:
+    app: meshery
+    component: meshsync
+rules:
+- apiGroups:
+  - "*"
+  resources:
+  - "*"
+  verbs:
+  - get
+  - list
+  - watch

@@ -119,7 +119,9 @@ var (
 			Annotations: MesheryAnnotation,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName:            "meshery-operator",
+			// The operator applies the ServiceAccount resolved from
+			// MESHSYNC_SERVICE_ACCOUNT over this default; see serviceaccount.go.
+			ServiceAccountName:            LegacyServiceAccountName,
 			ShareProcessNamespace:         &valtrue,
 			TerminationGracePeriodSeconds: &val60,
 			Containers: []corev1.Container{

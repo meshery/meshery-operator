@@ -185,6 +185,64 @@ MeshSync and `overlayBrokerSpec` for the broker, and both share
 - Because the resolved version feeds probe selection too, the pinned default is
   provably ≥ v1.0.1 and gets the httpGet probes rather than the fallback.
 
+### MeshSync identity and RBAC (`MESHSYNC_SERVICE_ACCOUNT`)
+
+MeshSync pods run under their **own ServiceAccount**, not the operator's. The
+operator is least-privilege (#782): it may write only what it manages and read
+almost nothing else. MeshSync needs the opposite: cluster-wide read and no write.
+Sharing one identity forces one of them to be wrong, and since the operator went
+least-privilege it was MeshSync: every watch failed with `forbidden`.
+
+- **Selection.** The operator reads `MESHSYNC_SERVICE_ACCOUNT` once at startup
+  (`pkg/meshsync.ResolveServiceAccountName`) and applies it to every MeshSync
+  Deployment (`WithServiceAccountName`). Unset, it keeps the legacy default, the
+  operator's own `meshery-operator` ServiceAccount, so charts that do not create
+  the dedicated ServiceAccount keep scheduling MeshSync pods. An invalid name stops
+  the operator at startup with `ErrInvalidServiceAccountName` rather than applying a
+  Deployment the API server rejects on every reconcile.
+- **Namespace.** A pod can only use a ServiceAccount in its own namespace, so the
+  ServiceAccount must exist in each MeshSync CR's namespace. The shipped
+  configuration (and the chart) put the operator, the CRs and the ServiceAccount in
+  `meshery`. The legacy default had the same constraint. The bundled OLM
+  ClusterRoleBinding names `meshery/meshery-meshsync`, so a bundle/OLM install
+  must target the `meshery` namespace too.
+- **What ships.** `config/manager/meshsync_service_account.yaml`
+  (`meshery-meshsync`), `config/rbac/meshsync_workload_role.yaml`
+  (`meshery-meshsync-role`) and `config/rbac/meshsync_workload_role_binding.yaml`
+  (`meshery-meshsync-rolebinding`), with the env var set in
+  `config/manager/manager.yaml`. The ServiceAccount sits beside the operator's in
+  `config/manager`, unprefixed: placed in `config/rbac`, that directory's
+  `namePrefix` plus kustomize's name-reference resolution rendered the binding
+  subject as `meshsync`, binding nothing.
+  `TestRenderedInstallManifestWiresMeshSyncServiceAccount` checks the rendered
+  `config/manifests/default.yaml` end to end.
+- **Why wildcard read.** The role grants `get`/`list`/`watch` on `*`/`*` and
+  nothing else. MeshSync's watch set is open-ended: its default pipeline spans
+  dozens of kinds across many API groups, including cluster-scoped ones (nodes,
+  persistentvolumes, storageclasses, clusterroles, apiservices); the MeshSync CR's
+  watch-list is user-editable; and MeshSync watches CustomResourceDefinitions and
+  starts an informer for every CRD it finds at runtime. CRD groups cannot be
+  enumerated at install time, so an explicit list reproduces the `forbidden`
+  failure for every kind left off it. MeshSync performs no writes, so the verbs
+  are the boundary. It is strictly narrower than the `*`/`*`/all-verbs role
+  MeshSync had before 1.0. Trivy reports it as KSV-0046 ("manage all
+  resources", a check that ignores verbs); `.trivyignore.yaml` excludes that
+  check for this role's files only, so a wildcard anywhere else still surfaces.
+- **What wildcard read includes.** Every Secret in the cluster (Secrets are in
+  MeshSync's default watch list anyway), and `get` on subresources: `pods/log`
+  (which log streaming uses) and the proxy subresources (`nodes/proxy`,
+  `services/proxy`, `pods/proxy`). Clusters that narrow MeshSync's watch-list can
+  swap in an enumerated role.
+- **Interactive exec is not granted.** MeshSync's exec sessions need `create` on
+  `pods/exec`, a write-class permission. Bind an additional role to
+  `meshery-meshsync` to opt in.
+- **Cross-repo contract.** The three names and the env var value are shared with
+  the meshery-operator Helm chart in meshery/meshery, which must create the same
+  objects and set `MESHSYNC_SERVICE_ACCOUNT=meshery-meshsync` in its own change
+  (pending as of this PR; until it lands, the operator keeps the legacy default).
+  See [release-process.md § Invariants](release-process.md#invariants) for release
+  ordering.
+
 ### Vendored NATS chart (`pkg/broker/chart/`, `pkg/broker/manifests/nats.gen.yaml`)
 
 The vendored NATS topology is rendered at build time from the pinned official

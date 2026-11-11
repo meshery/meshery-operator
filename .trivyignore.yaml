@@ -1,0 +1,29 @@
+# Justified exclusions for Trivy's Kubernetes misconfiguration checks. The fs
+# scan in .github/workflows/trivy-scan.yml passes this file explicitly
+# (trivyignores). YAML, rather than a plain .trivyignore, so an exclusion can be
+# scoped to the files it was justified for.
+misconfigurations:
+  # Workloads in the default namespace: the vendored, helm-rendered NATS
+  # manifests carry no metadata.namespace on purpose - the operator sets the
+  # namespace of every object to the Broker CR's namespace at apply time
+  # (pkg/broker/broker.go GetObjects -> SetNamespace).
+  - id: AVD-KSV-0110
+    statement: Namespace is set by the operator at apply time.
+  # Untrusted registry: the images are the official upstream docker.io/nats,
+  # docker.io/natsio and docker.io/meshery artifacts, pinned by tag; the project
+  # has no private registry mirror to point at.
+  - id: AVD-KSV-0125
+    statement: Official upstream images pinned by tag; no private mirror exists.
+  # "Manage all resources" on MeshSync's ClusterRole: by design, and read-only.
+  # The role grants get/list/watch on */* and no other verb. MeshSync watches an
+  # open-ended set of kinds - its watch-list is user-editable and it starts an
+  # informer for every CRD it discovers at runtime - so no enumerated list can
+  # cover it (docs/architecture.md, "MeshSync identity and RBAC"). Scoped to the
+  # files that carry this one role; the operator's own role stays wildcard-free,
+  # which TestRenderedInstallManifestWiresMeshSyncServiceAccount enforces.
+  - id: AVD-KSV-0046
+    paths:
+      - config/rbac/meshsync_workload_role.yaml
+      - config/manifests/default.yaml
+      - bundle/manifests/meshery-meshsync-role_rbac.authorization.k8s.io_v1_clusterrole.yaml
+    statement: MeshSync's read-only (get/list/watch) role must cover CRDs discovered at runtime.

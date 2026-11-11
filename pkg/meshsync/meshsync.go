@@ -82,16 +82,18 @@ type Object interface {
 
 // GetObjects returns the MeshSync-owned objects as a deterministic slice.
 // tokenSecret names the NATS auth Secret in the MeshSync's namespace, or "" when
-// the broker runs without token auth.
-func GetObjects(m *mesheryv1alpha1.MeshSync, tokenSecret string) []Object {
-	return []Object{GetServerObject(m, tokenSecret)}
+// the broker runs without token auth. opts are passed to GetServerObject.
+func GetObjects(m *mesheryv1alpha1.MeshSync, tokenSecret string, opts ...ServerOption) []Object {
+	return []Object{GetServerObject(m, tokenSecret, opts...)}
 }
 
 // GetServerObject builds the MeshSync Deployment for the given CR, injecting the
 // broker URL by env name (not position) and normalising it to a nats:// scheme
 // (WS-3 §4.3 #18). tokenSecret names the NATS auth Secret in the MeshSync's
-// namespace ("" when the broker runs without token auth).
-func GetServerObject(m *mesheryv1alpha1.MeshSync, tokenSecret string) Object {
+// namespace ("" when the broker runs without token auth). opts apply
+// operator-level settings that do not come from the CR, such as the pod
+// ServiceAccount (WithServiceAccountName).
+func GetServerObject(m *mesheryv1alpha1.MeshSync, tokenSecret string, opts ...ServerOption) Object {
 	obj := &v1.Deployment{}
 	Deployment.DeepCopyInto(obj)
 	obj.Namespace = m.Namespace
@@ -103,6 +105,9 @@ func GetServerObject(m *mesheryv1alpha1.MeshSync, tokenSecret string) Object {
 		applyVersion(&obj.Spec.Template.Spec.Containers[0], version)
 		applyProbes(&obj.Spec.Template.Spec.Containers[0], version)
 		setBrokerURL(&obj.Spec.Template.Spec.Containers[0], m.Status.PublishingTo, tokenSecret)
+	}
+	for _, opt := range opts {
+		opt(obj)
 	}
 	return obj
 }
@@ -287,7 +292,11 @@ func ensureNatsScheme(raw string) string {
 }
 
 // CheckHealth reports whether the MeshSync Deployment has reached its desired
-// ready replica count (ReadyReplicas is the authoritative signal — WS-3 §4.3 #17).
+// ready replica count (ReadyReplicas is the authoritative signal - WS-3 §4.3 #17).
+// When the Deployment reports ReplicaFailure (its pods cannot even be created,
+// e.g. the configured ServiceAccount does not exist), that reason is carried
+// into the error, and from there into the MeshSync Ready condition, so the cause
+// is visible without inspecting ReplicaSet events.
 func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, c client.Client) error {
 	obj := &v1.Deployment{}
 	if err := c.Get(ctx, types.NamespacedName{Name: m.Name, Namespace: m.Namespace}, obj); err != nil {
@@ -296,7 +305,13 @@ func CheckHealth(ctx context.Context, m *mesheryv1alpha1.MeshSync, c client.Clie
 
 	desired := desiredReplicas(m)
 	if obj.Status.ReadyReplicas != desired {
-		return ErrMeshsyncReplicasNotReady(fmt.Sprintf("%d of %d replicas ready", obj.Status.ReadyReplicas, desired))
+		reason := fmt.Sprintf("%d of %d replicas ready", obj.Status.ReadyReplicas, desired)
+		for _, condition := range obj.Status.Conditions {
+			if condition.Type == v1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue && condition.Message != "" {
+				reason += ": " + condition.Message
+			}
+		}
+		return ErrMeshsyncReplicasNotReady(reason)
 	}
 	return nil
 }

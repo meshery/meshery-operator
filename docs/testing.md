@@ -8,7 +8,10 @@ release-time scripts in `hack/` are covered separately - see
 ## 1. Unit (fast, no cluster)
 
 Table tests for the resource builders (`pkg/broker`, `pkg/meshsync`) and pure
-helpers. No control plane required.
+helpers. No control plane required. `pkg/meshsync` also checks the rendered
+install manifest (`config/manifests/default.yaml`) against the MeshSync
+ServiceAccount contract: the env var, ServiceAccount, read-only ClusterRole and
+binding must agree, and the operator's role must stay wildcard-free.
 
 ```bash
 go test ./pkg/...
@@ -47,7 +50,10 @@ failure/condition recovery.
 [kind](https://kind.sigs.k8s.io) cluster, deploys the operator via
 `config/default`, applies the `Broker`/`MeshSync` samples, and asserts that the
 broker StatefulSet and meshsync Deployment become ready and that the Broker CR
-`status.endpoint` is populated.
+`status.endpoint` is populated. It also checks that MeshSync runs as
+`meshery-meshsync`, can read cluster-scoped kinds and CRDs but write nothing
+(`kubectl auth can-i --as`), that the operator's ServiceAccount gained no reads,
+and that MeshSync logged no `forbidden` errors.
 
 ```bash
 make integration-tests          # full cycle: setup, assert, cleanup

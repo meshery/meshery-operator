@@ -788,6 +788,15 @@ kind: ServiceAccount
 metadata:
   labels:
     app: meshery
+    component: meshsync
+  name: meshery-meshsync
+  namespace: meshery
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: meshery
     component: operator
   name: meshery-operator
   namespace: meshery
@@ -829,6 +838,23 @@ rules:
   verbs:
   - create
   - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: meshery
+    component: meshsync
+  name: meshery-meshsync-role
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -928,6 +954,22 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  labels:
+    app: meshery
+    component: meshsync
+  name: meshery-meshsync-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: meshery-meshsync-role
+subjects:
+- kind: ServiceAccount
+  name: meshery-meshsync
+  namespace: meshery
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
   name: meshery-operator-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -978,6 +1020,9 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
+        env:
+        - name: MESHSYNC_SERVICE_ACCOUNT
+          value: meshery-meshsync
         image: meshery/meshery-operator:1.0.6
         imagePullPolicy: IfNotPresent
         livenessProbe:

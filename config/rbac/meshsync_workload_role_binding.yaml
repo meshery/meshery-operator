@@ -1,0 +1,19 @@
+# Binds the read-only MeshSync role to the MeshSync ServiceAccount (rendered as
+# meshery-meshsync-rolebinding -> meshery-meshsync-role -> meshery/meshery-meshsync).
+# The subject is the literal, unprefixed ServiceAccount name from
+# config/manager/meshsync_service_account.yaml, like the operator's binding.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: meshsync-rolebinding
+  labels:
+    app: meshery
+    component: meshsync
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: meshsync-role
+subjects:
+- kind: ServiceAccount
+  name: meshery-meshsync
+  namespace: meshery

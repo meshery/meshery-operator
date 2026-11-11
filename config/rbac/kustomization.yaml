@@ -5,3 +5,8 @@ resources:
 - role_binding.yaml
 - leader_election_role.yaml
 - leader_election_role_binding.yaml
+# Read-only cluster access for the MeshSync workload's own ServiceAccount
+# (config/manager/meshsync_service_account.yaml), kept apart from the
+# operator's least-privilege role.
+- meshsync_workload_role.yaml
+- meshsync_workload_role_binding.yaml

@@ -31,6 +31,9 @@ jobs:
           output: trivy-fs.sarif
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          # Path-scoped, justified exclusions; Trivy reads only a plain
+          # .trivyignore by default, so the YAML file is passed explicitly.
+          trivyignores: .trivyignore.yaml
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         if: always()

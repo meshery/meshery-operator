@@ -47,6 +47,12 @@ func TestAPIs(t *testing.T) {
 	RunSpecs(t, "Controller Suite")
 }
 
+// testMeshSyncServiceAccount is the MeshSync ServiceAccount the suite's
+// reconciler is configured with, as main.go does from MESHSYNC_SERVICE_ACCOUNT.
+// It deliberately differs from both the legacy default and the shipped value so
+// a spec can tell the configured name was applied.
+const testMeshSyncServiceAccount = "meshsync-under-test"
+
 var (
 	k8sClient client.Client
 	testEnv   *envtest.Environment
@@ -132,11 +138,12 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	Expect(err).ToNot(HaveOccurred())
 
 	meshSyncReconciler := &MeshSyncReconciler{
-		Client:     mgr.GetClient(),
-		KubeConfig: cfg,
-		Clientset:  clientSet,
-		Log:        ctrl.Log.WithName("controllers").WithName("MeshSync"),
-		Scheme:     mgr.GetScheme(),
+		Client:             mgr.GetClient(),
+		KubeConfig:         cfg,
+		Clientset:          clientSet,
+		Log:                ctrl.Log.WithName("controllers").WithName("MeshSync"),
+		Scheme:             mgr.GetScheme(),
+		ServiceAccountName: testMeshSyncServiceAccount,
 	}
 
 	err = meshSyncReconciler.SetupWithManager(mgr)

@@ -50,6 +50,11 @@ type MeshSyncReconciler struct {
 	Clientset  *kubernetes.Clientset
 	Scheme     *runtime.Scheme
 	Log        logr.Logger
+	// ServiceAccountName is the ServiceAccount MeshSync pods run under, resolved
+	// once at startup from MESHSYNC_SERVICE_ACCOUNT
+	// (meshsyncpackage.ResolveServiceAccountName). Empty keeps the builder's
+	// legacy default, the operator's own ServiceAccount.
+	ServiceAccountName string
 }
 
 const (
@@ -59,6 +64,15 @@ const (
 	// meshsyncFieldManager is the stable Server-Side Apply field manager for the
 	// MeshSync Deployment.
 	meshsyncFieldManager = "meshery-operator-meshsync"
+	// meshsyncReadyCondition is the condition Meshery Server and users read for
+	// MeshSync health. Failures set it False with a reason and the error, the
+	// same contract the Broker controller follows.
+	meshsyncReadyCondition = "Ready"
+	// legacyFailedCondition was written by earlier releases with status False
+	// and a failure message, which read as "not failed" while describing a
+	// failure. Failures are now reported on Ready; any leftover Failed
+	// condition is dropped on the next status write.
+	legacyFailedCondition = "Failed"
 )
 
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs,verbs=get;list;watch;create;update;patch;delete
@@ -183,7 +197,7 @@ func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr
 	}
 
 	// Update status to Ready
-	if err := r.updateStatusCondition(ctx, baseResource, "Ready", v1.ConditionTrue, "ReconciliationSuccessful", "meshsync reconciled successfully"); err != nil {
+	if err := r.updateStatusCondition(ctx, baseResource, meshsyncReadyCondition, v1.ConditionTrue, "ReconciliationSuccessful", "meshsync reconciled successfully"); err != nil {
 		log.Error(err, "Failed to update meshsync status to Ready")
 	}
 
@@ -194,7 +208,7 @@ func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr
 func (r *MeshSyncReconciler) deployMeshsyncResources(ctx context.Context, log logr.Logger, baseResource *mesheryv1alpha1.MeshSync) (ctrl.Result, error) {
 	if err := r.reconcileMeshsync(ctx, baseResource); err != nil {
 		log.Error(err, "Meshsync reconciliation failed")
-		_ = r.updateStatusCondition(ctx, baseResource, "Failed", v1.ConditionFalse, "ReconciliationFailed", "Meshsync reconciliation failed")
+		_ = r.updateStatusCondition(ctx, baseResource, meshsyncReadyCondition, v1.ConditionFalse, "ReconciliationFailed", err.Error())
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
@@ -203,7 +217,7 @@ func (r *MeshSyncReconciler) deployMeshsyncResources(ctx context.Context, log lo
 func (r *MeshSyncReconciler) checkMeshsyncHealth(ctx context.Context, baseResource *mesheryv1alpha1.MeshSync) error {
 	if err := meshsyncpackage.CheckHealth(ctx, baseResource, r.Client); err != nil {
 		err = ErrCheckHealth(err)
-		_ = r.updateStatusCondition(ctx, baseResource, "Failed", v1.ConditionFalse, "HealthCheckFailed", "Meshsync health check failed")
+		_ = r.updateStatusCondition(ctx, baseResource, meshsyncReadyCondition, v1.ConditionFalse, "HealthCheckFailed", err.Error())
 		return err
 	}
 	return nil
@@ -314,6 +328,7 @@ func (r *MeshSyncReconciler) Cleanup(ctx context.Context, baseResource *mesheryv
 func (r *MeshSyncReconciler) updateStatusCondition(ctx context.Context, meshsync *mesheryv1alpha1.MeshSync, conditionType string, status v1.ConditionStatus, reason, message string) error {
 	log := r.Log.WithValues("meshsync", meshsync.Name, "namespace", meshsync.Namespace)
 
+	meta.RemoveStatusCondition(&meshsync.Status.Conditions, legacyFailedCondition)
 	meta.SetStatusCondition(&meshsync.Status.Conditions, v1.Condition{
 		Type:               conditionType,
 		Status:             status,
@@ -428,7 +443,7 @@ func (r *MeshSyncReconciler) reconcileMeshsync(ctx context.Context, baseResource
 	if err != nil {
 		return ErrReconcileMeshsync(err)
 	}
-	desired := meshsyncpackage.GetServerObject(baseResource, tokenSecret)
+	desired := meshsyncpackage.GetServerObject(baseResource, tokenSecret, meshsyncpackage.WithServiceAccountName(r.ServiceAccountName))
 	desired.SetNamespace(baseResource.Namespace)
 	if err := util.SetControllerReference(baseResource, desired, r.Scheme); err != nil {
 		return ErrReconcileMeshsync(err)
