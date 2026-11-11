@@ -23,6 +23,7 @@ import (
 	v1alpha2 "github.com/meshery/meshery-operator/api/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -117,10 +118,27 @@ func TestMeshSyncConversionRoundTrip(t *testing.T) {
 // both kinds.
 func TestBrokerConversionObjectMetaIsolation(t *testing.T) {
 	t.Run("Broker ConvertTo", func(t *testing.T) {
-		orig := &Broker{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{metadataEnvKey: productionEnvValue}, Annotations: map[string]string{"key": "original"}}}
+		orig := &Broker{ObjectMeta: metav1.ObjectMeta{
+			Name:            testBrokerName,
+			Labels:          map[string]string{metadataEnvKey: productionEnvValue},
+			Annotations:     map[string]string{"key": "original"},
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: "v1", Kind: "Test", Name: "owner", UID: types.UID("owner-uid")}},
+			Finalizers:      []string{"meshery.io/test-finalizer"},
+		}}
 		hub := &v1alpha2.Broker{}
 		if err := orig.ConvertTo(hub); err != nil {
 			t.Fatalf("ConvertTo failed: %v", err)
+		}
+		if !reflect.DeepEqual(hub.OwnerReferences, orig.OwnerReferences) || !reflect.DeepEqual(hub.Finalizers, orig.Finalizers) {
+			t.Fatalf("ObjectMeta slices were not copied: ownerReferences=%v finalizers=%v", hub.OwnerReferences, hub.Finalizers)
+		}
+		hub.OwnerReferences[0].Name = "changed"
+		hub.Finalizers[0] = "changed"
+		if orig.OwnerReferences[0].Name != "owner" || orig.Finalizers[0] != "meshery.io/test-finalizer" {
+			t.Errorf("Leaked ObjectMeta slice mutation: ownerReferences=%v finalizers=%v", orig.OwnerReferences, orig.Finalizers)
+		}
+		if hub.Annotations["key"] != "original" {
+			t.Fatalf("Converted annotation = %q, want original", hub.Annotations["key"])
 		}
 		hub.Annotations["key"] = "changed"
 		if orig.Annotations["key"] != "original" {
@@ -133,10 +151,27 @@ func TestBrokerConversionObjectMetaIsolation(t *testing.T) {
 	})
 
 	t.Run("Broker ConvertFrom", func(t *testing.T) {
-		hub := &v1alpha2.Broker{ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Labels: map[string]string{metadataEnvKey: productionEnvValue}, Annotations: map[string]string{"key": "original"}}}
+		hub := &v1alpha2.Broker{ObjectMeta: metav1.ObjectMeta{
+			Name:            testBrokerName,
+			Labels:          map[string]string{metadataEnvKey: productionEnvValue},
+			Annotations:     map[string]string{"key": "original"},
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: "v1", Kind: "Test", Name: "owner", UID: types.UID("owner-uid")}},
+			Finalizers:      []string{"meshery.io/test-finalizer"},
+		}}
 		spoke := &Broker{}
 		if err := spoke.ConvertFrom(hub); err != nil {
 			t.Fatalf("ConvertFrom failed: %v", err)
+		}
+		if !reflect.DeepEqual(spoke.OwnerReferences, hub.OwnerReferences) || !reflect.DeepEqual(spoke.Finalizers, hub.Finalizers) {
+			t.Fatalf("ObjectMeta slices were not copied: ownerReferences=%v finalizers=%v", spoke.OwnerReferences, spoke.Finalizers)
+		}
+		spoke.OwnerReferences[0].Name = "changed"
+		spoke.Finalizers[0] = "changed"
+		if hub.OwnerReferences[0].Name != "owner" || hub.Finalizers[0] != "meshery.io/test-finalizer" {
+			t.Errorf("Leaked ObjectMeta slice mutation: ownerReferences=%v finalizers=%v", hub.OwnerReferences, hub.Finalizers)
+		}
+		if spoke.Annotations["key"] != "original" {
+			t.Fatalf("Converted annotation = %q, want original", spoke.Annotations["key"])
 		}
 		spoke.Annotations["key"] = "changed"
 		if hub.Annotations["key"] != "original" {
@@ -154,6 +189,9 @@ func TestBrokerConversionObjectMetaIsolation(t *testing.T) {
 		if err := orig.ConvertTo(hub); err != nil {
 			t.Fatalf("ConvertTo failed: %v", err)
 		}
+		if hub.Annotations["key"] != "original" {
+			t.Fatalf("Converted annotation = %q, want original", hub.Annotations["key"])
+		}
 		hub.Annotations["key"] = "changed"
 		if orig.Annotations["key"] != "original" {
 			t.Errorf("Leaked annotation mutation: got %q", orig.Annotations["key"])
@@ -169,6 +207,9 @@ func TestBrokerConversionObjectMetaIsolation(t *testing.T) {
 		spoke := &MeshSync{}
 		if err := spoke.ConvertFrom(hub); err != nil {
 			t.Fatalf("ConvertFrom failed: %v", err)
+		}
+		if spoke.Annotations["key"] != "original" {
+			t.Fatalf("Converted annotation = %q, want original", spoke.Annotations["key"])
 		}
 		spoke.Annotations["key"] = "changed"
 		if hub.Annotations["key"] != "original" {
