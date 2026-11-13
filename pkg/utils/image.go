@@ -109,10 +109,10 @@ func BuildImage(customRepo, version, defaultRepo, defaultTag string) (string, co
 
 	if v != "" {
 		tag := NormalizeImageTag(v)
-		if hasDigestInRepo {
+		if atIdx := strings.Index(repo, "@"); atIdx != -1 {
 			// A digest does not combine with a tag: drop "@sha256:..."
 			// before pinning the explicit version.
-			repo = repo[:strings.Index(repo, "@")]
+			repo = repo[:atIdx]
 		}
 		// If the repository also carried an embedded tag (including tag+digest references
 		// like "repo:tag@sha256:..."), strip the tag before appending the explicit version

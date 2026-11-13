@@ -160,6 +160,7 @@ func TestBrokerImagePinning(t *testing.T) {
 }
 
 func TestBrokerImageRepository(t *testing.T) {
+	const customNats = "myregistry.corp.internal/nats"
 	cases := []struct {
 		name       string
 		repository string
@@ -169,16 +170,16 @@ func TestBrokerImageRepository(t *testing.T) {
 	}{
 		{
 			name:       "custom repo with default chart version",
-			repository: "myregistry.corp.internal/nats",
+			repository: customNats,
 			version:    "",
-			wantImage:  "myregistry.corp.internal/nats:2.14.2-alpine",
+			wantImage:  customNats + ":2.14.2-alpine",
 			wantPolicy: corev1.PullIfNotPresent,
 		},
 		{
 			name:       "custom repo with explicit version",
-			repository: "myregistry.corp.internal/nats",
+			repository: customNats,
 			version:    "2.10.22-alpine",
-			wantImage:  "myregistry.corp.internal/nats:2.10.22-alpine",
+			wantImage:  customNats + ":2.10.22-alpine",
 			wantPolicy: corev1.PullIfNotPresent,
 		},
 		{
@@ -190,9 +191,9 @@ func TestBrokerImageRepository(t *testing.T) {
 		},
 		{
 			name:       "custom repo with moving tag",
-			repository: "myregistry.corp.internal/nats",
+			repository: customNats,
 			version:    "latest",
-			wantImage:  "myregistry.corp.internal/nats:latest",
+			wantImage:  customNats + ":latest",
 			wantPolicy: corev1.PullAlways,
 		},
 	}
