@@ -50,7 +50,11 @@ a code and message are available, but it is deprecated - prefer the full
 - **Surface errors to status, not just logs.** When reconciliation fails, set a
   `Condition` (and where relevant the `PublishingTo`/`Endpoint` status) carrying
   the structured error, so Meshery Server can observe it - do not only
-  `log.Error`/print to stdout.
+  `log.Error`/print to stdout. Report a failure as `Ready` with `status: False`,
+  a `reason` (`ReconciliationFailed`, `HealthCheckFailed`, ...) and the error
+  text as `message`, as both controllers do. Never use a condition whose `False`
+  reads as success: MeshSync used to write `Failed=False` with a failure message,
+  and the next status write now drops that leftover condition.
 - **Allocate codes from `helpers/component_info.json`.** Bump `next_error_code`
   when you add one; do not reuse or guess codes.
 - **Carry, don't swallow.** Always pass the underlying `err` into the

@@ -16,6 +16,8 @@ limitations under the License.
 package controllers
 
 import (
+	"fmt"
+
 	meshkiterrors "github.com/meshery/meshkit/errors"
 )
 
@@ -35,6 +37,7 @@ const (
 	ErrGetEndpointCode       = "1011"
 	ErrUpdateResourceCode    = "1012"
 	ErrMarshalCode           = "1017"
+	ErrCleanupBrokerCode     = "1022"
 )
 
 // ErrGetMeshsync is returned when the MeshSync custom resource cannot be fetched.
@@ -152,4 +155,13 @@ func ErrMarshal(err error) error {
 		[]string{err.Error()},
 		[]string{"The custom resource could not be serialized for a status patch"},
 		[]string{"This indicates a defect in the status builder; please report it with the operator logs"})
+}
+
+// ErrCleanupBroker is returned when obsolete Broker children cannot be pruned.
+func ErrCleanupBroker(namespace, name string, err error) error {
+	return meshkiterrors.New(ErrCleanupBrokerCode, meshkiterrors.Alert,
+		[]string{"Unable to clean up obsolete Broker resources"},
+		[]string{fmt.Sprintf("Broker %s/%s: %s", namespace, name, err.Error())},
+		[]string{"The operator could not inspect or delete obsolete broker workloads and services during an upgrade"},
+		[]string{"Inspect the Broker Cleanup condition and operator logs, and confirm RBAC permits listing MeshSync deployments and deleting broker StatefulSets and Services"})
 }

@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -63,6 +64,9 @@ var (
 
 	valtrue bool = true
 
+	maxSurge0       = intstr.FromInt(0)
+	maxUnavailable1 = intstr.FromInt(1)
+
 	MesheryLabel = map[string]string{
 		appLabelKey: mesheryName,
 	}
@@ -93,6 +97,17 @@ var (
 			Selector: &metav1.LabelSelector{
 				MatchLabels: MeshSyncLabel,
 			},
+			// RollingUpdate with maxSurge: 0 and maxUnavailable: 1 so the old
+			// pod releases hostPort 11000 before a replacement is created,
+			// preventing the rollout deadlock in #933. Brief unavailability
+			// during upgrades is the intended tradeoff.
+			Strategy: appsv1.DeploymentStrategy{
+				Type: appsv1.RollingUpdateDeploymentStrategyType,
+				RollingUpdate: &appsv1.RollingUpdateDeployment{
+					MaxSurge:       &maxSurge0,
+					MaxUnavailable: &maxUnavailable1,
+				},
+			},
 			Template: PodTemplate,
 		},
 	}
@@ -104,7 +119,9 @@ var (
 			Annotations: MesheryAnnotation,
 		},
 		Spec: corev1.PodSpec{
-			ServiceAccountName:            "meshery-operator",
+			// The operator applies the ServiceAccount resolved from
+			// MESHSYNC_SERVICE_ACCOUNT over this default; see serviceaccount.go.
+			ServiceAccountName:            LegacyServiceAccountName,
 			ShareProcessNamespace:         &valtrue,
 			TerminationGracePeriodSeconds: &val60,
 			Containers: []corev1.Container{

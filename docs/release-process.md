@@ -274,6 +274,18 @@ master naming an image that does not exist yet.
   Sealed releases reject asset uploads forever, so assets must land on the
   draft (`release-drafter.yml`), and any post-publish upload must be
   best-effort.
+- **MeshSync ServiceAccount contract.** The meshery-operator chart must create
+  the ServiceAccount `meshery-meshsync`, the ClusterRole `meshery-meshsync-role`
+  (read-only, mirroring `config/rbac/meshsync_workload_role.yaml`) and the
+  ClusterRoleBinding `meshery-meshsync-rolebinding` *in the same change* that
+  sets `MESHSYNC_SERVICE_ACCOUNT=meshery-meshsync` on the operator Deployment.
+  If the env var ships without the ServiceAccount, MeshSync pods cannot be
+  created. The chart must not ship the env var before an operator release that
+  honors it: older operators ignore the variable, so the chart change would look
+  done while MeshSync still runs under `meshery-operator`. An operator release
+  without the chart change keeps the legacy default. The chart's operator role
+  (`meshery-operator-role`) stays a verbatim mirror of `config/rbac/role.yaml`;
+  MeshSync's reads never belong in it.
 - **Storage-version migration debt**: clusters upgraded from `v1alpha1`
   storage keep `status.storedVersions: [v1alpha1, v1alpha2]`. Until a
   migration (rewrite stored objects, prune `storedVersions`) runs, `v1alpha1`

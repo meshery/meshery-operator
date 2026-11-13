@@ -70,6 +70,14 @@ spec:
         - --enable-leader-election
         - --metrics-addr=:8443
         - --health-probe-bind-address=:8081
+        env:
+        # MeshSync pods run under their own read-only ServiceAccount
+        # (meshsync_service_account.yaml, bound by
+        # config/rbac/meshsync_workload_role*.yaml) instead of this operator's
+        # least-privilege one. Unset, the operator falls back to its own
+        # ServiceAccount (for charts that predate the dedicated one).
+        - name: MESHSYNC_SERVICE_ACCOUNT
+          value: meshery-meshsync
         livenessProbe:
           httpGet:
             path: /healthz

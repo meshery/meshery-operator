@@ -17,6 +17,8 @@ limitations under the License.
 package meshsync
 
 import (
+	"fmt"
+
 	meshkiterrors "github.com/meshery/meshkit/errors"
 )
 
@@ -29,6 +31,8 @@ const (
 	ErrMeshsyncReplicasNotReadyCode = "1019"
 	ErrMeshsyncConditionFalseCode   = "1020"
 	ErrGettingMeshsyncEndpointCode  = "1021"
+	// 1022-1023 belong to the controllers registry.
+	ErrInvalidServiceAccountNameCode = "1024"
 )
 
 // ErrGettingMeshsyncResource is returned when a MeshSync-owned resource cannot be fetched.
@@ -66,4 +70,14 @@ func ErrMeshsyncConditionFalse(reason string) error {
 		[]string{reason},
 		[]string{"A required status condition on the MeshSync workload reports False"},
 		[]string{"Inspect the MeshSync status conditions for the reported reason"})
+}
+
+// ErrInvalidServiceAccountName is returned when MESHSYNC_SERVICE_ACCOUNT on the
+// operator Deployment is not a valid ServiceAccount name.
+func ErrInvalidServiceAccountName(value, reason string) error {
+	return meshkiterrors.New(ErrInvalidServiceAccountNameCode, meshkiterrors.Alert,
+		[]string{"Invalid MeshSync ServiceAccount name"},
+		[]string{fmt.Sprintf("MESHSYNC_SERVICE_ACCOUNT=%q: %s", value, reason)},
+		[]string{"The MESHSYNC_SERVICE_ACCOUNT environment variable on the meshery-operator Deployment is not a valid Kubernetes ServiceAccount name (a DNS-1123 subdomain)"},
+		[]string{"Set MESHSYNC_SERVICE_ACCOUNT to the ServiceAccount MeshSync should run under (meshery-meshsync for the meshery-operator chart and config/default), or unset it to use the operator's own ServiceAccount"})
 }

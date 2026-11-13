@@ -23,6 +23,7 @@ import (
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	mesheryv1alpha2 "github.com/meshery/meshery-operator/api/v1alpha2"
 	"github.com/meshery/meshery-operator/controllers"
+	meshsyncpackage "github.com/meshery/meshery-operator/pkg/meshsync"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -101,15 +102,27 @@ func main() {
 		os.Exit(1)
 	}
 
+	// MeshSync runs under its own read-only ServiceAccount when the deployment
+	// names one; unset keeps the legacy default so older charts, which do not
+	// create that ServiceAccount, keep scheduling MeshSync pods.
+	meshsyncServiceAccount, err := meshsyncpackage.ResolveServiceAccountName(os.Getenv(meshsyncpackage.ServiceAccountEnv))
+	if err != nil {
+		setupLog.Error(err, "invalid MeshSync ServiceAccount configuration", "env", meshsyncpackage.ServiceAccountEnv)
+		os.Exit(1)
+	}
+	setupLog.Info("MeshSync pods run under ServiceAccount", "serviceAccountName", meshsyncServiceAccount, "env", meshsyncpackage.ServiceAccountEnv)
+
 	mReconciler := &controllers.MeshSyncReconciler{
-		KubeConfig: mgr.GetConfig(),
-		Client:     mgr.GetClient(),
-		Clientset:  clientset,
-		Log:        ctrl.Log.WithName("MeshSync"),
-		Scheme:     mgr.GetScheme(),
+		KubeConfig:         mgr.GetConfig(),
+		Client:             mgr.GetClient(),
+		Clientset:          clientset,
+		Log:                ctrl.Log.WithName("MeshSync"),
+		Scheme:             mgr.GetScheme(),
+		ServiceAccountName: meshsyncServiceAccount,
 	}
 
 	bReconciler := &controllers.BrokerReconciler{
+		Recorder:   mgr.GetEventRecorderFor("meshery-operator-broker"),
 		KubeConfig: mgr.GetConfig(),
 		Client:     mgr.GetClient(),
 		Clientset:  clientset,

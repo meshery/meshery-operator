@@ -111,3 +111,7 @@ func TestErrorCodesUnique(t *testing.T) {
 		seen[c] = true
 	}
 }
+
+func TestErrCleanupBroker(t *testing.T) {
+	assertMeshkitError(t, ErrCleanupBroker("namespace", "broker", errors.New("boom")), ErrCleanupBrokerCode, "namespace/broker: boom")
+}

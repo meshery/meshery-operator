@@ -103,8 +103,10 @@ spec:
                   loadBalancerSourceRanges:
                     description: |-
                       LoadBalancerSourceRanges restricts client access to the given CIDRs
-                      (LoadBalancer type only).
+                      (LoadBalancer type only). Each entry must be an IPv4 or IPv6 CIDR, such as
+                      203.0.113.0/24 or 2001:db8::/32.
                     items:
+                      pattern: ^(((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])/(3[0-2]|[12][0-9]|[0-9])|(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}|:((:[0-9a-fA-F]{1,4}){1,7}|:)|(([0-9a-fA-F]{1,4}:){6}|([0-9a-fA-F]{1,4}:){1,5}:|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1}:|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,2}:|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,3}:|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,4}:|::([0-9a-fA-F]{1,4}:){0,5})((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))/(12[0-8]|1[01][0-9]|[1-9][0-9]|[0-9]))$
                       type: string
                     type: array
                   type:
@@ -282,16 +284,18 @@ spec:
                   loadBalancerSourceRanges:
                     description: |-
                       LoadBalancerSourceRanges restricts client access to the given CIDRs
-                      (LoadBalancer type only).
+                      (LoadBalancer type only). Each entry must be an IPv4 or IPv6 CIDR, such as
+                      203.0.113.0/24 or 2001:db8::/32.
                     items:
+                      pattern: ^(((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])/(3[0-2]|[12][0-9]|[0-9])|(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}|:((:[0-9a-fA-F]{1,4}){1,7}|:)|(([0-9a-fA-F]{1,4}:){6}|([0-9a-fA-F]{1,4}:){1,5}:|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1}:|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,2}:|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,3}:|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,4}:|::([0-9a-fA-F]{1,4}:){0,5})((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))/(12[0-8]|1[01][0-9]|[1-9][0-9]|[0-9]))$
                       type: string
                     type: array
                   type:
                     description: |-
                       Type is the Kubernetes Service type for client access. When empty the
-                      operator keeps its historical default (LoadBalancer). Set ClusterIP on
-                      clusters without a cloud load-balancer (kind, minikube, bare-metal), or
-                      NodePort to expose the broker on node IPs.
+                      broker stays cluster-internal (ClusterIP). Set LoadBalancer to acquire a
+                      cloud load-balancer address, or NodePort to expose the broker on node
+                      IPs.
                     enum:
                     - ClusterIP
                     - NodePort
@@ -784,6 +788,15 @@ kind: ServiceAccount
 metadata:
   labels:
     app: meshery
+    component: meshsync
+  name: meshery-meshsync
+  namespace: meshery
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: meshery
     component: operator
   name: meshery-operator
   namespace: meshery
@@ -829,6 +842,23 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  labels:
+    app: meshery
+    component: meshsync
+  name: meshery-meshsync-role
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
   name: meshery-operator-role
 rules:
 - apiGroups:
@@ -845,6 +875,13 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
 - apiGroups:
   - apps
   resources:
@@ -917,6 +954,22 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  labels:
+    app: meshery
+    component: meshsync
+  name: meshery-meshsync-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: meshery-meshsync-role
+subjects:
+- kind: ServiceAccount
+  name: meshery-meshsync
+  namespace: meshery
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
   name: meshery-operator-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -967,6 +1020,9 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
+        env:
+        - name: MESHSYNC_SERVICE_ACCOUNT
+          value: meshery-meshsync
         image: meshery/meshery-operator:1.0.6
         imagePullPolicy: IfNotPresent
         livenessProbe:

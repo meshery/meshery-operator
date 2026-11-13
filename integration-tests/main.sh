@@ -284,6 +284,82 @@ assert_meshsync_broker_connectivity() {
   exit 1
 }
 
+# MeshSync runs under its own read-only ServiceAccount (MESHSYNC_SERVICE_ACCOUNT
+# on the operator; config/manager/meshsync_service_account.yaml bound to
+# config/rbac/meshsync_workload_role.yaml), not the operator's least-privilege
+# one, which cannot read most of what MeshSync watches. Assert the identity, the
+# RBAC boundary in both directions, and that the API server is not refusing
+# MeshSync - the "forbidden" flood this ServiceAccount exists to end.
+assert_meshsync_rbac() {
+  echo "🔍 Asserting MeshSync's ServiceAccount and RBAC boundary..."
+  local ns="$OPERATOR_NAMESPACE"
+  local meshsync_sa="system:serviceaccount:$ns:meshery-meshsync"
+  local operator_sa="system:serviceaccount:$ns:meshery-operator"
+
+  local sa
+  sa=$(kubectl --namespace "$ns" get deployment/meshery-meshsync -o jsonpath='{.spec.template.spec.serviceAccountName}')
+  if [ "$sa" != "meshery-meshsync" ]; then
+    echo "❌ MeshSync runs under ServiceAccount '$sa', want meshery-meshsync"
+    exit 1
+  fi
+
+  # Reads MeshSync needs, including cluster-scoped kinds and CRDs (the operator
+  # role grants none of these), and pods/log for log streaming.
+  local allowed=(
+    "list nodes"
+    "watch persistentvolumes"
+    "list storageclasses.storage.k8s.io"
+    "watch customresourcedefinitions.apiextensions.k8s.io"
+    "list clusterroles.rbac.authorization.k8s.io"
+    "get pods --subresource=log"
+  )
+  # Read-only: no writes anywhere, and no interactive exec unless opted in.
+  local denied=(
+    "create pods"
+    "delete deployments.apps"
+    "patch meshsyncs.meshery.io"
+    "create pods --subresource=exec"
+  )
+  local check
+  for check in "${allowed[@]}"; do
+    # shellcheck disable=SC2086 # each check is a verb + resource (+ flag) word list
+    if ! kubectl auth can-i $check --all-namespaces --as="$meshsync_sa" --quiet; then
+      echo "❌ meshery-meshsync must be allowed to: $check"
+      exit 1
+    fi
+  done
+  for check in "${denied[@]}"; do
+    # shellcheck disable=SC2086
+    if kubectl auth can-i $check --all-namespaces --as="$meshsync_sa" --quiet; then
+      echo "❌ meshery-meshsync must NOT be allowed to: $check"
+      exit 1
+    fi
+  done
+  # The operator keeps its least-privilege role: MeshSync's reads did not leak
+  # into it.
+  if kubectl auth can-i list nodes --as="$operator_sa" --quiet; then
+    echo "❌ meshery-operator must stay least-privilege, but it can list nodes"
+    exit 1
+  fi
+
+  # Capture the logs first and require that read to succeed: a failed
+  # `kubectl logs` piped straight into grep would leave `forbidden` at 0
+  # and pass the assertion without reading any logs.
+  local logs
+  if ! logs=$(kubectl --namespace "$ns" logs deployment/meshery-meshsync --tail=-1); then
+    echo "❌ could not read MeshSync logs"
+    exit 1
+  fi
+  local forbidden
+  forbidden=$(printf '%s\n' "$logs" | grep -ci 'forbidden' || true)
+  if [ "${forbidden:-0}" -gt 0 ]; then
+    echo "❌ MeshSync logged $forbidden 'forbidden' lines:"
+    printf '%s\n' "$logs" | grep -i 'forbidden' | head -10
+    exit 1
+  fi
+  echo "✅ MeshSync runs as meshery-meshsync with read-only cluster access and no forbidden errors"
+}
+
 assert_resources() {
   echo "🔍 Asserting operator functionality..."
 
@@ -296,11 +372,78 @@ assert_resources() {
   assert_resources_cr_broker_status
   assert_meshsync_broker_url
   assert_meshsync_broker_connectivity
+  assert_meshsync_rbac
   assert_conversion_webhook
   assert_networking_reconfiguration
+  if [ "${BROKER_UPGRADE_FIXTURE:-0}" = "1" ]; then
+    assert_legacy_broker_cleanup
+  fi
 
   echo "✅ All components (operator, meshsync, broker) are deployed and ready!"
   echo "✅ Operator functionality assertion completed successfully!"
+}
+
+# Seed the verified pre-chart naming/ownership, including an obsolete public
+# Service. The replacement must keep working while these children are pruned.
+seed_legacy_broker_resources() {
+  local broker_uid
+  broker_uid=$(kubectl --namespace "$OPERATOR_NAMESPACE" get broker meshery-broker -o jsonpath='{.metadata.uid}')
+  kubectl --namespace "$OPERATOR_NAMESPACE" apply -f - <<EOF
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: meshery-broker
+  labels: {app: meshery, component: broker}
+  ownerReferences:
+  - {apiVersion: meshery.io/v1alpha1, kind: Broker, name: meshery-broker, uid: "$broker_uid", controller: true}
+spec:
+  replicas: 1
+  serviceName: meshery-broker
+  selector:
+    matchLabels: {app: meshery, component: broker}
+  template:
+    metadata:
+      labels: {app: meshery, component: broker}
+    spec:
+      containers:
+      - {name: nats, image: "nats:2.8.2-alpine3.15"}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meshery-broker
+  labels: {app: meshery, component: broker}
+  ownerReferences:
+  - {apiVersion: meshery.io/v1alpha1, kind: Broker, name: meshery-broker, uid: "$broker_uid", controller: true}
+spec:
+  type: LoadBalancer
+  selector: {app: meshery, component: broker}
+  ports:
+  - {name: client, port: 4222}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: legacy-broker-preserve
+  labels: {app: meshery, component: broker}
+  ownerReferences:
+  - {apiVersion: meshery.io/v1alpha1, kind: Broker, name: meshery-broker, uid: "$broker_uid", controller: true}
+data: {preserve: "outside the cleanup scope"}
+EOF
+}
+
+assert_legacy_broker_cleanup() {
+  kubectl --namespace "$OPERATOR_NAMESPACE" wait --for=delete --timeout=180s statefulset/meshery-broker service/meshery-broker
+  kubectl --namespace "$OPERATOR_NAMESPACE" get statefulset/meshery-nats service/meshery-nats configmap/legacy-broker-preserve
+  # Recheck connectivity after cleanup, rather than only before deletion.
+  assert_meshsync_broker_connectivity
+  local events
+  events=$(kubectl --namespace "$OPERATOR_NAMESPACE" get events --field-selector reason=ObsoleteBrokerResourceCleanup -o name)
+  if [ -z "$events" ]; then
+    echo "No cleanup event was recorded"
+    exit 1
+  fi
+  echo "Legacy broker resources removed; current broker, consumer and ConfigMap preserved"
 }
 
 setup() {
@@ -491,6 +634,10 @@ meshery/meshsync:$MESHSYNC_DEFAULT"
     echo "Pinning MeshSync CR to spec.version=$MESHSYNC_VERSION..."
     kubectl --namespace "$OPERATOR_NAMESPACE" patch meshsync meshery-meshsync --type=merge \
       -p "{\"spec\":{\"version\":\"$MESHSYNC_VERSION\"}}"
+  fi
+
+  if [ "${BROKER_UPGRADE_FIXTURE:-0}" = "1" ]; then
+    seed_legacy_broker_resources
   fi
 
   echo "Describing operator pod to verify image..."

@@ -8,7 +8,10 @@ release-time scripts in `hack/` are covered separately - see
 ## 1. Unit (fast, no cluster)
 
 Table tests for the resource builders (`pkg/broker`, `pkg/meshsync`) and pure
-helpers. No control plane required.
+helpers. No control plane required. `pkg/meshsync` also checks the rendered
+install manifest (`config/manifests/default.yaml`) against the MeshSync
+ServiceAccount contract: the env var, ServiceAccount, read-only ClusterRole and
+binding must agree, and the operator's role must stay wildcard-free.
 
 ```bash
 go test ./pkg/...
@@ -33,16 +36,28 @@ Because envtest has no kubelet, any test resource you create must still be valid
 to the apiserver. For example, a `StatefulSet`/`Deployment` pod template must
 declare at least one container, or the apiserver rejects it with a `422`.
 
+Controller regression tests also distinguish one-minute migration polling from
+five-second deletion confirmation. Environment tests accept equivalent required
+Secret selectors while rejecting changed endpoints and authentication sources;
+envtest verifies explicit `optional: false` survives an API-server round trip
+and stored reordered/duplicate broker variables are rejected. Retry tests also
+cover readiness dropping after deletion starts, partial deletion and cleanup
+failure/condition recovery.
+
 ## 3. End-to-end (kind)
 
 `integration-tests/main.sh` builds the manager image, loads it into a
 [kind](https://kind.sigs.k8s.io) cluster, deploys the operator via
 `config/default`, applies the `Broker`/`MeshSync` samples, and asserts that the
 broker StatefulSet and meshsync Deployment become ready and that the Broker CR
-`status.endpoint` is populated.
+`status.endpoint` is populated. It also checks that MeshSync runs as
+`meshery-meshsync`, can read cluster-scoped kinds and CRDs but write nothing
+(`kubectl auth can-i --as`), that the operator's ServiceAccount gained no reads,
+and that MeshSync logged no `forbidden` errors.
 
 ```bash
 make integration-tests          # full cycle: setup, assert, cleanup
+BROKER_UPGRADE_FIXTURE=1 make integration-tests  # seed and verify legacy Broker child cleanup
 # or step by step:
 make integration-tests-setup
 make integration-tests-run
@@ -73,6 +88,15 @@ that matters: `BROKER_URL` carries no literal credential (token flows through a
 `secretKeyRef`), and MeshSync holds a **live client connection on the NATS
 server** (checked via the broker's `connz` monitoring endpoint) - deployments
 being Available proves nothing about broker connectivity.
+
+The optional Broker upgrade fixture creates the previous generation's
+StatefulSet and LoadBalancer Service with the sample Broker's controlling owner
+UID and legacy labels. It verifies their deletion, preservation of current
+resources and an owned ConfigMap outside the cleanup scope, the cleanup Event,
+and MeshSync connectivity after cleanup. It exercises legacy child migration,
+not an upgrade of every historical chart/image combination. A kind cluster can
+verify the Service disappears, but cannot demonstrate cloud LoadBalancer
+deprovisioning.
 
 > The current e2e harness is bash-on-kind with a single Service-type path. A
 > richer matrix (ClusterIP/NodePort/LoadBalancer, networking reconfiguration,

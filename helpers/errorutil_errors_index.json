@@ -1,0 +1,396 @@
+{
+  "errors": [
+    {
+      "code": "meshery-operator-1001",
+      "moniker": "ErrGetMeshsyncCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1001",
+      "severity": "alert",
+      "shortDescription": "Unable to get the MeshSync resource",
+      "probableCause": [
+        "The MeshSync custom resource was deleted, or operator RBAC denies get/list/watch on meshsyncs"
+      ],
+      "suggestedRemediation": [
+        "Confirm the MeshSync CR exists and that the operator's ClusterRole grants get/list/watch on meshsyncs.meshery.io"
+      ]
+    },
+    {
+      "code": "meshery-operator-1002",
+      "moniker": "ErrCreateMeshsyncCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1002",
+      "severity": "alert",
+      "shortDescription": "Unable to create the MeshSync workload",
+      "probableCause": [
+        "The MeshSync Deployment or its owned objects could not be created"
+      ],
+      "suggestedRemediation": [
+        "Check the operator RBAC for deployments and inspect the events in the MeshSync namespace"
+      ]
+    },
+    {
+      "code": "meshery-operator-1003",
+      "moniker": "ErrReconcileMeshsyncCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1003",
+      "severity": "alert",
+      "shortDescription": "MeshSync reconciliation failed",
+      "probableCause": [
+        "Broker configuration, workload deployment, or the health check failed for MeshSync"
+      ],
+      "suggestedRemediation": [
+        "Check the MeshSync status conditions and the operator logs for the failing reconcile step"
+      ]
+    },
+    {
+      "code": "meshery-operator-1004",
+      "moniker": "ErrGetBrokerCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1004",
+      "severity": "alert",
+      "shortDescription": "Unable to get the Broker resource",
+      "probableCause": [
+        "The Broker custom resource was deleted, or operator RBAC denies get/list/watch on brokers"
+      ],
+      "suggestedRemediation": [
+        "Confirm the Broker CR exists and that the operator's ClusterRole grants get/list/watch on brokers.meshery.io"
+      ]
+    },
+    {
+      "code": "meshery-operator-1005",
+      "moniker": "ErrCreateBrokerCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1005",
+      "severity": "alert",
+      "shortDescription": "Unable to create the Broker workload",
+      "probableCause": [
+        "The NATS StatefulSet, Service, or ConfigMaps could not be created"
+      ],
+      "suggestedRemediation": [
+        "Check the operator RBAC and inspect the events on the owned objects in the broker namespace"
+      ]
+    },
+    {
+      "code": "meshery-operator-1006",
+      "moniker": "ErrReconcileBrokerCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1006",
+      "severity": "alert",
+      "shortDescription": "Broker reconciliation failed",
+      "probableCause": [
+        "The NATS StatefulSet, Service, or ConfigMaps could not be created or updated"
+      ],
+      "suggestedRemediation": [
+        "Check the operator RBAC and inspect the events on the owned objects in the broker namespace"
+      ]
+    },
+    {
+      "code": "meshery-operator-1007",
+      "moniker": "ErrReconcileCRCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1007",
+      "severity": "alert",
+      "shortDescription": "Custom resource reconciliation failed",
+      "probableCause": [
+        "A reconcile step failed for the custom resource"
+      ],
+      "suggestedRemediation": [
+        "Check the operator logs for the underlying cause; the controller will requeue and retry"
+      ]
+    },
+    {
+      "code": "meshery-operator-1008",
+      "moniker": "ErrDeleteMeshsyncCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1008",
+      "severity": "alert",
+      "shortDescription": "Unable to delete the MeshSync workload",
+      "probableCause": [
+        "Owned MeshSync objects could not be deleted during finalization"
+      ],
+      "suggestedRemediation": [
+        "Inspect the MeshSync finalizers and confirm the operator RBAC grants delete on deployments"
+      ]
+    },
+    {
+      "code": "meshery-operator-1009",
+      "moniker": "ErrDeleteBrokerCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1009",
+      "severity": "alert",
+      "shortDescription": "Unable to delete the Broker workload",
+      "probableCause": [
+        "Owned broker objects could not be deleted during finalization"
+      ],
+      "suggestedRemediation": [
+        "Inspect the Broker finalizers and confirm the operator RBAC grants delete on statefulsets, services, and configmaps"
+      ]
+    },
+    {
+      "code": "meshery-operator-1010",
+      "moniker": "ErrCheckHealthCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1010",
+      "severity": "alert",
+      "shortDescription": "Workload health check failed",
+      "probableCause": [
+        "The StatefulSet or Deployment has not reached its desired ReadyReplicas"
+      ],
+      "suggestedRemediation": [
+        "Inspect the pod status and events for the workload; the controller will requeue and retry"
+      ]
+    },
+    {
+      "code": "meshery-operator-1011",
+      "moniker": "ErrGetEndpointCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1011",
+      "severity": "alert",
+      "shortDescription": "Unable to derive the broker endpoint",
+      "probableCause": [
+        "The broker Service has no reachable internal or external address yet"
+      ],
+      "suggestedRemediation": [
+        "Verify the broker Service exists and has assigned ports and an address; LoadBalancer addresses may still be pending"
+      ]
+    },
+    {
+      "code": "meshery-operator-1012",
+      "moniker": "ErrUpdateResourceCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1012",
+      "severity": "alert",
+      "shortDescription": "Unable to update the resource",
+      "probableCause": [
+        "A status patch or resource update conflicted or was rejected by the API server"
+      ],
+      "suggestedRemediation": [
+        "Check for concurrent writers and confirm the operator RBAC grants update on the resource and its status; the controller will retry"
+      ]
+    },
+    {
+      "code": "meshery-operator-1013",
+      "moniker": "ErrGettingBrokerResourceCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1013",
+      "severity": "alert",
+      "shortDescription": "Unable to get a broker-owned resource",
+      "probableCause": [
+        "The broker StatefulSet, Service, or ConfigMap lookup failed"
+      ],
+      "suggestedRemediation": [
+        "Check the operator RBAC and confirm the resource exists in the broker namespace"
+      ]
+    },
+    {
+      "code": "meshery-operator-1014",
+      "moniker": "ErrBrokerReplicasNotReadyCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1014",
+      "severity": "alert",
+      "shortDescription": "Broker replicas are not ready",
+      "probableCause": [
+        "The NATS StatefulSet has not reached its desired ReadyReplicas"
+      ],
+      "suggestedRemediation": [
+        "Inspect the StatefulSet pod status and events; the controller will requeue and retry"
+      ]
+    },
+    {
+      "code": "meshery-operator-1015",
+      "moniker": "ErrBrokerConditionFalseCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1015",
+      "severity": "alert",
+      "shortDescription": "A broker readiness condition is false",
+      "probableCause": [
+        "A required status condition on the broker workload reports False"
+      ],
+      "suggestedRemediation": [
+        "Inspect the broker status conditions for the reported reason"
+      ]
+    },
+    {
+      "code": "meshery-operator-1016",
+      "moniker": "ErrGettingBrokerEndpointCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1016",
+      "severity": "alert",
+      "shortDescription": "Unable to get the broker endpoint",
+      "probableCause": [
+        "The broker Service is not yet reachable or has no assigned address"
+      ],
+      "suggestedRemediation": [
+        "Verify the broker Service and its ports; a pending LoadBalancer address resolves on a later reconcile"
+      ]
+    },
+    {
+      "code": "meshery-operator-1017",
+      "moniker": "ErrMarshalCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1017",
+      "severity": "alert",
+      "shortDescription": "Unable to marshal the resource",
+      "probableCause": [
+        "The custom resource could not be serialized for a status patch"
+      ],
+      "suggestedRemediation": [
+        "This indicates a defect in the status builder; please report it with the operator logs"
+      ]
+    },
+    {
+      "code": "meshery-operator-1018",
+      "moniker": "ErrGettingMeshsyncResourceCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1018",
+      "severity": "alert",
+      "shortDescription": "Unable to get a MeshSync-owned resource",
+      "probableCause": [
+        "The MeshSync Deployment lookup failed"
+      ],
+      "suggestedRemediation": [
+        "Check the operator RBAC and confirm the Deployment exists in the MeshSync namespace"
+      ]
+    },
+    {
+      "code": "meshery-operator-1019",
+      "moniker": "ErrMeshsyncReplicasNotReadyCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1019",
+      "severity": "alert",
+      "shortDescription": "MeshSync replicas are not ready",
+      "probableCause": [
+        "The MeshSync Deployment has not reached its desired ReadyReplicas"
+      ],
+      "suggestedRemediation": [
+        "Inspect the Deployment pod status and events; the controller will requeue and retry"
+      ]
+    },
+    {
+      "code": "meshery-operator-1020",
+      "moniker": "ErrMeshsyncConditionFalseCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1020",
+      "severity": "alert",
+      "shortDescription": "A MeshSync readiness condition is false",
+      "probableCause": [
+        "A required status condition on the MeshSync workload reports False"
+      ],
+      "suggestedRemediation": [
+        "Inspect the MeshSync status conditions for the reported reason"
+      ]
+    },
+    {
+      "code": "meshery-operator-1021",
+      "moniker": "ErrGettingMeshsyncEndpointCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1021",
+      "severity": "alert",
+      "shortDescription": "Unable to get the MeshSync broker endpoint",
+      "probableCause": [
+        "The broker referenced by the MeshSync spec has no resolvable endpoint"
+      ],
+      "suggestedRemediation": [
+        "Verify the native broker CR or the custom broker URL configured in the MeshSync spec"
+      ]
+    },
+    {
+      "code": "meshery-operator-1022",
+      "moniker": "ErrCleanupBrokerCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1022",
+      "severity": "alert",
+      "shortDescription": "Unable to clean up obsolete Broker resources",
+      "probableCause": [
+        "The operator could not inspect or delete obsolete broker workloads and services during an upgrade"
+      ],
+      "suggestedRemediation": [
+        "Inspect the Broker Cleanup condition and operator logs, and confirm RBAC permits listing MeshSync deployments and deleting broker StatefulSets and Services"
+      ]
+    },
+    {
+      "code": "meshery-operator-1024",
+      "moniker": "ErrInvalidServiceAccountNameCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1024",
+      "severity": "alert",
+      "shortDescription": "Invalid MeshSync ServiceAccount name",
+      "probableCause": [
+        "The MESHSYNC_SERVICE_ACCOUNT environment variable on the meshery-operator Deployment is not a valid Kubernetes ServiceAccount name (a DNS-1123 subdomain)"
+      ],
+      "suggestedRemediation": [
+        "Set MESHSYNC_SERVICE_ACCOUNT to the ServiceAccount MeshSync should run under (meshery-meshsync for the meshery-operator chart and config/default), or unset it to use the operator's own ServiceAccount"
+      ]
+    }
+  ],
+  "schemaVersion": 2
+}
