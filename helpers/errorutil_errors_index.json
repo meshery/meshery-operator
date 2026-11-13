@@ -375,6 +375,23 @@
       ]
     },
     {
+      "code": "meshery-operator-1023",
+      "moniker": "ErrInvalidConversionHubCode",
+      "component": {
+        "name": "meshery-operator",
+        "type": "component"
+      },
+      "numericCode": "1023",
+      "severity": "alert",
+      "shortDescription": "Invalid conversion hub object",
+      "probableCause": [
+        "The conversion webhook received a nil or unexpected hub object type"
+      ],
+      "suggestedRemediation": [
+        "Check the conversion webhook configuration and the CRD versions in use"
+      ]
+    },
+    {
       "code": "meshery-operator-1024",
       "moniker": "ErrInvalidServiceAccountNameCode",
       "component": {
