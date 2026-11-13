@@ -31,7 +31,7 @@ const (
 	ErrMeshsyncReplicasNotReadyCode = "1019"
 	ErrMeshsyncConditionFalseCode   = "1020"
 	ErrGettingMeshsyncEndpointCode  = "1021"
-	// 1022-1023 belong to the controllers registry.
+	// 1022 belongs to the controllers registry and 1023 to api/v1alpha1/error.go.
 	ErrInvalidServiceAccountNameCode = "1024"
 )
 
