@@ -75,3 +75,74 @@ func NormalizeImageTag(tag string) string {
 	}
 	return rest
 }
+
+// BuildImage constructs a complete container image reference and its corresponding
+// pull policy from a custom or default repository and version tag.
+//
+// If customRepo is non-empty:
+//   - If version is empty and customRepo already carries an explicit tag (after the last '/')
+//     or digest ('@'), customRepo is used directly.
+//   - If version is provided, any existing tag on customRepo is stripped and replaced
+//     with the normalized version, and any digest on customRepo is dropped.
+//   - Otherwise, customRepo is joined with the normalized version (or defaultTag).
+//
+// If customRepo is empty, defaultRepo is used with the normalized version (or defaultTag).
+//
+// Port numbers on private registry hosts (e.g. "registry.corp.internal:5000/nats") are
+// safely distinguished from image tags because a colon is only treated as a tag delimiter
+// when it occurs after the last forward slash.
+//
+// Pull policy is derived from the effective tag using PullPolicyFor, ensuring that pinned
+// releases maintain PullIfNotPresent for air-gapped clusters.
+func BuildImage(customRepo, version, defaultRepo, defaultTag string) (string, corev1.PullPolicy) {
+	repo := strings.TrimSpace(customRepo)
+	v := strings.TrimSpace(version)
+
+	if repo == "" {
+		repo = defaultRepo
+	}
+
+	lastSlash := strings.LastIndex(repo, "/")
+	lastColon := strings.LastIndex(repo, ":")
+	hasTagInRepo := lastColon > lastSlash
+	hasDigestInRepo := strings.Contains(repo, "@")
+
+	if v != "" {
+		tag := NormalizeImageTag(v)
+		if atIdx := strings.Index(repo, "@"); atIdx != -1 {
+			// A digest does not combine with a tag: drop "@sha256:..."
+			// before pinning the explicit version.
+			repo = repo[:atIdx]
+		}
+		// If the repository also carried an embedded tag (including tag+digest references
+		// like "repo:tag@sha256:..."), strip the tag before appending the explicit version
+		// while safely preserving registry host ports.
+		lastSlash = strings.LastIndex(repo, "/")
+		lastColon = strings.LastIndex(repo, ":")
+		if lastColon > lastSlash {
+			repo = repo[:lastColon]
+		}
+		return repo + ":" + tag, PullPolicyFor(tag)
+	}
+
+	if hasDigestInRepo {
+		return repo, corev1.PullIfNotPresent
+	}
+
+	if hasTagInRepo {
+		// When spec.version is empty, preserve the full-image override and its
+		// embedded tag as written (including any leading "v" a private registry uses)
+		// and derive the pull policy separately from that tag.
+		tag := repo[lastColon+1:]
+		return repo, PullPolicyFor(tag)
+	}
+
+	if defaultTag == "" {
+		// If the underlying template carries no tag, return repo directly without
+		// producing an invalid "repo:" reference with a trailing colon.
+		return repo, corev1.PullIfNotPresent
+	}
+
+	tag := NormalizeImageTag(defaultTag)
+	return repo + ":" + tag, PullPolicyFor(tag)
+}

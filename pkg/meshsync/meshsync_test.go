@@ -48,11 +48,13 @@ const testObjName = "test"
 // release in both the registry's bare form and the v-prefixed form users copy
 // off a GitHub release, and a commit-sha tag.
 const (
-	tagStableLatest = "stable-latest"
-	tagEdgeLatest   = "edge-latest"
-	tagPinned       = "1.0.2"
-	tagPinnedV      = "v1.0.2"
-	tagSha          = "abc1234"
+	tagStableLatest   = "stable-latest"
+	tagEdgeLatest     = "edge-latest"
+	tagPinned         = "1.0.2"
+	tagPinnedV        = "v1.0.2"
+	tagSha            = "abc1234"
+	stableLatestImage = "meshery/meshsync:stable-latest"
+	customSyncImage   = "myregistry.corp.internal/custom-sync:1.0.4"
 )
 
 func TestGetObjects(t *testing.T) {
@@ -143,10 +145,10 @@ func TestSetBrokerURLWithTokenSecret(t *testing.T) {
 }
 
 func TestApplyVersion(t *testing.T) {
-	c := &corev1.Container{Image: "meshery/meshsync:stable-latest", ImagePullPolicy: corev1.PullAlways}
+	c := &corev1.Container{Image: stableLatestImage, ImagePullPolicy: corev1.PullAlways}
 
 	applyVersion(c, "")
-	if c.Image != "meshery/meshsync:stable-latest" || c.ImagePullPolicy != corev1.PullAlways {
+	if c.Image != stableLatestImage || c.ImagePullPolicy != corev1.PullAlways {
 		t.Errorf("empty version must leave the template untouched, got %s/%s", c.Image, c.ImagePullPolicy)
 	}
 
@@ -159,6 +161,107 @@ func TestApplyVersion(t *testing.T) {
 	if c.Image != "meshery/meshsync:edge-latest" || c.ImagePullPolicy != corev1.PullAlways {
 		t.Errorf("moving tag = %s/%s, want meshery/meshsync:edge-latest/Always", c.Image, c.ImagePullPolicy)
 	}
+}
+
+func TestApplyImage(t *testing.T) {
+	c := &corev1.Container{Image: stableLatestImage, ImagePullPolicy: corev1.PullAlways}
+
+	applyImage(c, "", "")
+	if c.Image != stableLatestImage || c.ImagePullPolicy != corev1.PullAlways {
+		t.Errorf("empty repo and version must leave template untouched, got %s/%s", c.Image, c.ImagePullPolicy)
+	}
+
+	applyImage(c, "myregistry.corp.internal/meshery/meshsync", "")
+	if c.Image != "myregistry.corp.internal/meshery/meshsync:"+defaultMeshSyncVersion || c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("custom repo with default tag = %s/%s, want myregistry.corp.internal/meshery/meshsync:%s/IfNotPresent",
+			c.Image, c.ImagePullPolicy, defaultMeshSyncVersion)
+	}
+
+	applyImage(c, "myregistry.corp.internal/meshery/meshsync", "1.0.4")
+	if c.Image != "myregistry.corp.internal/meshery/meshsync:1.0.4" || c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("custom repo with pinned tag = %s/%s, want myregistry.corp.internal/meshery/meshsync:1.0.4/IfNotPresent",
+			c.Image, c.ImagePullPolicy)
+	}
+
+	applyImage(c, "registry.corp.internal:5000/meshery/meshsync", "v1.0.5")
+	if c.Image != "registry.corp.internal:5000/meshery/meshsync:1.0.5" || c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("custom repo with port = %s/%s, want registry.corp.internal:5000/meshery/meshsync:1.0.5/IfNotPresent",
+			c.Image, c.ImagePullPolicy)
+	}
+}
+
+func testServerObjectExplicitVersion(t *testing.T) {
+	m := &mesheryv1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: meshsyncName, Namespace: mesheryName},
+		Spec: mesheryv1alpha1.MeshSyncSpec{
+			Repository: "myregistry.corp.internal/custom-sync",
+			Version:    "1.0.4",
+		},
+	}
+	obj := GetServerObject(m, "")
+	deploy := obj.(*appsv1.Deployment)
+	c := deploy.Spec.Template.Spec.Containers[0]
+	if want := customSyncImage; c.Image != want {
+		t.Errorf("image = %q, want %q", c.Image, want)
+	}
+	if c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("pullPolicy = %v, want IfNotPresent", c.ImagePullPolicy)
+	}
+	if c.ReadinessProbe == nil || c.LivenessProbe == nil || c.LivenessProbe.HTTPGet == nil {
+		t.Error("expected HTTP health probes for version 1.0.4")
+	}
+}
+
+func testServerObjectEmbeddedTag(t *testing.T) {
+	m := &mesheryv1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: meshsyncName, Namespace: mesheryName},
+		Spec: mesheryv1alpha1.MeshSyncSpec{
+			Repository: customSyncImage,
+		},
+	}
+	obj := GetServerObject(m, "")
+	deploy := obj.(*appsv1.Deployment)
+	c := deploy.Spec.Template.Spec.Containers[0]
+	if want := customSyncImage; c.Image != want {
+		t.Errorf("image = %q, want %q", c.Image, want)
+	}
+	if c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("pullPolicy = %v, want IfNotPresent", c.ImagePullPolicy)
+	}
+	if c.ReadinessProbe == nil || c.LivenessProbe == nil || c.LivenessProbe.HTTPGet == nil {
+		t.Error("expected HTTP health probes derived from embedded tag 1.0.4")
+	}
+}
+
+func testServerObjectDigest(t *testing.T) {
+	digestRepo := "myregistry.corp.internal/custom-sync@sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+	m := &mesheryv1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: meshsyncName, Namespace: mesheryName},
+		Spec: mesheryv1alpha1.MeshSyncSpec{
+			Repository: digestRepo,
+		},
+	}
+	obj := GetServerObject(m, "")
+	deploy := obj.(*appsv1.Deployment)
+	c := deploy.Spec.Template.Spec.Containers[0]
+	if c.Image != digestRepo {
+		t.Errorf("image = %q, want %q", c.Image, digestRepo)
+	}
+	if c.ImagePullPolicy != corev1.PullIfNotPresent {
+		t.Errorf("pullPolicy = %v, want IfNotPresent", c.ImagePullPolicy)
+	}
+	if c.ReadinessProbe != nil {
+		t.Error("expected no readiness probe for digest without version")
+	}
+	if c.LivenessProbe == nil || c.LivenessProbe.Exec == nil {
+		t.Error("expected safe exec liveness probe fallback for digest without version")
+	}
+}
+
+func TestGetServerObjectRepository(t *testing.T) {
+	t.Run("custom repo with explicit version", testServerObjectExplicitVersion)
+	t.Run("full-image repository override preserves embedded tag when spec.version is empty", testServerObjectEmbeddedTag)
+	t.Run("digest override preserves digest and retains safe exec probe fallback", testServerObjectDigest)
 }
 
 // TestDefaultMeshSyncVersionIsPinned is the regression gate for the class of
