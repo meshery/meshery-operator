@@ -17,6 +17,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	errWantInvalidAdmission = "want an Invalid admission error, got %v"
+)
+
 var _ = Describe("Controller update reconciliation", func() {
 	ctx := context.Background()
 
@@ -218,11 +222,47 @@ var _ = Describe("Controller update reconciliation", func() {
 		for _, version := range []string{"v1alpha1", "v1alpha2"} {
 			By("a server-side dry run of an unrendered template placeholder fails validation (" + version + ")")
 			err := k8sClient.Create(ctx, newBroker(version, "203.0.113.0/24", "${PLAYGROUND_EGRESS_CIDR}"), client.DryRunAll)
-			Expect(apierrors.IsInvalid(err)).To(BeTrue(), "want an Invalid admission error, got %v", err)
+			Expect(apierrors.IsInvalid(err)).To(BeTrue(), errWantInvalidAdmission, err)
 			Expect(err.Error()).To(ContainSubstring("spec.service.loadBalancerSourceRanges[1]"))
 
 			By("IPv4 and IPv6 CIDRs are admitted (" + version + ")")
 			Expect(k8sClient.Create(ctx, newBroker(version, "203.0.113.0/24", "2001:db8::/32", "::ffff:192.0.2.1/128"), client.DryRunAll)).To(Succeed())
+		}
+	})
+
+	It("rejects a malformed externalEndpointOverride at admission, in every served version", func() {
+		namespace := fmt.Sprintf("broker-override-%d", GinkgoRandomSeed())
+		createNamespace(namespace)
+
+		newBroker := func(version, name, override string) *unstructured.Unstructured {
+			return &unstructured.Unstructured{Object: map[string]interface{}{
+				"apiVersion": "meshery.io/" + version,
+				"kind":       testBrokerKind,
+				"metadata":   map[string]interface{}{"name": name, "namespace": namespace},
+				"spec": map[string]interface{}{
+					"size": int64(1),
+					"service": map[string]interface{}{
+						"externalEndpointOverride": override,
+					},
+				},
+			}}
+		}
+
+		for _, version := range []string{"v1alpha1", "v1alpha2"} {
+			By("a server-side dry run of a scheme-prefixed endpoint fails validation (" + version + ")")
+			err := k8sClient.Create(ctx, newBroker(version, "broker-scheme-"+version, "nats://broker.example.com:4222"), client.DryRunAll)
+			Expect(apierrors.IsInvalid(err)).To(BeTrue(), errWantInvalidAdmission, err)
+			Expect(err.Error()).To(ContainSubstring("spec.service.externalEndpointOverride"))
+
+			By("a server-side dry run of a template placeholder fails validation (" + version + ")")
+			err = k8sClient.Create(ctx, newBroker(version, "broker-placeholder-"+version, "${BROKER_ENDPOINT}"), client.DryRunAll)
+			Expect(apierrors.IsInvalid(err)).To(BeTrue(), errWantInvalidAdmission, err)
+			Expect(err.Error()).To(ContainSubstring("spec.service.externalEndpointOverride"))
+
+			By("valid hostnames, IPs, and ports are admitted (" + version + ")")
+			Expect(k8sClient.Create(ctx, newBroker(version, "broker-valid-"+version, "broker.example.com:4222"), client.DryRunAll)).To(Succeed())
+			Expect(k8sClient.Create(ctx, newBroker(version, "broker-valid-ipv6-"+version, "[2001:db8::1]:4222"), client.DryRunAll)).To(Succeed())
+			Expect(k8sClient.Create(ctx, newBroker(version, "broker-valid-fqdn-"+version, "broker.example.com.:04222"), client.DryRunAll)).To(Succeed())
 		}
 	})
 })

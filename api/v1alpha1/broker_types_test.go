@@ -17,12 +17,15 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"net"
 	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -225,5 +228,147 @@ func mutate(rng *rand.Rand, value string) string {
 		return string(b[:i]) + string(c) + string(b[i:])
 	default:
 		return string(b[:i]) + string(b[i+1:])
+	}
+}
+
+// externalEndpointOverridePatterns returns the generated pattern of
+// spec.service.externalEndpointOverride for every served Broker version.
+func externalEndpointOverridePatterns(t *testing.T) map[string]string {
+	t.Helper()
+	f, err := os.Open(filepath.Join("..", "..", "config", "crd", "bases", "meshery.io_brokers.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	crd := &apiextensionsv1.CustomResourceDefinition{}
+	if err := yaml.NewYAMLOrJSONDecoder(f, 4096).Decode(crd); err != nil {
+		t.Fatal(err)
+	}
+	patterns := map[string]string{}
+	for _, version := range crd.Spec.Versions {
+		if version.Schema == nil || version.Schema.OpenAPIV3Schema == nil {
+			t.Fatalf("version %s has no schema", version.Name)
+		}
+		field := version.Schema.OpenAPIV3Schema.Properties["spec"].Properties["service"].Properties["externalEndpointOverride"]
+		if field.Pattern == "" {
+			t.Fatalf("version %s: externalEndpointOverride carries no pattern", version.Name)
+		}
+		patterns[version.Name] = field.Pattern
+	}
+	return patterns
+}
+
+// TestExternalEndpointOverridePattern checks the host:port pattern the CRD enforces
+// on spec.service.externalEndpointOverride. The pattern must be identical across all served
+// versions, accept canonical hostnames, FQDNs, IPv4, and bracketed IPv6 addresses with
+// valid ports (1-65535), and reject scheme prefixes, paths, and malformed inputs.
+func TestExternalEndpointOverridePattern(t *testing.T) {
+	patterns := externalEndpointOverridePatterns(t)
+	if len(patterns) < 2 {
+		t.Fatalf("expected the pattern in v1alpha1 and v1alpha2, got %v", patterns)
+	}
+	var pattern string
+	for version, p := range patterns {
+		if pattern != "" && p != pattern {
+			t.Fatalf("version %s pattern differs from the others; keep markers identical", version)
+		}
+		pattern = p
+	}
+	re := regexp.MustCompile(pattern)
+
+	checkValidEndpoints(t, re)
+	checkInvalidEndpoints(t, re)
+	checkEndpointProperties(t, re)
+}
+
+func checkValidEndpoints(t *testing.T, re *regexp.Regexp) {
+	t.Helper()
+	valid := []string{
+		"broker.example.com:4222", "broker.example.com.:4222", "localhost:4222", "localhost.:4222",
+		"broker:4222", "broker:04222", "broker:0080", "meshery-nats:4222",
+		"198.51.100.1:4222", "192.168.1.100:80", "203.0.113.195:65535", "my-broker.meshery.svc.cluster.local:1",
+		"my-broker.meshery.svc.cluster.local.:1",
+		"[2001:db8::1]:4222", "[::1]:4222", "[fe80::1]:4222", "[::ffff:192.0.2.1]:4222",
+		strings.Repeat("a", 63) + ".example.com:4222", strings.Repeat("a", 63) + ".example.com.:4222",
+	}
+	for _, value := range valid {
+		host, portStr, err := net.SplitHostPort(value)
+		if err != nil {
+			t.Fatalf("fixture %q is not host:port: %v", value, err)
+		}
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port < 1 || port > 65535 || host == "" {
+			t.Fatalf("fixture %q has invalid host or port", value)
+		}
+		if !re.MatchString(value) {
+			t.Errorf("pattern rejects valid endpoint %q", value)
+		}
+	}
+}
+
+func checkInvalidEndpoints(t *testing.T, re *regexp.Regexp) {
+	t.Helper()
+	invalid := []string{
+		"nats://broker.example.com:4222", "nats://198.51.100.1:4222", "tcp://localhost:4222", "http://broker:4222",
+		"broker.example.com", "198.51.100.1", ":4222", "broker:0", "broker:00", "broker:65536", "broker:065536",
+		"broker:70000", "broker.example.com:4222/", "broker.example.com:4222/path", "${BROKER_ENDPOINT}",
+		"broker..example.com:4222", "-broker:4222", "broker-:4222", "2001:db8::1:4222", "[2001:db8::1]",
+		"[2001:db8:::1]:4222", "[::ffff:999.0.0.1]:4222", "[2001:db8::1]:0", "[2001:db8::1]:0000",
+		strings.Repeat("a", 64) + ".example.com:4222", strings.Repeat("a", 64) + ".example.com.:4222",
+		".:4222", " broker:4222", "broker:4222 ", "",
+	}
+	for _, value := range invalid {
+		if re.MatchString(value) {
+			t.Errorf("pattern accepts malformed endpoint %q", value)
+		}
+	}
+}
+
+func checkEndpointProperties(t *testing.T, re *regexp.Regexp) {
+	t.Helper()
+	rng := rand.New(rand.NewSource(2)) //nolint:gosec // deterministic test data, not security
+	for range 10000 {
+		value := randomValidEndpoint(rng)
+		if !re.MatchString(value) {
+			t.Fatalf("pattern rejects valid endpoint %q", value)
+		}
+		mutated := mutate(rng, value)
+		if re.MatchString(mutated) {
+			host, portStr, err := net.SplitHostPort(mutated)
+			if err != nil {
+				t.Fatalf("pattern accepts %q which net.SplitHostPort rejects: %v", mutated, err)
+			}
+			port, err := strconv.Atoi(portStr)
+			if err != nil || port < 1 || port > 65535 || host == "" {
+				t.Fatalf("pattern accepts %q with invalid port or empty host", mutated)
+			}
+			if strings.Contains(mutated, "[") && net.ParseIP(host) == nil {
+				t.Fatalf("pattern accepts bracketed %q which net.ParseIP rejects", mutated)
+			}
+		}
+	}
+}
+
+func randomValidEndpoint(rng *rand.Rand) string {
+	port := 1 + rng.Intn(65535)
+	switch rng.Intn(3) {
+	case 0:
+		labels := []string{"broker", "nats", "cluster", "local", "mesh", "test"}
+		count := 1 + rng.Intn(3)
+		name := ""
+		for i := range count {
+			if i > 0 {
+				name += "."
+			}
+			name += labels[rng.Intn(len(labels))]
+		}
+		return fmt.Sprintf("%s:%d", name, port)
+	case 1:
+		return fmt.Sprintf("%d.%d.%d.%d:%d", 1+rng.Intn(223), rng.Intn(256), rng.Intn(256), 1+rng.Intn(254), port)
+	default:
+		var raw [16]byte
+		_, _ = rng.Read(raw[:])
+		addr := netip.AddrFrom16(raw)
+		return fmt.Sprintf("[%s]:%d", addr.String(), port)
 	}
 }
