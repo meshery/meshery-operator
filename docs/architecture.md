@@ -45,10 +45,14 @@ and every `loadBalancerSourceRanges` entry must match an IPv4/IPv6 CIDR
 1.31+, and an older API server rejects the whole CRD if any rule uses it, so
 validation that must work everywhere uses OpenAPI `pattern`/`enum`/bounds
 instead. CEL here is limited to the base language (Kubernetes 1.25+).
+Similarly, `externalEndpointOverride` must match a `host:port` pattern with a
+valid numeric port (1–65535) and bracketed IPv6 addresses, preventing downstream
+consumers from seeing scheme-prefixed (e.g. `nats://`) or malformed values.
 Markers are duplicated across `v1alpha1` and `v1alpha2`.
-`TestLoadBalancerSourceRangesPattern` (api/v1alpha1) keeps the generated
-patterns identical and property-tests them against `net.ParseCIDR`, and an envtest
-spec checks a server-side dry run is refused in both versions.
+`TestLoadBalancerSourceRangesPattern` and `TestExternalEndpointOverridePattern`
+(api/v1alpha1) keep the generated patterns identical and property-test them
+against `net.ParseCIDR` and `net.SplitHostPort`, and envtest specs check
+server-side dry runs are refused in both versions.
 
 ### Versioning and conversion
 
