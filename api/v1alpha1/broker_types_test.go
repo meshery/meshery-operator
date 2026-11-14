@@ -289,6 +289,7 @@ func checkValidEndpoints(t *testing.T, re *regexp.Regexp) {
 		"198.51.100.1:4222", "192.168.1.100:80", "203.0.113.195:65535", "my-broker.meshery.svc.cluster.local:1",
 		"my-broker.meshery.svc.cluster.local.:1",
 		"[2001:db8::1]:4222", "[::1]:4222", "[fe80::1]:4222", "[::ffff:192.0.2.1]:4222",
+		strings.Repeat("a", 63) + ".example.com:4222", strings.Repeat("a", 63) + ".example.com.:4222",
 	}
 	for _, value := range valid {
 		host, portStr, err := net.SplitHostPort(value)
@@ -313,6 +314,7 @@ func checkInvalidEndpoints(t *testing.T, re *regexp.Regexp) {
 		"broker:70000", "broker.example.com:4222/", "broker.example.com:4222/path", "${BROKER_ENDPOINT}",
 		"broker..example.com:4222", "-broker:4222", "broker-:4222", "2001:db8::1:4222", "[2001:db8::1]",
 		"[2001:db8:::1]:4222", "[::ffff:999.0.0.1]:4222", "[2001:db8::1]:0", "[2001:db8::1]:0000",
+		strings.Repeat("a", 64) + ".example.com:4222", strings.Repeat("a", 64) + ".example.com.:4222",
 		".:4222", " broker:4222", "broker:4222 ", "",
 	}
 	for _, value := range invalid {
