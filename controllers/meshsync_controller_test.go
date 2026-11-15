@@ -283,6 +283,11 @@ func TestMeshSyncReconcileBrokerConfig(t *testing.T) {
 func TestMeshSyncReconcileBrokerConfigOverrides(t *testing.T) {
 	scheme := setupMeshSyncTestScheme(t)
 
+	const (
+		testCustomEndpointURL  = "nats://custom-endpoint:4222"
+		testCustomOverrideHost = "custom-nats.corp.internal:4222"
+	)
+
 	t.Run("EndpointResolutionPreservesExternalEndpointOverride", func(t *testing.T) {
 		broker := &v1alpha1.Broker{
 			ObjectMeta: metav1.ObjectMeta{
@@ -291,7 +296,7 @@ func TestMeshSyncReconcileBrokerConfigOverrides(t *testing.T) {
 			},
 			Spec: v1alpha1.BrokerSpec{
 				Service: v1alpha1.BrokerServiceSpec{
-					ExternalEndpointOverride: "custom-nats.corp.internal:4222",
+					ExternalEndpointOverride: testCustomOverrideHost,
 				},
 			},
 		}
@@ -333,8 +338,8 @@ func TestMeshSyncReconcileBrokerConfigOverrides(t *testing.T) {
 		if err := brokerpackage.GetEndpoint(context.Background(), fetched, c, r.KubeConfig.Host); err != nil {
 			t.Fatalf("GetEndpoint failed: %v", err)
 		}
-		if fetched.Status.Endpoint.External != "custom-nats.corp.internal:4222" {
-			t.Errorf("External endpoint override = %q, want %q", fetched.Status.Endpoint.External, "custom-nats.corp.internal:4222")
+		if fetched.Status.Endpoint.External != testCustomOverrideHost {
+			t.Errorf("External endpoint override = %q, want %q", fetched.Status.Endpoint.External, testCustomOverrideHost)
 		}
 
 		// Also verify reconcileBrokerConfig succeeds on this resource
@@ -394,7 +399,7 @@ func TestMeshSyncReconcileBrokerConfigOverrides(t *testing.T) {
 			Spec: v1alpha1.MeshSyncSpec{
 				Broker: v1alpha1.MeshsyncBroker{
 					Custom: v1alpha1.CustomMeshsyncBroker{
-						URL: "nats://custom-endpoint:4222",
+						URL: testCustomEndpointURL,
 					},
 				},
 			},
@@ -407,8 +412,8 @@ func TestMeshSyncReconcileBrokerConfigOverrides(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if meshsync.Status.PublishingTo != "nats://custom-endpoint:4222" {
-			t.Errorf("PublishingTo = %q, want %q", meshsync.Status.PublishingTo, "nats://custom-endpoint:4222")
+		if meshsync.Status.PublishingTo != testCustomEndpointURL {
+			t.Errorf("PublishingTo = %q, want %q", meshsync.Status.PublishingTo, testCustomEndpointURL)
 		}
 	})
 }
@@ -520,10 +525,10 @@ func TestMeshSyncEnsureBrokerTokenSecret(t *testing.T) {
 	})
 }
 
-// TestMeshSyncFailuresAreReportedOnReady verifies reconcile and health failures
-// set Ready=False with the reason and the structured error, rather than the
-// contradictory Failed=False condition earlier releases wrote ("not failed",
-// with a failure message), and that a leftover Failed condition is dropped.
+// TestMeshSyncFailuresAreReportedOnReady verifies broker config, workload apply,
+// and health failures set Ready=False with the reason and the structured error,
+// rather than the contradictory Failed=False condition earlier releases wrote
+// ("not failed", with a failure message), and that a leftover Failed condition is dropped.
 func TestMeshSyncFailuresAreReportedOnReady(t *testing.T) {
 	scheme := setupMeshSyncTestScheme(t)
 	newMeshSync := func() *v1alpha1.MeshSync {
@@ -577,6 +582,18 @@ func TestMeshSyncFailuresAreReportedOnReady(t *testing.T) {
 		r := &MeshSyncReconciler{Client: c, Scheme: scheme, Log: logr.Discard()}
 		_, err := r.deployMeshsyncResources(context.Background(), logr.Discard(), m)
 		assertReadyFalse(t, c, "ReconciliationFailed", err)
+	})
+
+	t.Run("broker config failure", func(t *testing.T) {
+		m := newMeshSync()
+		m.Spec.Broker.Native = v1alpha1.NativeMeshsyncBroker{
+			Name:      "missing-broker",
+			Namespace: testMesheryNamespace,
+		}
+		c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&v1alpha1.MeshSync{}).WithObjects(m).Build()
+		r := &MeshSyncReconciler{Client: c, Scheme: scheme, Log: logr.Discard(), KubeConfig: &rest.Config{}}
+		_, err := r.performReconciliation(context.Background(), logr.Discard(), m)
+		assertReadyFalse(t, c, "BrokerConfigFailed", err)
 	})
 }
 
@@ -745,26 +762,24 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 		for _, req := range reqs {
 			matched[req.NamespacedName] = true
 		}
-		if !matched[types.NamespacedName{Name: "ms-explicit", Namespace: testMesheryNamespace}] {
-			t.Errorf("missing request for ms-explicit in meshery")
+		expectedRequests := []struct {
+			name      string
+			namespace string
+			desc      string
+			want      bool
+		}{
+			{"ms-explicit", testMesheryNamespace, "missing request for ms-explicit in meshery", true},
+			{"ms-defaulted", testMesheryNamespace, "missing request for ms-defaulted in meshery", true},
+			{"ms-cross-ns", testOtherNamespace, "missing request for ms-cross-ns in other-namespace", true},
+			{"ms-ns-only", testMesheryNamespace, "missing request for ms-ns-only in meshery", true},
+			{"ms-other-ns-defaulted", testOtherNamespace, "unexpected request for ms-other-ns-defaulted; namespace isolation was violated", false},
+			{"ms-other-ns-only", testOtherNamespace, "unexpected request for ms-other-ns-only; namespace isolation was violated", false},
+			{"ms-no-native", testMesheryNamespace, "unexpected request for ms-no-native; unconfigured native broker was matched", false},
 		}
-		if !matched[types.NamespacedName{Name: "ms-defaulted", Namespace: testMesheryNamespace}] {
-			t.Errorf("missing request for ms-defaulted in meshery")
-		}
-		if !matched[types.NamespacedName{Name: "ms-cross-ns", Namespace: testOtherNamespace}] {
-			t.Errorf("missing request for ms-cross-ns in other-namespace")
-		}
-		if !matched[types.NamespacedName{Name: "ms-ns-only", Namespace: testMesheryNamespace}] {
-			t.Errorf("missing request for ms-ns-only in meshery")
-		}
-		if matched[types.NamespacedName{Name: "ms-other-ns-defaulted", Namespace: testOtherNamespace}] {
-			t.Errorf("unexpected request for ms-other-ns-defaulted; namespace isolation was violated")
-		}
-		if matched[types.NamespacedName{Name: "ms-other-ns-only", Namespace: testOtherNamespace}] {
-			t.Errorf("unexpected request for ms-other-ns-only; namespace isolation was violated")
-		}
-		if matched[types.NamespacedName{Name: "ms-no-native", Namespace: testMesheryNamespace}] {
-			t.Errorf("unexpected request for ms-no-native; unconfigured native broker was matched")
+		for _, tc := range expectedRequests {
+			if matched[types.NamespacedName{Name: tc.name, Namespace: tc.namespace}] != tc.want {
+				t.Errorf("%s", tc.desc)
+			}
 		}
 	})
 

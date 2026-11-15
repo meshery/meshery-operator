@@ -182,7 +182,9 @@ func (r *MeshSyncReconciler) performReconciliation(ctx context.Context, log logr
 	// Get broker configuration
 	if err := r.reconcileBrokerConfig(ctx, baseResource); err != nil {
 		log.Error(err, "Failed to reconcile broker config")
-		return ctrl.Result{}, ErrReconcileMeshsync(err)
+		reconcileErr := ErrReconcileMeshsync(err)
+		_ = r.updateStatusCondition(ctx, baseResource, meshsyncReadyCondition, v1.ConditionFalse, "BrokerConfigFailed", reconcileErr.Error())
+		return ctrl.Result{}, reconcileErr
 	}
 
 	// Deploy meshsync resources
