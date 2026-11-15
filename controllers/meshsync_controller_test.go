@@ -765,16 +765,16 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 		expectedRequests := []struct {
 			name      string
 			namespace string
-			want      bool
 			desc      string
+			want      bool
 		}{
-			{"ms-explicit", testMesheryNamespace, true, "missing request for ms-explicit in meshery"},
-			{"ms-defaulted", testMesheryNamespace, true, "missing request for ms-defaulted in meshery"},
-			{"ms-cross-ns", testOtherNamespace, true, "missing request for ms-cross-ns in other-namespace"},
-			{"ms-ns-only", testMesheryNamespace, true, "missing request for ms-ns-only in meshery"},
-			{"ms-other-ns-defaulted", testOtherNamespace, false, "unexpected request for ms-other-ns-defaulted; namespace isolation was violated"},
-			{"ms-other-ns-only", testOtherNamespace, false, "unexpected request for ms-other-ns-only; namespace isolation was violated"},
-			{"ms-no-native", testMesheryNamespace, false, "unexpected request for ms-no-native; unconfigured native broker was matched"},
+			{"ms-explicit", testMesheryNamespace, "missing request for ms-explicit in meshery", true},
+			{"ms-defaulted", testMesheryNamespace, "missing request for ms-defaulted in meshery", true},
+			{"ms-cross-ns", testOtherNamespace, "missing request for ms-cross-ns in other-namespace", true},
+			{"ms-ns-only", testMesheryNamespace, "missing request for ms-ns-only in meshery", true},
+			{"ms-other-ns-defaulted", testOtherNamespace, "unexpected request for ms-other-ns-defaulted; namespace isolation was violated", false},
+			{"ms-other-ns-only", testOtherNamespace, "unexpected request for ms-other-ns-only; namespace isolation was violated", false},
+			{"ms-no-native", testMesheryNamespace, "unexpected request for ms-no-native; unconfigured native broker was matched", false},
 		}
 		for _, tc := range expectedRequests {
 			if matched[types.NamespacedName{Name: tc.name, Namespace: tc.namespace}] != tc.want {
