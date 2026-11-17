@@ -54,6 +54,13 @@ spec:
                         type: string
                     type: object
                 type: object
+              repository:
+                description: |-
+                  Repository overrides the default image repository ("meshery/meshsync").
+                  When combined with Version, the full image is "<repository>:<version>";
+                  any embedded tag or digest in Repository is replaced by the explicit Version.
+                  An air-gapped installation points this at a private registry.
+                type: string
               size:
                 format: int32
                 maximum: 10
@@ -232,6 +239,13 @@ spec:
                         type: string
                     type: object
                 type: object
+              repository:
+                description: |-
+                  Repository overrides the default image repository ("meshery/meshsync").
+                  When combined with Version, the full image is "<repository>:<version>";
+                  any embedded tag or digest in Repository is replaced by the explicit Version.
+                  An air-gapped installation points this at a private registry.
+                type: string
               size:
                 format: int32
                 maximum: 10
