@@ -359,13 +359,31 @@ func (r *BrokerReconciler) reconcileBroker(ctx context.Context, baseResource *me
 	return nil
 }
 
-// ensureAuthSecret creates the meshery-nats-auth Secret with a freshly generated
-// token the first time, and is a no-op once it exists so the token is stable.
+// ensureAuthSecret creates the meshery-nats-auth Secret with a new token when it
+// is missing, and keeps an existing token so it stays stable. An existing Secret
+// whose token is empty is repaired in place: the NATS container reads the token
+// through a non-optional secretKeyRef, so a missing token keeps the pod in
+// CreateContainerConfigError and the Broker never becomes Ready.
 func (r *BrokerReconciler) ensureAuthSecret(ctx context.Context, baseResource *mesheryv1alpha1.Broker) error {
 	key := types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: baseResource.Namespace}
 	existing := &corev1.Secret{}
 	err := r.Get(ctx, key, existing)
 	if err == nil {
+		if len(existing.Data["token"]) > 0 {
+			return nil
+		}
+		var token string
+		token, err = brokerpackage.GenerateToken()
+		if err != nil {
+			return ErrCreateBroker(err)
+		}
+		if existing.Data == nil {
+			existing.Data = map[string][]byte{}
+		}
+		existing.Data["token"] = []byte(token)
+		if err = r.Update(ctx, existing); err != nil {
+			return ErrUpdateResource(err)
+		}
 		return nil
 	}
 	if !kubeerror.IsNotFound(err) {
