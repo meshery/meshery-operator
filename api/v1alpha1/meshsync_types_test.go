@@ -338,9 +338,13 @@ func checkValidCustomBrokerURLs(t *testing.T, re *regexp.Regexp) {
 		"[fe80::1]:4222",
 		natsSchemePrefix + "[::ffff:192.0.2.1]:4222",
 		natsSchemePrefix + "user:pass@broker:4222",
+		natsSchemePrefix + "user:p!ssword@broker:4222",
+		natsSchemePrefix + "user:p+ss=word@broker:4222",
 		tlsSchemePrefix + "token@broker.example.com:4222",
 		"admin:secret@broker:4222",
 		natsSchemePrefix + "client-app:p%40ssw0rd@192.168.1.5:4222",
+		// Bare out-of-range numeric quads match the hostname branch as valid DNS labels.
+		natsSchemePrefix + "999.0.0.1:4222",
 		natsSchemePrefix + strings.Repeat("a", 63) + ".example.org:4222",
 		strings.Repeat("a", 63) + ".example.org.:4222",
 	}
@@ -386,12 +390,17 @@ func checkInvalidCustomBrokerURLs(t *testing.T, re *regexp.Regexp) {
 		natsSchemePrefix + "broker..example.com:4222",
 		natsSchemePrefix + "-broker:4222",
 		"broker-:4222",
+		natsSchemePrefix + "user:pass%@broker:4222",
+		natsSchemePrefix + "user:pass%ZZ@broker:4222",
+		natsSchemePrefix + "user:pass%2@broker:4222",
 		natsSchemePrefix + "client-app:p@ssw0rd@192.168.1.5:4222",
 		"2001:db8::1:4222",
 		natsSchemePrefix + "2001:db8::1:4222",
 		"[2001:db8::1]",
 		natsSchemePrefix + "[2001:db8::1]",
 		"[2001:db8:::1]:4222",
+		// Note: a bare "999.0.0.1:4222" is still admitted, numeric labels match
+		// the hostname branch, so only the bracketed IPv4-embedded form is rejected here.
 		"[::ffff:999.0.0.1]:4222",
 		"[2001:db8::1]:0",
 		"[2001:db8::1]:0000",

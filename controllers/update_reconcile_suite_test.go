@@ -20,8 +20,11 @@ import (
 const (
 	errWantInvalidAdmission   = "want an Invalid admission error, got %v"
 	unstructuredAPIVersionKey = "apiVersion"
+	unstructuredKindKey       = "kind"
 	unstructuredMetadataKey   = "metadata"
 	unstructuredSpecKey       = "spec"
+	unstructuredNameKey       = "name"
+	unstructuredNamespaceKey  = "namespace"
 	mesheryAPIGroupPrefix     = "meshery.io/"
 )
 
@@ -212,8 +215,8 @@ var _ = Describe("Controller update reconciliation", func() {
 		newBroker := func(version string, ranges ...interface{}) *unstructured.Unstructured {
 			broker := &unstructured.Unstructured{Object: map[string]interface{}{
 				unstructuredAPIVersionKey: mesheryAPIGroupPrefix + version,
-				"kind":                    testBrokerKind,
-				unstructuredMetadataKey:   map[string]interface{}{"name": "broker-cidr-" + version, "namespace": namespace},
+				unstructuredKindKey:       testBrokerKind,
+				unstructuredMetadataKey:   map[string]interface{}{unstructuredNameKey: "broker-cidr-" + version, unstructuredNamespaceKey: namespace},
 				unstructuredSpecKey: map[string]interface{}{
 					"size": int64(1),
 					"service": map[string]interface{}{
@@ -243,8 +246,8 @@ var _ = Describe("Controller update reconciliation", func() {
 		newBroker := func(version, name, override string) *unstructured.Unstructured {
 			return &unstructured.Unstructured{Object: map[string]interface{}{
 				unstructuredAPIVersionKey: mesheryAPIGroupPrefix + version,
-				"kind":                    testBrokerKind,
-				unstructuredMetadataKey:   map[string]interface{}{"name": name, "namespace": namespace},
+				unstructuredKindKey:       testBrokerKind,
+				unstructuredMetadataKey:   map[string]interface{}{unstructuredNameKey: name, unstructuredNamespaceKey: namespace},
 				unstructuredSpecKey: map[string]interface{}{
 					"size": int64(1),
 					"service": map[string]interface{}{
@@ -279,8 +282,8 @@ var _ = Describe("Controller update reconciliation", func() {
 		newMeshSync := func(version, name, url string) *unstructured.Unstructured {
 			return &unstructured.Unstructured{Object: map[string]interface{}{
 				unstructuredAPIVersionKey: mesheryAPIGroupPrefix + version,
-				"kind":                    testMeshSyncKind,
-				unstructuredMetadataKey:   map[string]interface{}{"name": name, "namespace": namespace},
+				unstructuredKindKey:       testMeshSyncKind,
+				unstructuredMetadataKey:   map[string]interface{}{unstructuredNameKey: name, unstructuredNamespaceKey: namespace},
 				unstructuredSpecKey: map[string]interface{}{
 					"broker": map[string]interface{}{
 						"custom": map[string]interface{}{
