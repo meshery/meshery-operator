@@ -48,11 +48,16 @@ instead. CEL here is limited to the base language (Kubernetes 1.25+).
 Similarly, `externalEndpointOverride` must match a `host:port` pattern with a
 valid numeric port (1–65535) and bracketed IPv6 addresses, preventing downstream
 consumers from seeing scheme-prefixed (e.g. `nats://`) or malformed values.
-Markers are duplicated across `v1alpha1` and `v1alpha2`.
-`TestLoadBalancerSourceRangesPattern` and `TestExternalEndpointOverridePattern`
-(api/v1alpha1) keep the generated patterns identical and property-test them
-against `net.ParseCIDR` and `net.SplitHostPort`, and envtest specs check
-server-side dry runs are refused in both versions.
+Likewise, `MeshSync.spec.broker.custom.url` enforces an OpenAPI regex pattern
+validating NATS endpoints (optionally prefixed with `nats://` or `tls://`, or bare
+`host:port`) with valid ports (1–65535), IPv4, bracketed IPv6, and optional
+userinfo, synchronously rejecting invalid schemes (e.g. `http://`) and unrendered
+template placeholders (e.g. `${PLAYGROUND_NATS_URL}`) at admission before
+MeshSync pods can enter CrashLoopBackOff. Markers are duplicated across `v1alpha1`
+and `v1alpha2`. `TestLoadBalancerSourceRangesPattern`,
+`TestExternalEndpointOverridePattern`, and `TestCustomBrokerURLPattern`
+(api/v1alpha1) keep the generated patterns identical and property-test them,
+and envtest specs check server-side dry runs are refused in both versions.
 
 ### Versioning and conversion
 
