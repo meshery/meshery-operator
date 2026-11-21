@@ -18,8 +18,17 @@ import (
 )
 
 const (
-	errWantInvalidAdmission = "want an Invalid admission error, got %v"
+	errWantInvalidAdmission   = "want an Invalid admission error, got %v"
+	unstructuredAPIVersionKey = "apiVersion"
+	unstructuredKindKey       = "kind"
+	unstructuredMetadataKey   = "metadata"
+	unstructuredSpecKey       = "spec"
+	unstructuredNameKey       = "name"
+	unstructuredNamespaceKey  = "namespace"
+	mesheryAPIGroupPrefix     = "meshery.io/"
 )
+
+var servedAdmissionVersions = []string{"v1alpha1", "v1alpha2"}
 
 var _ = Describe("Controller update reconciliation", func() {
 	ctx := context.Background()
@@ -205,10 +214,10 @@ var _ = Describe("Controller update reconciliation", func() {
 
 		newBroker := func(version string, ranges ...interface{}) *unstructured.Unstructured {
 			broker := &unstructured.Unstructured{Object: map[string]interface{}{
-				"apiVersion": "meshery.io/" + version,
-				"kind":       testBrokerKind,
-				"metadata":   map[string]interface{}{"name": "broker-cidr-" + version, "namespace": namespace},
-				"spec": map[string]interface{}{
+				unstructuredAPIVersionKey: mesheryAPIGroupPrefix + version,
+				unstructuredKindKey:       testBrokerKind,
+				unstructuredMetadataKey:   map[string]interface{}{unstructuredNameKey: "broker-cidr-" + version, unstructuredNamespaceKey: namespace},
+				unstructuredSpecKey: map[string]interface{}{
 					"size": int64(1),
 					"service": map[string]interface{}{
 						"type":                     string(corev1.ServiceTypeLoadBalancer),
@@ -219,7 +228,7 @@ var _ = Describe("Controller update reconciliation", func() {
 			return broker
 		}
 
-		for _, version := range []string{"v1alpha1", "v1alpha2"} {
+		for _, version := range servedAdmissionVersions {
 			By("a server-side dry run of an unrendered template placeholder fails validation (" + version + ")")
 			err := k8sClient.Create(ctx, newBroker(version, "203.0.113.0/24", "${PLAYGROUND_EGRESS_CIDR}"), client.DryRunAll)
 			Expect(apierrors.IsInvalid(err)).To(BeTrue(), errWantInvalidAdmission, err)
@@ -236,10 +245,10 @@ var _ = Describe("Controller update reconciliation", func() {
 
 		newBroker := func(version, name, override string) *unstructured.Unstructured {
 			return &unstructured.Unstructured{Object: map[string]interface{}{
-				"apiVersion": "meshery.io/" + version,
-				"kind":       testBrokerKind,
-				"metadata":   map[string]interface{}{"name": name, "namespace": namespace},
-				"spec": map[string]interface{}{
+				unstructuredAPIVersionKey: mesheryAPIGroupPrefix + version,
+				unstructuredKindKey:       testBrokerKind,
+				unstructuredMetadataKey:   map[string]interface{}{unstructuredNameKey: name, unstructuredNamespaceKey: namespace},
+				unstructuredSpecKey: map[string]interface{}{
 					"size": int64(1),
 					"service": map[string]interface{}{
 						"externalEndpointOverride": override,
@@ -248,7 +257,7 @@ var _ = Describe("Controller update reconciliation", func() {
 			}}
 		}
 
-		for _, version := range []string{"v1alpha1", "v1alpha2"} {
+		for _, version := range servedAdmissionVersions {
 			By("a server-side dry run of a scheme-prefixed endpoint fails validation (" + version + ")")
 			err := k8sClient.Create(ctx, newBroker(version, "broker-scheme-"+version, "nats://broker.example.com:4222"), client.DryRunAll)
 			Expect(apierrors.IsInvalid(err)).To(BeTrue(), errWantInvalidAdmission, err)
@@ -263,6 +272,43 @@ var _ = Describe("Controller update reconciliation", func() {
 			Expect(k8sClient.Create(ctx, newBroker(version, "broker-valid-"+version, "broker.example.com:4222"), client.DryRunAll)).To(Succeed())
 			Expect(k8sClient.Create(ctx, newBroker(version, "broker-valid-ipv6-"+version, "[2001:db8::1]:4222"), client.DryRunAll)).To(Succeed())
 			Expect(k8sClient.Create(ctx, newBroker(version, "broker-valid-fqdn-"+version, "broker.example.com.:04222"), client.DryRunAll)).To(Succeed())
+		}
+	})
+
+	It("rejects a malformed MeshSync spec.broker.custom.url at admission, in every served version", func() {
+		namespace := fmt.Sprintf("meshsync-url-%d", GinkgoRandomSeed())
+		createNamespace(namespace)
+
+		newMeshSync := func(version, name, url string) *unstructured.Unstructured {
+			return &unstructured.Unstructured{Object: map[string]interface{}{
+				unstructuredAPIVersionKey: mesheryAPIGroupPrefix + version,
+				unstructuredKindKey:       testMeshSyncKind,
+				unstructuredMetadataKey:   map[string]interface{}{unstructuredNameKey: name, unstructuredNamespaceKey: namespace},
+				unstructuredSpecKey: map[string]interface{}{
+					"broker": map[string]interface{}{
+						"custom": map[string]interface{}{
+							"url": url,
+						},
+					},
+				},
+			}}
+		}
+
+		for _, version := range servedAdmissionVersions {
+			By("a server-side dry run of an invalid scheme (http://) fails validation (" + version + ")")
+			err := k8sClient.Create(ctx, newMeshSync(version, "meshsync-http-"+version, "http://broker:4222"), client.DryRunAll)
+			Expect(apierrors.IsInvalid(err)).To(BeTrue(), errWantInvalidAdmission, err)
+			Expect(err.Error()).To(ContainSubstring("spec.broker.custom.url"))
+
+			By("a server-side dry run of an unrendered template placeholder fails validation (" + version + ")")
+			err = k8sClient.Create(ctx, newMeshSync(version, "meshsync-placeholder-"+version, "${PLAYGROUND_NATS_URL}"), client.DryRunAll)
+			Expect(apierrors.IsInvalid(err)).To(BeTrue(), errWantInvalidAdmission, err)
+			Expect(err.Error()).To(ContainSubstring("spec.broker.custom.url"))
+
+			By("valid nats://, tls://, and host:port URLs are admitted (" + version + ")")
+			Expect(k8sClient.Create(ctx, newMeshSync(version, "meshsync-valid-nats-"+version, "nats://broker.example.com:4222"), client.DryRunAll)).To(Succeed())
+			Expect(k8sClient.Create(ctx, newMeshSync(version, "meshsync-valid-tls-"+version, "tls://[2001:db8::1]:4222"), client.DryRunAll)).To(Succeed())
+			Expect(k8sClient.Create(ctx, newMeshSync(version, "meshsync-valid-bare-"+version, "broker.example.com.:04222"), client.DryRunAll)).To(Succeed())
 		}
 	})
 })
