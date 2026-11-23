@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
 	mesheryv1alpha2 "github.com/meshery/meshery-operator/api/v1alpha2"
@@ -53,6 +54,66 @@ var (
 // defeating leader election entirely.
 const leaderElectionID = "meshery-operator-leader.meshery.io"
 
+// podNamespaceEnv is the optional Downward API environment variable naming the
+// namespace the operator pod runs in. When --namespace is unset, leader
+// election falls back to this variable and then to an empty string so
+// controller-runtime resolves the in-cluster service account namespace.
+const podNamespaceEnv = "POD_NAMESPACE"
+
+type managerConfig struct {
+	metricsAddr          string
+	probeAddr            string
+	namespace            string
+	enableLeaderElection bool
+}
+
+func bindManagerFlags(fs *flag.FlagSet, cfg *managerConfig) {
+	fs.StringVar(&cfg.metricsAddr, "metrics-addr", ":8443", "The address the metric endpoint binds to (served over TLS with authn/authz).")
+	fs.StringVar(&cfg.probeAddr, "health-probe-bind-address", ":8081", "The address the health probe endpoint binds to.")
+	fs.StringVar(&cfg.namespace, "namespace", "", "The namespace used for leader election. Defaults to POD_NAMESPACE or the in-cluster service account namespace.")
+	fs.BoolVar(&cfg.enableLeaderElection, "enable-leader-election", false,
+		"Enable leader election for controller manager. "+
+			"Enabling this will ensure there is only one active controller manager.")
+}
+
+// resolveLeaderElectionNamespace returns the namespace to pass to
+// controller-runtime for leader election. Precedence is:
+//  1. Explicit --namespace flag value.
+//  2. POD_NAMESPACE environment variable.
+//  3. Empty string, which instructs controller-runtime to detect the in-cluster
+//     pod namespace from /var/run/secrets/kubernetes.io/serviceaccount/namespace.
+func resolveLeaderElectionNamespace(flagNamespace, envNamespace string) string {
+	if ns := strings.TrimSpace(flagNamespace); ns != "" {
+		return ns
+	}
+	if ns := strings.TrimSpace(envNamespace); ns != "" {
+		return ns
+	}
+	return ""
+}
+
+func newManagerOptions(cfg managerConfig, leaderElectionNamespace string) ctrl.Options {
+	return ctrl.Options{
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: cfg.metricsAddr,
+			// Serve metrics over TLS (controller-runtime self-signs when no
+			// CertDir is provided) and gate access behind the API server's
+			// authn + SubjectAccessReview authz, replacing the retired
+			// kube-rbac-proxy sidecar (WS-5).
+			SecureServing:  true,
+			FilterProvider: filters.WithAuthenticationAndAuthorization,
+		},
+		HealthProbeBindAddress: cfg.probeAddr,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port: 9443,
+		}),
+		LeaderElection:          cfg.enableLeaderElection,
+		LeaderElectionID:        leaderElectionID,
+		LeaderElectionNamespace: leaderElectionNamespace,
+	}
+}
+
 func init() {
 	// +kubebuilder:scaffold:scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -61,36 +122,14 @@ func init() {
 }
 
 func main() {
-	var metricsAddr, probeAddr, namespace string
-	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8443", "The address the metric endpoint binds to (served over TLS with authn/authz).")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the health probe endpoint binds to.")
-	flag.StringVar(&namespace, "namespace", "meshery", "The namespace operator is deployed to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
+	var cfg managerConfig
+	bindManagerFlags(flag.CommandLine, &cfg)
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{})))
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme: scheme,
-		Metrics: server.Options{
-			BindAddress: metricsAddr,
-			// Serve metrics over TLS (controller-runtime self-signs when no
-			// CertDir is provided) and gate access behind the API server's
-			// authn + SubjectAccessReview authz, replacing the retired
-			// kube-rbac-proxy sidecar (WS-5).
-			SecureServing:  true,
-			FilterProvider: filters.WithAuthenticationAndAuthorization,
-		},
-		HealthProbeBindAddress: probeAddr,
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Port: 9443,
-		}),
-		LeaderElection:          enableLeaderElection,
-		LeaderElectionID:        leaderElectionID,
-		LeaderElectionNamespace: namespace,
-	})
+	leaderElectionNamespace := resolveLeaderElectionNamespace(cfg.namespace, os.Getenv(podNamespaceEnv))
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), newManagerOptions(cfg, leaderElectionNamespace))
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
