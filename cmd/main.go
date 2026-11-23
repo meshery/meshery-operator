@@ -54,12 +54,6 @@ var (
 // defeating leader election entirely.
 const leaderElectionID = "meshery-operator-leader.meshery.io"
 
-// podNamespaceEnv is the optional Downward API environment variable naming the
-// namespace the operator pod runs in. When --namespace is unset, leader
-// election falls back to this variable and then to an empty string so
-// controller-runtime resolves the in-cluster service account namespace.
-const podNamespaceEnv = "POD_NAMESPACE"
-
 type managerConfig struct {
 	metricsAddr          string
 	probeAddr            string
@@ -70,26 +64,19 @@ type managerConfig struct {
 func bindManagerFlags(fs *flag.FlagSet, cfg *managerConfig) {
 	fs.StringVar(&cfg.metricsAddr, "metrics-addr", ":8443", "The address the metric endpoint binds to (served over TLS with authn/authz).")
 	fs.StringVar(&cfg.probeAddr, "health-probe-bind-address", ":8081", "The address the health probe endpoint binds to.")
-	fs.StringVar(&cfg.namespace, "namespace", "", "The namespace used for leader election. Defaults to POD_NAMESPACE or the in-cluster service account namespace.")
+	fs.StringVar(&cfg.namespace, "namespace", "", "The namespace used for leader election. Defaults to the in-cluster service account namespace.")
 	fs.BoolVar(&cfg.enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 }
 
 // resolveLeaderElectionNamespace returns the namespace to pass to
-// controller-runtime for leader election. Precedence is:
-//  1. Explicit --namespace flag value.
-//  2. POD_NAMESPACE environment variable.
-//  3. Empty string, which instructs controller-runtime to detect the in-cluster
-//     pod namespace from /var/run/secrets/kubernetes.io/serviceaccount/namespace.
-func resolveLeaderElectionNamespace(flagNamespace, envNamespace string) string {
-	if ns := strings.TrimSpace(flagNamespace); ns != "" {
-		return ns
-	}
-	if ns := strings.TrimSpace(envNamespace); ns != "" {
-		return ns
-	}
-	return ""
+// controller-runtime for leader election. An explicit --namespace flag value
+// is trimmed and used as-is; otherwise an empty string is returned so
+// controller-runtime detects the in-cluster pod namespace from
+// /var/run/secrets/kubernetes.io/serviceaccount/namespace.
+func resolveLeaderElectionNamespace(flagNamespace string) string {
+	return strings.TrimSpace(flagNamespace)
 }
 
 func newManagerOptions(cfg managerConfig, leaderElectionNamespace string) ctrl.Options {
@@ -127,7 +114,7 @@ func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{})))
 
-	leaderElectionNamespace := resolveLeaderElectionNamespace(cfg.namespace, os.Getenv(podNamespaceEnv))
+	leaderElectionNamespace := resolveLeaderElectionNamespace(cfg.namespace)
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), newManagerOptions(cfg, leaderElectionNamespace))
 	if err != nil {

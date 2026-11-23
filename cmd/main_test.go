@@ -24,7 +24,6 @@ import (
 const (
 	enableLeaderElectionFlag = "--enable-leader-election"
 	testCustomNamespace      = "custom-ns"
-	testOLMNamespace         = "openshift-operators"
 )
 
 func TestResolveLeaderElectionNamespace(t *testing.T) {
@@ -33,34 +32,20 @@ func TestResolveLeaderElectionNamespace(t *testing.T) {
 	cases := []struct {
 		name          string
 		flagNamespace string
-		envNamespace  string
 		want          string
 	}{
 		{
-			name: "empty flag and env leave namespace empty for in-cluster detection",
+			name: "empty flag leaves namespace empty for in-cluster detection",
 			want: "",
 		},
 		{
-			name:          "whitespace-only flag and env leave namespace empty",
-			flagNamespace: "   ",
-			envNamespace:  "\t\n",
+			name:          "whitespace-only flag leaves namespace empty",
+			flagNamespace: " \t\n ",
 			want:          "",
 		},
 		{
-			name:         "POD_NAMESPACE is used when flag is unset",
-			envNamespace: testOLMNamespace,
-			want:         testOLMNamespace,
-		},
-		{
-			name:          "POD_NAMESPACE is used when flag is whitespace",
-			flagNamespace: "  ",
-			envNamespace:  " operators ",
-			want:          "operators",
-		},
-		{
-			name:          "explicit flag overrides POD_NAMESPACE",
+			name:          "explicit flag value is preserved",
 			flagNamespace: testCustomNamespace,
-			envNamespace:  "operators",
 			want:          testCustomNamespace,
 		},
 		{
@@ -74,9 +59,9 @@ func TestResolveLeaderElectionNamespace(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			got := resolveLeaderElectionNamespace(tc.flagNamespace, tc.envNamespace)
+			got := resolveLeaderElectionNamespace(tc.flagNamespace)
 			if got != tc.want {
-				t.Fatalf("resolveLeaderElectionNamespace(%q, %q) = %q, want %q", tc.flagNamespace, tc.envNamespace, got, tc.want)
+				t.Fatalf("resolveLeaderElectionNamespace(%q) = %q, want %q", tc.flagNamespace, got, tc.want)
 			}
 		})
 	}
@@ -87,7 +72,6 @@ func TestBindManagerFlagsAndOptions(t *testing.T) {
 
 	cases := []struct {
 		name           string
-		envNamespace   string
 		wantNamespace  string
 		args           []string
 		wantLeaderElec bool
@@ -99,17 +83,15 @@ func TestBindManagerFlagsAndOptions(t *testing.T) {
 			wantLeaderElec: true,
 		},
 		{
-			name:           "POD_NAMESPACE applies when --namespace is omitted",
-			args:           []string{enableLeaderElectionFlag},
-			envNamespace:   testOLMNamespace,
-			wantNamespace:  testOLMNamespace,
+			name:           "explicit --namespace flag sets LeaderElectionNamespace",
+			args:           []string{enableLeaderElectionFlag, "--namespace=" + testCustomNamespace},
+			wantNamespace:  testCustomNamespace,
 			wantLeaderElec: true,
 		},
 		{
-			name:           "explicit --namespace flag overrides POD_NAMESPACE",
-			args:           []string{enableLeaderElectionFlag, "--namespace=" + testCustomNamespace},
-			envNamespace:   testOLMNamespace,
-			wantNamespace:  testCustomNamespace,
+			name:           "whitespace-only --namespace flag normalizes to empty",
+			args:           []string{enableLeaderElectionFlag, "--namespace=   "},
+			wantNamespace:  "",
 			wantLeaderElec: true,
 		},
 		{
@@ -131,7 +113,7 @@ func TestBindManagerFlagsAndOptions(t *testing.T) {
 				t.Fatalf("fs.Parse(%v) returned unexpected error: %v", tc.args, err)
 			}
 
-			ns := resolveLeaderElectionNamespace(cfg.namespace, tc.envNamespace)
+			ns := resolveLeaderElectionNamespace(cfg.namespace)
 			opts := newManagerOptions(cfg, ns)
 
 			if opts.LeaderElection != tc.wantLeaderElec {
