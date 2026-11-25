@@ -26,8 +26,9 @@ import (
 )
 
 const (
-	testNamespace  = "meshery"
-	testBrokerName = "meshery-broker"
+	testNamespace        = "meshery"
+	testBrokerName       = "meshery-broker"
+	testInternalEndpoint = "10.0.0.1:4222"
 	// whitelistKey is the WatchList ConfigMap key MeshSync reads its resource
 	// filter from.
 	whitelistKey = "whitelist"
@@ -50,7 +51,7 @@ func TestBrokerConversionRoundTrip(t *testing.T) {
 			},
 		},
 		Status: BrokerStatus{
-			Endpoint:   Endpoint{Internal: "10.0.0.1:4222", External: "1.2.3.4:4222"},
+			Endpoint:   Endpoint{Internal: testInternalEndpoint, External: "1.2.3.4:4222"},
 			Conditions: []metav1.Condition{{Type: "Ready", Status: metav1.ConditionTrue, Reason: "ok"}},
 		},
 	}
@@ -59,7 +60,7 @@ func TestBrokerConversionRoundTrip(t *testing.T) {
 	if err := orig.ConvertTo(hub); err != nil {
 		t.Fatalf("ConvertTo: %v", err)
 	}
-	if hub.Spec.Size != 3 || hub.Spec.Service.Type != corev1.ServiceTypeLoadBalancer || hub.Status.Endpoint.Internal != "10.0.0.1:4222" {
+	if hub.Spec.Size != 3 || hub.Spec.Service.Type != corev1.ServiceTypeLoadBalancer || hub.Status.Endpoint.Internal != testInternalEndpoint {
 		t.Fatalf("hub not populated correctly: %+v", hub.Spec)
 	}
 

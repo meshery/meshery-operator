@@ -73,10 +73,21 @@ type BrokerServiceSpec struct {
 	// +optional
 	Type corev1.ServiceType `json:"type,omitempty" yaml:"type,omitempty"`
 
+	// Implementation note (kept out of the generated API docs by the blank line
+	// below): the endpoint is validated at admission so a malformed value - a scheme
+	// prefix like nats://, a bare hostname without port, an invalid port, a path, or an
+	// unrendered template placeholder - is rejected when the Broker is written,
+	// instead of corrupting downstream endpoint consumers (Meshery Server) which
+	// add the nats:// scheme themselves. The pattern is duplicated in the other
+	// API version; TestExternalEndpointOverridePattern (api/v1alpha1) keeps the
+	// generated copies identical and checks them against net.SplitHostPort.
+
 	// ExternalEndpointOverride pins the advertised external endpoint (host:port)
 	// when auto-derivation is undesirable: an ingress/gateway in front of the
 	// broker, an air-gapped topology, or NAT. The nats:// scheme is added by
-	// consumers.
+	// consumers. Must be in host:port format with a port between 1 and 65535;
+	// IPv6 addresses must be bracketed ([2001:db8::1]:4222). Do not include a scheme.
+	// +kubebuilder:validation:Pattern=`^((([a-zA-Z0-9]([-a-zA-Z0-9]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([-a-zA-Z0-9]{0,61}[a-zA-Z0-9])?\.?)|\[(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}|:((:[0-9a-fA-F]{1,4}){1,7}|:)|(([0-9a-fA-F]{1,4}:){6}|([0-9a-fA-F]{1,4}:){1,5}:|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1}:|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,2}:|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,3}:|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,4}:|::([0-9a-fA-F]{1,4}:){0,5})((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))\]):0*([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$`
 	// +optional
 	ExternalEndpointOverride string `json:"externalEndpointOverride,omitempty" yaml:"externalEndpointOverride,omitempty"`
 

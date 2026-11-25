@@ -64,6 +64,7 @@ const (
 	testMesheryNamespace = "meshery"
 	testAppName          = "meshery"
 	testOtherNamespace   = "other-namespace"
+	testOtherValue       = "other"
 	testBrokerName       = "test-broker"
 	testOverrideBroker   = "override-broker"
 	testMeshSyncName     = "test-meshsync"
@@ -71,6 +72,7 @@ const (
 	testNatsClusterIP    = "10.96.0.10"
 	testNatsClientPort   = "client"
 	testNatsURL          = "nats://10.96.0.10:4222"
+	authTokenKey         = "token"
 )
 
 var _ = Describe("The test cases for customize resource: Broker's controller ", func() {
@@ -323,17 +325,17 @@ func TestIsLegacyBrokerChild(t *testing.T) {
 			o.GetOwnerReferences()[0].APIVersion = "meshery.io/v1alpha2"
 		}, want: true},
 		{name: "no owner", modify: func(_ *v1alpha1.Broker, o client.Object) { o.SetOwnerReferences(nil) }, want: false},
-		{name: "different UID", modify: func(_ *v1alpha1.Broker, o client.Object) { o.GetOwnerReferences()[0].UID = "other" }, want: false},
+		{name: "different UID", modify: func(_ *v1alpha1.Broker, o client.Object) { o.GetOwnerReferences()[0].UID = testOtherValue }, want: false},
 		{name: "noncontrolling reference", modify: func(_ *v1alpha1.Broker, o client.Object) {
 			value := false
 			o.GetOwnerReferences()[0].Controller = &value
 		}, want: false},
 		{name: "wrong owner group", modify: func(_ *v1alpha1.Broker, o client.Object) { o.GetOwnerReferences()[0].APIVersion = "other.io/v1alpha1" }, want: false},
 		{name: "wrong owner kind", modify: func(_ *v1alpha1.Broker, o client.Object) { o.GetOwnerReferences()[0].Kind = testMeshSyncKind }, want: false},
-		{name: "wrong owner name", modify: func(_ *v1alpha1.Broker, o client.Object) { o.GetOwnerReferences()[0].Name = "other" }, want: false},
+		{name: "wrong owner name", modify: func(_ *v1alpha1.Broker, o client.Object) { o.GetOwnerReferences()[0].Name = testOtherValue }, want: false},
 		{name: "missing legacy label", modify: func(_ *v1alpha1.Broker, o client.Object) { delete(o.GetLabels(), "component") }, want: false},
-		{name: "unverified legacy name", modify: func(_ *v1alpha1.Broker, o client.Object) { o.SetName("other") }, want: false},
-		{name: "different namespace", modify: func(_ *v1alpha1.Broker, o client.Object) { o.SetNamespace("other") }, want: false},
+		{name: "unverified legacy name", modify: func(_ *v1alpha1.Broker, o client.Object) { o.SetName(testOtherValue) }, want: false},
+		{name: "different namespace", modify: func(_ *v1alpha1.Broker, o client.Object) { o.SetNamespace(testOtherValue) }, want: false},
 		{name: "current desired identity", modify: func(b *v1alpha1.Broker, o client.Object) {
 			b.Name = natsObjectName
 			o.SetName(b.Name)
@@ -758,5 +760,85 @@ func TestBrokerCleanupFailureRecovery(t *testing.T) {
 	condition = meta.FindStatusCondition(current.Status.Conditions, "Cleanup")
 	if condition == nil || condition.Status != metav1.ConditionTrue {
 		t.Fatal("successful cleanup must clear the failure condition")
+	}
+}
+
+// TestEnsureAuthSecret verifies the meshery-nats-auth Secret always holds a
+// token. The NATS container reads it through a non-optional secretKeyRef, so a
+// Secret without one leaves the pod in CreateContainerConfigError and the
+// Broker never becomes Ready.
+func TestEnsureAuthSecret(t *testing.T) {
+	scheme := setupMeshSyncTestScheme(t)
+	ctx := context.Background()
+
+	tests := []struct {
+		name      string
+		existing  *corev1.Secret
+		wantToken string // exact token; empty means any non-empty token
+		wantOther string
+	}{
+		{name: "creates the Secret when it is missing"},
+		{
+			name: "keeps an existing token",
+			existing: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: brokerpackage.AuthSecretName, Namespace: testMesheryNamespace},
+				Data:       map[string][]byte{authTokenKey: []byte("t-existing")},
+			},
+			wantToken: "t-existing",
+		},
+		{
+			name: "adds a token when the key is missing",
+			existing: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: brokerpackage.AuthSecretName, Namespace: testMesheryNamespace},
+				Data:       map[string][]byte{testOtherValue: []byte("x")},
+			},
+			wantOther: "x",
+		},
+		{
+			name: "adds a token when the value is empty",
+			existing: &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: brokerpackage.AuthSecretName, Namespace: testMesheryNamespace},
+				Data:       map[string][]byte{authTokenKey: {}},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			broker := &v1alpha1.Broker{ObjectMeta: metav1.ObjectMeta{
+				Name: testBrokerName, Namespace: testMesheryNamespace, UID: "broker-uid",
+			}}
+			objects := []client.Object{broker}
+			if tc.existing != nil {
+				objects = append(objects, tc.existing)
+			}
+			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).Build()
+			r := &BrokerReconciler{Client: c, Scheme: scheme, Log: logr.Discard()}
+
+			if err := r.ensureAuthSecret(ctx, broker); err != nil {
+				t.Fatalf("ensureAuthSecret: %v", err)
+			}
+
+			secret := &corev1.Secret{}
+			key := types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: testMesheryNamespace}
+			if err := c.Get(ctx, key, secret); err != nil {
+				t.Fatalf("get %s: %v", brokerpackage.AuthSecretName, err)
+			}
+			// The fake client stores StringData as written, while the API server
+			// converts it to Data, so accept either.
+			token := string(secret.Data[authTokenKey])
+			if token == "" {
+				token = secret.StringData[authTokenKey]
+			}
+			if token == "" {
+				t.Fatal("the auth Secret has no token; the NATS container cannot start")
+			}
+			if tc.wantToken != "" && token != tc.wantToken {
+				t.Errorf("token = %q, want the existing %q", token, tc.wantToken)
+			}
+			if tc.wantOther != "" && string(secret.Data[testOtherValue]) != tc.wantOther {
+				t.Errorf("other key = %q, want %q", secret.Data[testOtherValue], tc.wantOther)
+			}
+		})
 	}
 }
