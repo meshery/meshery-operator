@@ -6,11 +6,13 @@ import (
 	"time"
 
 	mesheryv1alpha1 "github.com/meshery/meshery-operator/api/v1alpha1"
+	brokerpackage "github.com/meshery/meshery-operator/pkg/broker"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -310,6 +312,105 @@ var _ = Describe("Controller update reconciliation", func() {
 			Expect(k8sClient.Create(ctx, newMeshSync(version, "meshsync-valid-tls-"+version, "tls://[2001:db8::1]:4222"), client.DryRunAll)).To(Succeed())
 			Expect(k8sClient.Create(ctx, newMeshSync(version, "meshsync-valid-bare-"+version, "broker.example.com.:04222"), client.DryRunAll)).To(Succeed())
 		}
+	})
+
+	It("re-reconciles MeshSync and recreates the mirrored auth Secret when deleted out-of-band", func() {
+		secretToken := "envtest-secret-token"
+		brokerNs := fmt.Sprintf("broker-auth-ns-%d", GinkgoRandomSeed())
+		meshsyncNs := fmt.Sprintf("meshsync-auth-ns-%d", GinkgoRandomSeed())
+		createNamespace(brokerNs)
+		createNamespace(meshsyncNs)
+
+		brokerAuthSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      brokerpackage.AuthSecretName,
+				Namespace: brokerNs,
+			},
+			Data: map[string][]byte{authTokenKey: []byte(secretToken)},
+		}
+		Expect(k8sClient.Create(ctx, brokerAuthSecret)).To(Succeed())
+
+		brokerSvc := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      natsObjectName,
+				Namespace: brokerNs,
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{{Name: testNatsClientPort, Port: 4222}},
+			},
+		}
+		Expect(k8sClient.Create(ctx, brokerSvc)).To(Succeed())
+
+		broker := &mesheryv1alpha1.Broker{
+			TypeMeta:   metav1.TypeMeta{APIVersion: testAPIVersion, Kind: testBrokerKind},
+			ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Namespace: brokerNs},
+			Spec:       mesheryv1alpha1.BrokerSpec{Size: 1},
+		}
+		Expect(k8sClient.Create(ctx, broker)).To(Succeed())
+
+		meshsync := &mesheryv1alpha1.MeshSync{
+			TypeMeta: metav1.TypeMeta{APIVersion: testAPIVersion, Kind: testMeshSyncKind},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      testMeshSyncName,
+				Namespace: meshsyncNs,
+			},
+			Spec: mesheryv1alpha1.MeshSyncSpec{
+				Size: 1,
+				Broker: mesheryv1alpha1.MeshsyncBroker{
+					Native: mesheryv1alpha1.NativeMeshsyncBroker{
+						Name:      testBrokerName,
+						Namespace: brokerNs,
+					},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, meshsync)).To(Succeed())
+
+		mirrorKey := types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: meshsyncNs}
+		By("waiting for MeshSync controller to mirror the auth Secret into MeshSync's namespace")
+		Eventually(func(g Gomega) {
+			mirror := &corev1.Secret{}
+			g.Expect(k8sClient.Get(ctx, mirrorKey, mirror)).To(Succeed())
+			g.Expect(string(mirror.Data[authTokenKey])).To(Equal(secretToken))
+			ownerRef := metav1.GetControllerOf(mirror)
+			g.Expect(ownerRef).ToNot(BeNil())
+			g.Expect(ownerRef.Name).To(Equal(testMeshSyncName))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		By("driving MeshSync Deployment rollout status because envtest has no kubelet")
+		deployKey := types.NamespacedName{Name: testMeshSyncName, Namespace: meshsyncNs}
+		Eventually(func() error {
+			deploy := &appsv1.Deployment{}
+			if err := k8sClient.Get(ctx, deployKey, deploy); err != nil {
+				return err
+			}
+			deploy.Status.ObservedGeneration = deploy.Generation
+			deploy.Status.Replicas = 1
+			deploy.Status.ReadyReplicas = 1
+			deploy.Status.UpdatedReplicas = 1
+			return k8sClient.Status().Update(ctx, deploy)
+		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+
+		By("waiting for MeshSync to become Ready")
+		Eventually(func(g Gomega) {
+			current := &mesheryv1alpha1.MeshSync{}
+			g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: testMeshSyncName, Namespace: meshsyncNs}, current)).To(Succeed())
+			ready := meta.FindStatusCondition(current.Status.Conditions, meshsyncReadyCondition)
+			g.Expect(ready).ToNot(BeNil())
+			g.Expect(ready.Status).To(Equal(metav1.ConditionTrue))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		By("deleting the mirrored Secret out-of-band")
+		mirror := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, mirrorKey, mirror)).To(Succeed())
+		Expect(k8sClient.Delete(ctx, mirror)).To(Succeed())
+
+		By("verifying Owns(&corev1.Secret{}) re-enqueues MeshSync and recreates the mirrored Secret")
+		Eventually(func(g Gomega) {
+			recreated := &corev1.Secret{}
+			g.Expect(k8sClient.Get(ctx, mirrorKey, recreated)).To(Succeed())
+			g.Expect(string(recreated.Data[authTokenKey])).To(Equal(secretToken))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
 	})
 })
 
