@@ -63,7 +63,7 @@ jobs:
                   # export is untracked until it is first published, so a plain
                   # diff would report "no changes" and silently skip the commit.
                   git add ./docs/data/errorref/meshery-operator_errors_export.json
-                  if git diff --cached --exit-code --quiet
+                  if git diff --cached --exit-code --quiet -- ./docs/data/errorref/meshery-operator_errors_export.json
                   then
                     echo "No changes to commit"
                     exit
