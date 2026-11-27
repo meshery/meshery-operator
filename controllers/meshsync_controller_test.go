@@ -525,6 +525,59 @@ func TestMeshSyncEnsureBrokerTokenSecret(t *testing.T) {
 	})
 }
 
+func TestMeshSyncEnsureBrokerTokenSecretCrossNamespace(t *testing.T) {
+	scheme := setupMeshSyncTestScheme(t)
+	tokenVal := []byte("cross-ns-token")
+	srcSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      brokerpackage.AuthSecretName,
+			Namespace: testMesheryNamespace,
+		},
+		Data: map[string][]byte{authTokenKey: tokenVal},
+	}
+	m := &v1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testSyncName,
+			Namespace: testOtherNamespace,
+			UID:       types.UID("test-meshsync-uid"),
+		},
+		Spec: v1alpha1.MeshSyncSpec{
+			Broker: v1alpha1.MeshsyncBroker{
+				Native: v1alpha1.NativeMeshsyncBroker{
+					Name:      testBrokerName,
+					Namespace: testMesheryNamespace,
+				},
+			},
+		},
+	}
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(srcSecret, m).Build()
+	r := &MeshSyncReconciler{Client: c, Scheme: scheme, Log: logr.Discard()}
+
+	secretName, err := r.ensureBrokerTokenSecret(context.Background(), m)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if secretName != brokerpackage.AuthSecretName {
+		t.Errorf("secretName = %q, want %q", secretName, brokerpackage.AuthSecretName)
+	}
+
+	mirrored := &corev1.Secret{}
+	mirrorKey := types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: testOtherNamespace}
+	if err := c.Get(context.Background(), mirrorKey, mirrored); err != nil {
+		t.Fatalf("failed to get mirrored secret in %s: %v", testOtherNamespace, err)
+	}
+	if string(mirrored.Data[authTokenKey]) != string(tokenVal) {
+		t.Errorf("token = %q, want %q", string(mirrored.Data[authTokenKey]), string(tokenVal))
+	}
+	ownerRef := metav1.GetControllerOf(mirrored)
+	if ownerRef == nil {
+		t.Fatal("mirrored secret missing controller owner reference")
+	}
+	if ownerRef.Name != testSyncName || ownerRef.UID != m.UID {
+		t.Errorf("ownerRef = %+v, want controller owner pointing to %s", ownerRef, testSyncName)
+	}
+}
+
 // TestMeshSyncFailuresAreReportedOnReady verifies broker config, workload apply,
 // and health failures set Ready=False with the reason and the structured error,
 // rather than the contradictory Failed=False condition earlier releases wrote

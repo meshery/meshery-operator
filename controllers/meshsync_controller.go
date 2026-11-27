@@ -80,7 +80,8 @@ const (
 // +kubebuilder:rbac:groups=meshery.io,resources=meshsyncs/finalizers,verbs=update
 // +kubebuilder:rbac:groups=meshery.io,resources=brokers,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=services;secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile reconciles the MeshSync resource
@@ -121,9 +122,13 @@ func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Watch Broker objects so a change to a referenced Broker's endpoint
 	// re-enqueues the MeshSync that consumes it, propagating the new BROKER_URL
 	// without manual intervention (WS-3 §4.3 #15, WS-4 §6.2.4).
+	// Own the mirrored auth Secret in addition to the Deployment so that deletion
+	// or out-of-band mutation of meshery-nats-auth re-enqueues MeshSync and
+	// self-heals the credential required by the pod's secretKeyRef.
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.MeshSync{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Secret{}).
 		Watches(&mesheryv1alpha1.Broker{}, handler.EnqueueRequestsFromMapFunc(r.meshsyncsForBroker)).
 		Complete(r)
 }
