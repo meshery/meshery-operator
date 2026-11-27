@@ -55,15 +55,18 @@ jobs:
 
             - name: Update and push docs
               run: |
-                  echo '{ "errors_export": "" }' | jq --slurpfile export ./helpers/errorutil_errors_export.json '.errors_export = $export[0]' > ./meshery/docs/_data/errorref/meshery-operator_errors_export.json
+                  echo '{ "errors_export": "" }' | jq --slurpfile export ./helpers/errorutil_errors_export.json '.errors_export = $export[0]' > ./meshery/docs/data/errorref/meshery-operator_errors_export.json
                   cd ./meshery
                   git config user.name l5io
                   git config user.email ci@meshery.io
-                  if git diff --exit-code --quiet
+                  # Stage before diffing: git diff ignores untracked files, and the
+                  # export is untracked until it is first published, so a plain
+                  # diff would report "no changes" and silently skip the commit.
+                  git add ./docs/data/errorref/meshery-operator_errors_export.json
+                  if git diff --cached --exit-code --quiet
                   then
                     echo "No changes to commit"
                     exit
                   fi
-                  git add ./docs/_data/errorref/meshery-operator_errors_export.json
                   git commit -m "[Docs] Error Code Reference: Updated codes for Meshery Operator" --signoff
                   git push origin master
