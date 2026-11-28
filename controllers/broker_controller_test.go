@@ -64,6 +64,7 @@ const (
 	testMesheryNamespace = "meshery"
 	testAppName          = "meshery"
 	testOtherNamespace   = "other-namespace"
+	testOtherSecretName  = "other-secret"
 	testOtherValue       = "other"
 	testBrokerName       = "test-broker"
 	testOverrideBroker   = "override-broker"
@@ -637,7 +638,7 @@ func TestBrokerCleanupEnvironmentSemantics(t *testing.T) {
 			brokerCleanupTestEnv(c, testNatsTokenEnv).ValueFrom.SecretKeyRef.Optional = &value
 		}},
 		{name: "wrong Secret name", modify: func(c *corev1.Container) {
-			brokerCleanupTestEnv(c, testNatsTokenEnv).ValueFrom.SecretKeyRef.Name = "other-secret"
+			brokerCleanupTestEnv(c, testNatsTokenEnv).ValueFrom.SecretKeyRef.Name = testOtherSecretName
 		}},
 		{name: "wrong Secret key", modify: func(c *corev1.Container) {
 			brokerCleanupTestEnv(c, testNatsTokenEnv).ValueFrom.SecretKeyRef.Key = "other-key"
@@ -687,7 +688,7 @@ func TestBrokerCleanupEnvironmentSemantics(t *testing.T) {
 		}},
 		{name: "duplicate token", modify: func(c *corev1.Container) {
 			duplicate := brokerCleanupTestEnv(c, testNatsTokenEnv).DeepCopy()
-			duplicate.ValueFrom.SecretKeyRef.Name = "other-secret"
+			duplicate.ValueFrom.SecretKeyRef.Name = testOtherSecretName
 			c.Env = append(c.Env, *duplicate)
 		}},
 		{name: "duplicate URL", modify: func(c *corev1.Container) {

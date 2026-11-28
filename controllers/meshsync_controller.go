@@ -36,10 +36,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	util "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -125,11 +127,20 @@ func (r *MeshSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// Own the mirrored auth Secret in addition to the Deployment so that deletion
 	// or out-of-band mutation of meshery-nats-auth re-enqueues MeshSync and
 	// self-heals the credential required by the pod's secretKeyRef.
+	// Watch the source auth Secret in the Broker namespace so that out-of-band
+	// token rotation propagates the latest token into mirrored Secrets.
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mesheryv1alpha1.MeshSync{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Secret{}).
 		Watches(&mesheryv1alpha1.Broker{}, handler.EnqueueRequestsFromMapFunc(r.meshsyncsForBroker)).
+		Watches(
+			&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.meshsyncsForAuthSecret),
+			builder.WithPredicates(predicate.NewPredicateFuncs(func(obj client.Object) bool {
+				return obj != nil && obj.GetName() == brokerpackage.AuthSecretName
+			})),
+		).
 		Complete(r)
 }
 
@@ -168,6 +179,45 @@ func (r *MeshSyncReconciler) meshsyncsForBroker(ctx context.Context, obj client.
 			targetNamespace = meshsyncs.Items[i].Namespace
 		}
 		if targetNamespace == brokerNamespace {
+			requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+				Name:      meshsyncs.Items[i].Name,
+				Namespace: meshsyncs.Items[i].Namespace,
+			}})
+		}
+	}
+	return requests
+}
+
+// meshsyncsForAuthSecret maps changes to the source NATS auth Secret in a
+// Broker's namespace to reconcile requests for every MeshSync that references
+// that Broker namespace. This ensures that out-of-band token rotation in the
+// source Secret updates the mirrored Secret via Server-Side Apply.
+func (r *MeshSyncReconciler) meshsyncsForAuthSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	if obj == nil || obj.GetName() != brokerpackage.AuthSecretName {
+		return nil
+	}
+	secretNamespace := obj.GetNamespace()
+	if secretNamespace == "" {
+		return nil
+	}
+
+	var meshsyncs mesheryv1alpha1.MeshSyncList
+	if err := r.List(ctx, &meshsyncs); err != nil {
+		r.Log.Error(err, "unable to list MeshSync resources for auth Secret watch", "secret", obj.GetName(), "namespace", secretNamespace)
+		return nil
+	}
+
+	var requests []reconcile.Request
+	for i := range meshsyncs.Items {
+		native := meshsyncs.Items[i].Spec.Broker.Native
+		if native == (mesheryv1alpha1.NativeMeshsyncBroker{}) {
+			continue
+		}
+		targetNamespace := native.Namespace
+		if targetNamespace == "" {
+			targetNamespace = meshsyncs.Items[i].Namespace
+		}
+		if targetNamespace == secretNamespace {
 			requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
 				Name:      meshsyncs.Items[i].Name,
 				Namespace: meshsyncs.Items[i].Namespace,
