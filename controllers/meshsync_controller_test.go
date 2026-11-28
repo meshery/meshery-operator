@@ -962,7 +962,7 @@ func TestMeshSyncMeshsyncsForAuthSecret(t *testing.T) {
 	t.Run("NonMatchingSecretNameReturnsNil", func(t *testing.T) {
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "other-secret",
+				Name:      testOtherSecretName,
 				Namespace: testMesheryNamespace,
 			},
 		}
