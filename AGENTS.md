@@ -101,10 +101,6 @@ domains. A hook registered in the tracked `.claude/settings.json` blocks any Bas
 clone with no further setup. Shared agent configuration belongs in that tracked file;
 `.claude/settings.local.json` is per-developer state and is git-ignored.
 
-Cloned this repo before that split? Pulling that change deletes your local file and leaves
-the promoted hooks firing twice - recover it and prune them with
-[docs/development.md](docs/development.md#migrating-a-clone-made-before-the-split).
-
 ## Detailed documentation
 
 - [docs/architecture.md](docs/architecture.md) - CRDs, conversion hub/webhook, controller shape, resource builders, vendored NATS chart, typed client, packaging, known structural debt. Read before structural changes.
