@@ -412,6 +412,108 @@ var _ = Describe("Controller update reconciliation", func() {
 			g.Expect(string(recreated.Data[authTokenKey])).To(Equal(secretToken))
 		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
 	})
+
+	It("re-reconciles cross-namespace MeshSync and updates the mirrored auth Secret when the source Secret rotates", func() {
+		initialToken := "initial-secret-token"
+		rotatedToken := "rotated-secret-token"
+		brokerNs := fmt.Sprintf("broker-rot-ns-%d", GinkgoRandomSeed())
+		meshsyncNs := fmt.Sprintf("meshsync-rot-ns-%d", GinkgoRandomSeed())
+		createNamespace(brokerNs)
+		createNamespace(meshsyncNs)
+
+		brokerAuthSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      brokerpackage.AuthSecretName,
+				Namespace: brokerNs,
+			},
+			Data: map[string][]byte{authTokenKey: []byte(initialToken)},
+		}
+		Expect(k8sClient.Create(ctx, brokerAuthSecret)).To(Succeed())
+
+		brokerSvc := &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      natsObjectName,
+				Namespace: brokerNs,
+			},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{{Name: testNatsClientPort, Port: 4222}},
+			},
+		}
+		Expect(k8sClient.Create(ctx, brokerSvc)).To(Succeed())
+
+		broker := &mesheryv1alpha1.Broker{
+			TypeMeta:   metav1.TypeMeta{APIVersion: testAPIVersion, Kind: testBrokerKind},
+			ObjectMeta: metav1.ObjectMeta{Name: testBrokerName, Namespace: brokerNs},
+			Spec:       mesheryv1alpha1.BrokerSpec{Size: 1},
+		}
+		Expect(k8sClient.Create(ctx, broker)).To(Succeed())
+
+		meshsync := &mesheryv1alpha1.MeshSync{
+			TypeMeta: metav1.TypeMeta{APIVersion: testAPIVersion, Kind: testMeshSyncKind},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      testMeshSyncName,
+				Namespace: meshsyncNs,
+			},
+			Spec: mesheryv1alpha1.MeshSyncSpec{
+				Size: 1,
+				Broker: mesheryv1alpha1.MeshsyncBroker{
+					Native: mesheryv1alpha1.NativeMeshsyncBroker{
+						Name:      testBrokerName,
+						Namespace: brokerNs,
+					},
+				},
+			},
+		}
+		Expect(k8sClient.Create(ctx, meshsync)).To(Succeed())
+
+		mirrorKey := types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: meshsyncNs}
+		By("waiting for MeshSync controller to mirror the initial auth Secret into MeshSync's namespace")
+		Eventually(func(g Gomega) {
+			mirror := &corev1.Secret{}
+			g.Expect(k8sClient.Get(ctx, mirrorKey, mirror)).To(Succeed())
+			g.Expect(string(mirror.Data[authTokenKey])).To(Equal(initialToken))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		By("driving MeshSync Deployment rollout status because envtest has no kubelet")
+		deployKey := types.NamespacedName{Name: testMeshSyncName, Namespace: meshsyncNs}
+		Eventually(func() error {
+			deploy := &appsv1.Deployment{}
+			if err := k8sClient.Get(ctx, deployKey, deploy); err != nil {
+				return err
+			}
+			deploy.Status.ObservedGeneration = deploy.Generation
+			deploy.Status.Replicas = 1
+			deploy.Status.ReadyReplicas = 1
+			deploy.Status.UpdatedReplicas = 1
+			return k8sClient.Status().Update(ctx, deploy)
+		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+
+		By("waiting for MeshSync to become Ready")
+		Eventually(func(g Gomega) {
+			current := &mesheryv1alpha1.MeshSync{}
+			g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: testMeshSyncName, Namespace: meshsyncNs}, current)).To(Succeed())
+			ready := meta.FindStatusCondition(current.Status.Conditions, meshsyncReadyCondition)
+			g.Expect(ready).ToNot(BeNil())
+			g.Expect(ready.Status).To(Equal(metav1.ConditionTrue))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+
+		By("rotating the source auth Secret in the Broker namespace")
+		Eventually(func() error {
+			src := &corev1.Secret{}
+			if err := k8sClient.Get(ctx, types.NamespacedName{Name: brokerpackage.AuthSecretName, Namespace: brokerNs}, src); err != nil {
+				return err
+			}
+			src.Data[authTokenKey] = []byte(rotatedToken)
+			return k8sClient.Update(ctx, src)
+		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+
+		By("verifying the source auth Secret watch re-enqueues MeshSync and updates the mirrored Secret")
+		Eventually(func(g Gomega) {
+			mirror := &corev1.Secret{}
+			g.Expect(k8sClient.Get(ctx, mirrorKey, mirror)).To(Succeed())
+			g.Expect(string(mirror.Data[authTokenKey])).To(Equal(rotatedToken))
+		}, 15*time.Second, 250*time.Millisecond).Should(Succeed())
+	})
 })
 
 var _ = Describe("Broker upgrade cleanup", func() {

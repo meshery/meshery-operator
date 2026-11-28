@@ -44,6 +44,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
+const (
+	testMsExplicit         = "ms-explicit"
+	testMsDefaulted        = "ms-defaulted"
+	testMsCrossNs          = "ms-cross-ns"
+	testMsOtherNsDefaulted = "ms-other-ns-defaulted"
+	testMsNoNative         = "ms-no-native"
+)
+
 var _ = Describe("The test cases for customize resource: MeshSync's controller ", func() {
 
 	var (
@@ -690,7 +698,7 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	// MeshSync 1: explicit namespace
 	msExplicit := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ms-explicit",
+			Name:      testMsExplicit,
 			Namespace: testMesheryNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
@@ -705,7 +713,7 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	// MeshSync 2: omitted namespace (defaults to meshery)
 	msDefaulted := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ms-defaulted",
+			Name:      testMsDefaulted,
 			Namespace: testMesheryNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
@@ -719,7 +727,7 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	// MeshSync 3: explicit cross-namespace reference (in other-namespace referencing meshery/test-broker)
 	msCrossNamespace := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ms-cross-ns",
+			Name:      testMsCrossNs,
 			Namespace: testOtherNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
@@ -734,7 +742,7 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	// MeshSync 4: defaulted broker reference in another namespace (must NOT match meshery/test-broker)
 	msOtherNsDefaulted := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ms-other-ns-defaulted",
+			Name:      testMsOtherNsDefaulted,
 			Namespace: testOtherNamespace,
 		},
 		Spec: v1alpha1.MeshSyncSpec{
@@ -791,7 +799,7 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 	// MeshSync 8: consumer with no native broker configured (must NOT match meshery/test-broker)
 	msNoNative := &v1alpha1.MeshSync{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ms-no-native",
+			Name:      testMsNoNative,
 			Namespace: testMesheryNamespace,
 		},
 	}
@@ -821,13 +829,13 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 			desc      string
 			want      bool
 		}{
-			{"ms-explicit", testMesheryNamespace, "missing request for ms-explicit in meshery", true},
-			{"ms-defaulted", testMesheryNamespace, "missing request for ms-defaulted in meshery", true},
-			{"ms-cross-ns", testOtherNamespace, "missing request for ms-cross-ns in other-namespace", true},
+			{testMsExplicit, testMesheryNamespace, "missing request for ms-explicit in meshery", true},
+			{testMsDefaulted, testMesheryNamespace, "missing request for ms-defaulted in meshery", true},
+			{testMsCrossNs, testOtherNamespace, "missing request for ms-cross-ns in other-namespace", true},
 			{"ms-ns-only", testMesheryNamespace, "missing request for ms-ns-only in meshery", true},
-			{"ms-other-ns-defaulted", testOtherNamespace, "unexpected request for ms-other-ns-defaulted; namespace isolation was violated", false},
+			{testMsOtherNsDefaulted, testOtherNamespace, "unexpected request for ms-other-ns-defaulted; namespace isolation was violated", false},
 			{"ms-other-ns-only", testOtherNamespace, "unexpected request for ms-other-ns-only; namespace isolation was violated", false},
-			{"ms-no-native", testMesheryNamespace, "unexpected request for ms-no-native; unconfigured native broker was matched", false},
+			{testMsNoNative, testMesheryNamespace, "unexpected request for ms-no-native; unconfigured native broker was matched", false},
 		}
 		for _, tc := range expectedRequests {
 			if matched[types.NamespacedName{Name: tc.name, Namespace: tc.namespace}] != tc.want {
@@ -871,6 +879,109 @@ func TestMeshSyncMeshsyncsForBroker(t *testing.T) {
 		emptyBroker := &v1alpha1.Broker{}
 		if reqs := r.meshsyncsForBroker(context.Background(), emptyBroker); reqs != nil {
 			t.Errorf("expected nil for empty broker name, got %+v", reqs)
+		}
+	})
+}
+
+func TestMeshSyncMeshsyncsForAuthSecret(t *testing.T) {
+	scheme := setupMeshSyncTestScheme(t)
+
+	msExplicit := &v1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: testMsExplicit, Namespace: testMesheryNamespace},
+		Spec: v1alpha1.MeshSyncSpec{
+			Broker: v1alpha1.MeshsyncBroker{
+				Native: v1alpha1.NativeMeshsyncBroker{Name: testBrokerName, Namespace: testMesheryNamespace},
+			},
+		},
+	}
+	msDefaulted := &v1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: testMsDefaulted, Namespace: testMesheryNamespace},
+		Spec: v1alpha1.MeshSyncSpec{
+			Broker: v1alpha1.MeshsyncBroker{
+				Native: v1alpha1.NativeMeshsyncBroker{Name: testBrokerName},
+			},
+		},
+	}
+	msCrossNamespace := &v1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: testMsCrossNs, Namespace: testOtherNamespace},
+		Spec: v1alpha1.MeshSyncSpec{
+			Broker: v1alpha1.MeshsyncBroker{
+				Native: v1alpha1.NativeMeshsyncBroker{Name: testBrokerName, Namespace: testMesheryNamespace},
+			},
+		},
+	}
+	msOtherNsDefaulted := &v1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: testMsOtherNsDefaulted, Namespace: testOtherNamespace},
+		Spec: v1alpha1.MeshSyncSpec{
+			Broker: v1alpha1.MeshsyncBroker{
+				Native: v1alpha1.NativeMeshsyncBroker{Name: testBrokerName},
+			},
+		},
+	}
+	msNoNative := &v1alpha1.MeshSync{
+		ObjectMeta: metav1.ObjectMeta{Name: testMsNoNative, Namespace: testMesheryNamespace},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(msExplicit, msDefaulted, msCrossNamespace, msOtherNsDefaulted, msNoNative).Build()
+	r := &MeshSyncReconciler{Client: c, Scheme: scheme, Log: logr.Discard()}
+
+	t.Run("MatchesAuthSecretAndEnqueuesConsumers", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      brokerpackage.AuthSecretName,
+				Namespace: testMesheryNamespace,
+			},
+		}
+		reqs := r.meshsyncsForAuthSecret(context.Background(), secret)
+		if len(reqs) != 3 {
+			t.Fatalf("expected 3 reconcile requests for auth secret in %s, got %d: %+v", testMesheryNamespace, len(reqs), reqs)
+		}
+		matched := map[types.NamespacedName]bool{}
+		for _, req := range reqs {
+			matched[req.NamespacedName] = true
+		}
+		expected := []struct {
+			desc      string
+			name      string
+			namespace string
+			want      bool
+		}{
+			{"expected request for ms-explicit", testMsExplicit, testMesheryNamespace, true},
+			{"expected request for ms-defaulted", testMsDefaulted, testMesheryNamespace, true},
+			{"expected request for cross-namespace ms-cross-ns", testMsCrossNs, testOtherNamespace, true},
+			{"unexpected request for ms-other-ns-defaulted", testMsOtherNsDefaulted, testOtherNamespace, false},
+			{"unexpected request for ms-no-native", testMsNoNative, testMesheryNamespace, false},
+		}
+		for _, tc := range expected {
+			if matched[types.NamespacedName{Name: tc.name, Namespace: tc.namespace}] != tc.want {
+				t.Errorf("%s", tc.desc)
+			}
+		}
+	})
+
+	t.Run("NonMatchingSecretNameReturnsNil", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "other-secret",
+				Namespace: testMesheryNamespace,
+			},
+		}
+		if reqs := r.meshsyncsForAuthSecret(context.Background(), secret); len(reqs) != 0 {
+			t.Errorf("expected 0 requests for non-auth secret, got %d", len(reqs))
+		}
+	})
+
+	t.Run("NilAndEmptySecretReturnNil", func(t *testing.T) {
+		if reqs := r.meshsyncsForAuthSecret(context.Background(), nil); reqs != nil {
+			t.Errorf("expected nil for nil obj, got %+v", reqs)
+		}
+		emptySecret := &corev1.Secret{}
+		if reqs := r.meshsyncsForAuthSecret(context.Background(), emptySecret); reqs != nil {
+			t.Errorf("expected nil for empty secret, got %+v", reqs)
+		}
+		noNsSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: brokerpackage.AuthSecretName}}
+		if reqs := r.meshsyncsForAuthSecret(context.Background(), noNsSecret); reqs != nil {
+			t.Errorf("expected nil for secret without namespace, got %+v", reqs)
 		}
 	})
 }
